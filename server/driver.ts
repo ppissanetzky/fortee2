@@ -4,9 +4,53 @@ import Rules from './core/rules';
 import Bid from './core/bid';
 import Bone from './core/bone';
 import Trump from './core/trump';
-import Game, { PlayResult, STEP } from './core/game';
+import Game, { STEP, Team } from './core/game';
 
-export { Rules, Bid, Bone, Trump, Game, PlayResult };
+export { Rules, Bid, Bone, Trump, Game, Team };
+
+class TeamStatus {
+    readonly players: string[] = [];
+    /**
+     * Points and pile for the current hand
+     */
+    readonly points: number = 0;
+    // TODO
+    readonly pile: Bone[][] = [];
+    /**
+     * Marks won so far
+     */
+    readonly marks: number = 0;
+
+    constructor(game: Game, team: Team) {
+        for (const [index, player] of game.players.entries()) {
+            if (Game.team_for_player(index) === team) {
+                this.players.push(player);
+            }
+        }
+        const hand = game.this_hand;
+        this.points = hand.points[team];
+        this.pile = hand.pile;
+        this.marks = game.marks[team];
+    }
+}
+
+export class Status {
+
+    public readonly US: TeamStatus;
+    public readonly THEM: TeamStatus;
+
+    public readonly bid: Bid;
+    public readonly trump: Trump | undefined;
+
+    constructor(game: Game) {
+        this.US = new TeamStatus(game, 'US');
+        this.THEM = new TeamStatus(game, 'THEM');
+
+        const hand = game.this_hand;
+        this.bid = hand.high_bid;
+        this.trump = hand.trump;
+    }
+}
 
 export interface PlayerAdapter {
 
@@ -96,19 +140,19 @@ export interface PlayerAdapter {
      * A trick is over
      */
 
-    endOfTrick(result: PlayResult): void;
+    endOfTrick(winner: string, points: number, status: Status): void;
 
     /**
      * A hand is over. Will arrive right after endOfTrick
      */
 
-    endOfHand(result: PlayResult): void;
+    endOfHand(winner: Team, made: boolean, status: Status): void;
 
     /**
      * The game is over, will arrive right after endOfHand
      */
 
-    gameOver(): void;
+    gameOver(status: Status): void;
 }
 
 type Callback = (adapter: PlayerAdapter) => void;
@@ -205,15 +249,22 @@ export default class GameDriver {
                     this.all((adapter) => adapter.playSubmitted(target, bone));
                     const result = this.game.player_play(target, bone);
                     if (result.trick_over) {
-                        this.all((adapter) => adapter.endOfTrick(result));
+                        const winner = this.game.players[result.trick_winner];
+                        const points = result.trick_points;
+                        this.all((adapter) =>
+                            adapter.endOfTrick(winner, points, new Status(this.game)));
                     }
                     if (result.hand_over) {
                         if (result.early_finish) {
                             // TODO: Here we could skip calling finish hand, which
                             // would take us to EARLY_FINISH
                         }
-                        this.all((adapter) => adapter.endOfHand(result));
+                        const winner = result.winning_team;
+                        assert(winner, 'Missing winner');
+                        const made = result.bid_made;
                         this.game.finish_hand(result);
+                        this.all((adapter) =>
+                            adapter.endOfHand(winner, made, new Status(this.game)));
                     }
                 }
                 break;
@@ -223,7 +274,8 @@ export default class GameDriver {
                 }
                 break;
             case STEP.GAME_OVER: {
-                    this.all((adapter) => adapter.gameOver());
+                    const status = new Status(this.game);
+                    this.all((adapter) => adapter.gameOver(status));
                     // TODO: What else can we do here?
                     return;
                 }

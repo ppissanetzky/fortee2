@@ -15,7 +15,7 @@ function loop(n: number, f: (i: number) => void) {
 
 type Player = string;
 
-type Team = 'US' | 'THEM';
+export type Team = 'US' | 'THEM';
 
 class Score {
     public US = 0;

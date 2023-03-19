@@ -4,8 +4,8 @@ import _ from 'lodash';
 import prompts from 'prompts';
 
 import GameDriver, {
-    Bid, Bone, Rules,
-    Trump, PlayerAdapter, PlayResult } from './driver';
+    Bid, Bone, Rules, Status,
+    Trump, PlayerAdapter, Team } from './driver';
 
 import BoneSet from './bone-set';
 
@@ -64,12 +64,25 @@ class PromptAdapter implements PlayerAdapter {
         assert(bones.length === 7, `Drew ${bones.length}`);
         assert(this.bones.size === 0, `Drew when not empty`);
         this.bones.set(bones);
+        this.showBones();
     }
 
     waitingForBid(/* from: string */): void { void 0 }
 
     async bid(possible: Bid[]): Promise<Bid> {
         this.showBones();
+        if (this.random) {
+            // This is just to make the random players more
+            // conservative in their bids
+            //
+            // Pass
+            if (_.random(100) < 90) {
+                return Bid.PASS;
+            }
+            // The lowest possible bid after pass
+            return possible[1];
+            //bids = possible.filter(({points}) => points < 42);
+        }
         const choice = await this.prompt('your bid', possible);
         return Bid.find(choice);
     }
@@ -122,38 +135,55 @@ class PromptAdapter implements PlayerAdapter {
         }
     }
 
-    endOfTrick(result: PlayResult): void {
+    endOfTrick(winner: string, points: number, status: Status): void {
         if (!this.silent) {
-            console.log('Player',
-                players[result.trick_winner].name,
-                'won the trick with', result.trick_points, 'points');
-            console.log('');
-    //        console.log(game.this_hand.points);
+            console.log('Player', winner,
+                'won the trick with', points, `point${points === 1 ? '' : 's'}`);
+            console.log('US', status.US.points, 'THEM', status.THEM.points);
         }
     }
 
-    endOfHand(result: PlayResult): void {
+    endOfHand(winner: Team, made: boolean, status: Status): void {
         this.bones.clear();
         if (!this.silent) {
             console.log('');
             console.log('Hand over');
-            console.log(result.winning_team , 'won!');
-    //        console.log('US', game.marks.US, ':' , 'THEM', game.marks.THEM);
+            console.log(winner, made ? 'made the bid' : 'set');
+            console.log('US', status.US.marks, 'marks',
+                ':', 'THEM', status.THEM.marks, 'marks');
         }
     }
 
-    gameOver(): void {
+    gameOver(status: Status): void {
         if (!this.silent) {
             console.log('Game over');
+            console.log(status);
         }
     }
 }
 
-const players = [
-    new PromptAdapter('1', false, false),
-    new PromptAdapter('2', true, true),
-    new PromptAdapter('3', true, true),
-    new PromptAdapter('4', true, true),
-];
+const auto = process.argv[2] === 'auto';
+let count = parseInt(process.argv[3] || '1', 10);
 
-GameDriver.start(new Rules(), players).then(() => console.log('\nDONE'));
+function play(): Promise<void> {
+    const players = [
+        new PromptAdapter('1', auto && count > 0, auto),
+        new PromptAdapter('2', true, true),
+        new PromptAdapter('3', true, true),
+        new PromptAdapter('4', true, true),
+    ];
+
+    const rules = new Rules();
+
+    return GameDriver.start(rules, players).then(() => {
+        if (!auto) {
+            console.log('\nDONE');
+        }
+        else if (count--) {
+            console.log(count);
+            return play();
+        }
+    });
+}
+
+play();
