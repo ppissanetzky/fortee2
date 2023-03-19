@@ -18,8 +18,8 @@ type Player = string;
 type Team = 'US' | 'THEM';
 
 class Score {
-    public US: number = 0;
-    public THEM: number = 0;
+    public US = 0;
+    public THEM = 0;
 
     clear() {
         this.US = 0;
@@ -39,7 +39,7 @@ export const enum STEP {
     PLAY               = 'PLAY',
     EARLY_FINISH       = 'EARLY_FINISH',
     GAME_OVER          = 'GAME_OVER',
-};
+}
 
 const BID_RESULT_AGAIN        = 'BID_AGAIN';
 const BID_RESULT_DONE         = 'BID_DONE';
@@ -138,7 +138,7 @@ export default class Game {
         return partners[player];
     }
 
-    static inc_player(player: number, amount: number = 1 ): number {
+    static inc_player(player: number, amount = 1 ): number {
         let result = player;
         for (let left = amount; left; left--) {
             if (result === 3) {
@@ -163,7 +163,9 @@ export default class Game {
     }
 
     get this_hand(): Hand {
-        return this.hands.at(-1)!;
+        const hand = this.hands.at(-1);
+        assert(hand);
+        return hand;
     }
 
     new_game() {
@@ -610,13 +612,13 @@ export default class Game {
 
             let p = hand.trick_leader;
 
-            loop(4, (i) => {
+            loop(4, () => {
 
                 if (trump.nello && ( p === Game.partner_for( hand.high_bidder ) )) {
                     // Do nothing
                 }
                 else {
-                    let play_bone = hand.trick_bones[ p ];
+                    const play_bone = hand.trick_bones[ p ];
 
                     if (play_bone) {
 

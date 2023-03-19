@@ -1,11 +1,11 @@
 
 import prompts from 'prompts';
 
-import Rules from '../server/core/rules';
-import Bid from '../server/core/bid';
-import Bone from '../server/core/bone';
-import Trump from '../server/core/trump';
-import Game, { STEP } from '../server/core/game';
+import Rules from './core/rules';
+import Bid from './core/bid';
+import Bone from './core/bone';
+import Trump from './core/trump';
+import Game, { STEP } from './core/game';
 
 const rules = new Rules();
 const players = [ '1' , '2' , '3' , '4' ];
@@ -55,17 +55,19 @@ function next(): Promise<void> {
                     game.player_trump(target, Trump.find(choice));
                     return next();
                 case STEP.PLAY:
-                    const play_result = game.player_play(target, Bone.find( choice ) );
-                    if (play_result.trick_over) {
-                        console.log('TRICK OVER');
-                        console.log(players[play_result.trick_winner], 'WON', play_result.trick_points, 'POINTS');
-                        console.log(game.this_hand.points);
-                        if (play_result.hand_over) {
-                            console.log('');
-                            console.log('HAND OVER');
-                            console.log(play_result.winning_team , 'WON');
-                            game.finish_hand( play_result );
-                            console.log('US', game.marks.US, ':' , 'THEM', game.marks.THEM);
+                    {
+                        const play_result = game.player_play(target, Bone.find( choice ) );
+                        if (play_result.trick_over) {
+                            console.log('TRICK OVER');
+                            console.log(players[play_result.trick_winner], 'WON', play_result.trick_points, 'POINTS');
+                            console.log(game.this_hand.points);
+                            if (play_result.hand_over) {
+                                console.log('');
+                                console.log('HAND OVER');
+                                console.log(play_result.winning_team , 'WON');
+                                game.finish_hand( play_result );
+                                console.log('US', game.marks.US, ':' , 'THEM', game.marks.THEM);
+                            }
                         }
                     }
                     return next();

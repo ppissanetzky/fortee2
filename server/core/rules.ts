@@ -56,7 +56,7 @@ export default class Rules {
     // A bid name
     public readonly forced_min_bid: string = '30';
 
-    constructor() {}
+    constructor() { void 0 }
 
 
     // in_set<T>(value: any, set: Set<T>):
