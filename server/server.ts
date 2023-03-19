@@ -37,10 +37,10 @@ else {
 }
 
 //-----------------------------------------------------------------------------
-// The port that the Express application listens to.
+// The port that the Express application listens to
 //-----------------------------------------------------------------------------
 
-const PORT = process.env.FB_PORT || '4004';
+const PORT = process.env.FT_PORT || '4004';
 
 //-----------------------------------------------------------------------------
 // Start listening

@@ -1,0 +1,8 @@
+version: "3.7"
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server.dockerfile
+    image: forty-two
+    network_mode: host

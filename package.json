@@ -1,8 +1,15 @@
 {
   "name": "forty-two",
   "version": "1.0.0",
-  "scripts": {
-  },
   "author": "Pablo Pissanetzky",
-  "license": "private"
+  "license": "private",
+  "scripts": {
+    "install": "(cd site && npm i) && (cd server && npm i)",
+    "dev": "(cd site && npm run dev)",
+    "generate": "(cd site && npm run generate)",
+    "server": "(cd server && npm run server)",
+    "start": "(cd site && npm run generate) && (cd server && npx tsc) && docker-compose up --build",
+    "preversion": "git checkout main && git pull origin main",
+    "postversion": "git push origin main --tags"
+  }
 }
