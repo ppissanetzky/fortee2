@@ -26,13 +26,17 @@ export default class Bone {
         return result;
     }
 
+    public readonly id: string;
+
     private constructor(
         private readonly a: Dots,
         private readonly b: Dots)
-    {}
+    {
+        this.id = `${this.suit}.${this.other_suit(this.suit)}`;
+    }
 
     toString(): string {
-        return `${this.suit}.${this.other_suit(this.suit)}`;
+        return this.id;
     }
 
     get sum(): number {

@@ -1,86 +1,159 @@
 
+import assert from 'node:assert';
+import _ from 'lodash';
 import prompts from 'prompts';
 
-import Rules from './core/rules';
-import Bid from './core/bid';
-import Bone from './core/bone';
-import Trump from './core/trump';
-import Game, { STEP } from './core/game';
+import GameDriver, {
+    Bid, Bone, Rules,
+    Trump, PlayerAdapter, PlayResult } from './driver';
 
-const rules = new Rules();
-const players = [ '1' , '2' , '3' , '4' ];
-const host = 'A'
+import BoneSet from './bone-set';
 
-const game = new Game(players, rules);
-
-function next(): Promise<void> {
-    return Promise.resolve().then(() => {
-        const [target , prompt , choices] = game.next_turn( host );
-
-        const index = players.indexOf(target);
-
-        if (prompt === STEP.START_HAND) {
-            console.log('Starting hand');
-            game.start_hand();
-            return next();
-        }
-
-        if(prompt === STEP.GAME_OVER) {
-            console.log('Game over');
-            return;
-        }
-
-        console.log('');
-        console.log('YOU HAVE:',
-            game.this_hand.bones_left[index]
-                .map((bone) => bone.toString()).join('  '));
-
-        choices.push('quit');
-
-        return prompts({
-            type: 'select',
-            name: 'choice',
-            message: `PLAYER ${target} : ${prompt}`,
-            choices: choices.map((title) => ({title, value: title}))
-        })
-        .then(({choice}) => {
-            if (choice === 'quit' || !choice) {
-                return process.exit(0);
-            }
-            switch (prompt) {
-                case STEP.BID:
-                    game.player_bid(target, Bid.find(choice));
-                    return next();
-                case STEP.TRUMP:
-                    game.player_trump(target, Trump.find(choice));
-                    return next();
-                case STEP.PLAY:
-                    {
-                        const play_result = game.player_play(target, Bone.find( choice ) );
-                        if (play_result.trick_over) {
-                            console.log('TRICK OVER');
-                            console.log(players[play_result.trick_winner], 'WON', play_result.trick_points, 'POINTS');
-                            console.log(game.this_hand.points);
-                            if (play_result.hand_over) {
-                                console.log('');
-                                console.log('HAND OVER');
-                                console.log(play_result.winning_team , 'WON');
-                                game.finish_hand( play_result );
-                                console.log('US', game.marks.US, ':' , 'THEM', game.marks.THEM);
-                            }
-                        }
-                    }
-                    return next();
-                case STEP.EARLY_FINISH:
-                    if (choice.toUpperCase() === 'YES') {
-                        return;
-                    }
-                    game.play_it_out(true);
-                    return next();
-            }
-        });
-    });
+interface ToString {
+    toString(): string;
 }
 
-next().then(() => undefined);
+function toStringArray<T extends ToString>(things: T[]): string [] {
+    return things.map((thing) => thing.toString());
+}
 
+class PromptAdapter implements PlayerAdapter {
+
+    public readonly name: string;
+
+    private readonly silent: boolean;
+    private readonly random: boolean;
+    private bones = new BoneSet();
+
+    constructor(name: string, silent = false, random = false) {
+        this.name = name;
+        this.silent = silent;
+        this.random = random;
+    }
+
+    private async prompt(message: string, choices: ToString[]): Promise<string> {
+        const strings = toStringArray(choices);
+        if (this.random) {
+            const result = _.sample(strings);
+            assert(result, `Nothing to pick from`);
+            return result;
+        }
+        const { choice } = await prompts({
+            type: 'select',
+            name: 'choice',
+            message: `Player ${this.name} : ${message}`,
+            choices: strings.map((title) => ({title, value: title}))
+        });
+        if (choice === 'quit' || !choice) {
+            return process.exit(0);
+        }
+        return choice;
+    }
+
+    private showBones() {
+        if (!this.silent) {
+            console.log('You have', this.bones.ids().join('  '));
+        }
+    }
+
+    startingHand(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    draw(bones: Bone[]) {
+        assert(bones.length === 7, `Drew ${bones.length}`);
+        assert(this.bones.size === 0, `Drew when not empty`);
+        this.bones.set(bones);
+    }
+
+    waitingForBid(/* from: string */): void { void 0 }
+
+    async bid(possible: Bid[]): Promise<Bid> {
+        this.showBones();
+        const choice = await this.prompt('your bid', possible);
+        return Bid.find(choice);
+    }
+
+    bidSubmitted(from: string, bid: Bid): void {
+        if (!this.silent) {
+            console.log('Player', from, 'bid', bid.toString());
+        }
+    }
+
+    reshuffle(): void {
+        if (!this.silent) {
+            console.log('Reshuffle');
+        }
+        this.bones.clear();
+    }
+
+    bidWon(winner: string, bid: Bid): void {
+        if (!this.silent) {
+            console.log('Player', winner, 'won the bid with', bid.toString());
+        }
+    }
+
+    waitingForTrump(/* from: string */): void { void 0 }
+
+    async call(possible: Trump[]): Promise<Trump> {
+        this.showBones();
+        const choice = await this.prompt('call trumps', possible);
+        return Trump.find(choice);
+    }
+
+    trumpSubmitted(from: string, trump: Trump): void {
+        if (!this.silent) {
+            console.log('Player', from, 'called trumps', trump.toString());
+        }
+    }
+
+    waitingForPlay(/* from: string */): void { void 0 }
+
+    async play(possible: Bone[]): Promise<Bone> {
+        this.showBones();
+        const choice = await this.prompt('play', possible);
+        const bone = this.bones.delete(choice);
+        return bone;
+    }
+
+    playSubmitted(from: string, bone: Bone): void {
+        if (!this.silent) {
+            console.log('Player', from, 'played the', bone.toString());
+        }
+    }
+
+    endOfTrick(result: PlayResult): void {
+        if (!this.silent) {
+            console.log('Player',
+                players[result.trick_winner].name,
+                'won the trick with', result.trick_points, 'points');
+            console.log('');
+    //        console.log(game.this_hand.points);
+        }
+    }
+
+    endOfHand(result: PlayResult): void {
+        this.bones.clear();
+        if (!this.silent) {
+            console.log('');
+            console.log('Hand over');
+            console.log(result.winning_team , 'won!');
+    //        console.log('US', game.marks.US, ':' , 'THEM', game.marks.THEM);
+        }
+    }
+
+    gameOver(): void {
+        if (!this.silent) {
+            console.log('Game over');
+        }
+    }
+}
+
+const players = [
+    new PromptAdapter('1', false, false),
+    new PromptAdapter('2', true, true),
+    new PromptAdapter('3', true, true),
+    new PromptAdapter('4', true, true),
+];
+
+GameDriver.start(new Rules(), players).then(() => console.log('\nDONE'));

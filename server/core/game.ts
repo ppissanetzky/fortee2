@@ -105,7 +105,7 @@ class Hand {
     }
 }
 
-class PlayResult {
+export class PlayResult {
     public trick_over     = false;
     public trick_winner   = -1;
     public trick_points   = 0;
@@ -164,7 +164,7 @@ export default class Game {
 
     get this_hand(): Hand {
         const hand = this.hands.at(-1);
-        assert(hand);
+        assert(hand, `No hands`);
         return hand;
     }
 
@@ -252,7 +252,7 @@ export default class Game {
             min_bid = high_bid.bid_one_more();
         }
 
-        assert(min_bid);
+        assert(min_bid, `No min bid`);
 
         // Now add all bids that are higher than or equal to the min bid we selected
         // to the possible bids array
@@ -353,7 +353,7 @@ export default class Game {
 
         const possible_trumps = Trump.ALL.slice(0, 8);
 
-        assert(possible_trumps.length === 8);
+        assert(possible_trumps.length === 8, `Possible trumps is too short`);
 
         let caller = hand.high_bidder;
 
@@ -565,7 +565,7 @@ export default class Game {
 
         if (hand.next_player === hand.trick_leader) {
             this.new_trick();
-            assert(hand.this_trick);
+            assert(hand.this_trick, 'No new trick');
             hand.this_trick.trick_leader = hand.trick_leader;
         }
 
@@ -578,7 +578,7 @@ export default class Game {
 
         hand.trick_bones[ player_index ] = bone;
 
-        assert(hand.this_trick);
+        assert(hand.this_trick, 'No trick');
 
         hand.this_trick.trick_bones[ player_index ] = bone;
 
@@ -589,7 +589,7 @@ export default class Game {
         // if we are playing nello, skip the partner of the bid winner
 
         const trump = hand.trump;
-        assert(trump);
+        assert(trump, 'Hand has no trump');
 
         if (trump.nello && ( hand.next_player === Game.partner_for( hand.high_bidder ) )) {
             hand.next_player = Game.inc_player( hand.next_player );
@@ -719,7 +719,7 @@ export default class Game {
 
         const hand = this.this_hand
 
-        assert(play_result.winning_team);
+        assert(play_result.winning_team, 'No winning team after hand');
 
         this.marks[ play_result.winning_team ] += hand.high_bid.marks;
 
@@ -742,7 +742,7 @@ export default class Game {
     }
 
     set_players(players: Player[]): void {
-        assert(players.length === 4);
+        assert(players.length === 4, 'Too few players');
         this.players = [...players];
     }
 
@@ -759,35 +759,34 @@ export default class Game {
     }
 
     // returns the target player name, the prompt and a list of choices
+    // next_turn(host: Player): [Player, STEP, string[]] {
 
-    next_turn(host: Player): [Player, STEP, string[]] {
+    //     let target = host;
+    //     const prompt = this.next_step;
+    //     let choices: (Bid | Trump | Bone | string)[] = [];
 
-        let target = host;
-        const prompt = this.next_step;
-        let choices: (Bid | Trump | Bone | string)[] = [];
-
-        switch (prompt) {
-            case STEP.START_HAND:
-                target = host
-                break;
-            case STEP.BID:
-                [target , choices] = this.get_next_bidder();
-                break;
-            case STEP.TRUMP:
-                [target , choices] = this.get_trump_caller();
-                break;
-            case STEP.PLAY:
-                [target , choices] = this.get_next_player();
-                break;
-            case STEP.EARLY_FINISH:
-                target = host;
-                choices = [ 'No' , 'Yes' ];
-                break;
-            default:
-                assert(false);
-        }
-        return [ target , prompt , choices.map((item) => item.toString())];
-    }
+    //     switch (prompt) {
+    //         case STEP.START_HAND:
+    //             target = host
+    //             break;
+    //         case STEP.BID:
+    //             [target , choices] = this.get_next_bidder();
+    //             break;
+    //         case STEP.TRUMP:
+    //             [target , choices] = this.get_trump_caller();
+    //             break;
+    //         case STEP.PLAY:
+    //             [target , choices] = this.get_next_player();
+    //             break;
+    //         case STEP.EARLY_FINISH:
+    //             target = host;
+    //             choices = [ 'No' , 'Yes' ];
+    //             break;
+    //         default:
+    //             assert(false, 'Invalid step');
+    //     }
+    //     return [ target , prompt , choices.map((item) => item.toString())];
+    // }
 }
 
 // #-------------------------------------------------------------------------------
