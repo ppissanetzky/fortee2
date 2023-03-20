@@ -1,10 +1,12 @@
 
-import fs from 'fs';
+import fs from 'node:fs';
 
 import express from 'express';
-import ms from 'ms';
 
-import { WebSocket, WebSocketServer } from 'ws';
+import WsServer from './ws-server';
+import { makeDebug } from './utility';
+
+const debug = makeDebug('server');
 
 const app = express()
 
@@ -23,7 +25,7 @@ app.use(express.json({limit: '5mb'}));
 //-----------------------------------------------------------------------------
 
 app.use((req, res, next) => {
-    console.log(req.method, req.url, req.get('content-length') || '');
+    debug(req.method, req.url, req.get('content-length') || '');
     next();
 });
 
@@ -33,7 +35,7 @@ if (fs.existsSync('./site')) {
     app.use(express.static('./site'));
 }
 else {
-    console.warn('Not serving static site');
+    debug('Not serving static site');
 }
 
 //-----------------------------------------------------------------------------
@@ -51,6 +53,27 @@ const server = app.listen(PORT, async () => {
 });
 
 //-----------------------------------------------------------------------------
+// Create the WebSocket server
+//-----------------------------------------------------------------------------
+
+const wss = new WsServer(parseInt(PORT, 10) + 1);
+
+app.get('/connect', (req, res) => {
+    const connection = {
+        name: 'pablo'
+    };
+    const token = wss.invite(connection);
+    // If no token was returned, this user is not authorized
+    if (!token) {
+        return res.status(401).end();
+    }
+    res.json({
+        port: wss.port,
+        token
+    });
+});
+
+//-----------------------------------------------------------------------------
 // Graceful shutdown for docker
 //-----------------------------------------------------------------------------
 
@@ -61,50 +84,3 @@ process.on('SIGTERM', () => {
         process.exit(0);
     });
 });
-
-//-----------------------------------------------------------------------------
-// Web socket server
-//-----------------------------------------------------------------------------
-
-const wss = new WebSocketServer({
-    port: parseInt(PORT, 10) + 1
-});
-
-wss.on('connection', (ws: WebSocket) => {
-    console.log('WS connect');
-    ws.on('pong', () => {
-        console.log('WS pong');
-    });
-    ws.on('message', (data) => {
-        console.log(`WS message : "${data}"`);
-    });
-});
-
-setInterval(() => {
-    const message = JSON.stringify({
-        ping: new Date().toString()
-    });
-    wss.clients.forEach((ws) => {
-        console.log(`WS ping`);
-        ws.send(message);
-        ws.ping();
-    });
-}, ms('30m'));
-
-
-//-----------------------------------------------------------------------------
-// Control messages that are broadcast to all the WS clients
-//-----------------------------------------------------------------------------
-
-// app.post('/control', (req, res) => {
-//     const {body} = req;
-//     console.log('WS control', body.type);
-//     const data = JSON.stringify(body);
-//     wss.clients.forEach((ws) => {
-//         ws.send(data);
-//     });
-//     res.status(200).end();
-// });
-
-//-----------------------------------------------------------------------------
-
