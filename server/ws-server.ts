@@ -2,13 +2,14 @@ import ms from 'ms';
 import { WebSocket, WebSocketServer } from 'ws';
 
 import { makeDebug, makeToken } from './utility';
+import User from './user';
 
 /**
  * This is how long an invitation to connect from the web
  * server is valid.
  */
 
-const INVITATION_EXPIRY = ms('30s');
+const INVITATION_EXPIRY = ms('10s');
 
 //------------------------------------------------------------------------------
 
@@ -23,6 +24,7 @@ export default class WsServer {
     public readonly port: number;
 
     private invitations = new Map<string, Connection>();
+    private connected = new Set<string>();
 
     constructor(port: number) {
         const wss = new WebSocketServer({port});
@@ -38,27 +40,25 @@ export default class WsServer {
                 const connection = this.invitations.get(token);
                 if (!connection) {
                     debug('invalid token, closing');
-                    ws.close();
+                    ws.terminate();
                     return;
                 }
-                // Otherwise, it is a good connection
+                // Delete it
+                this.invitations.delete(token);
+                // Otherwise, it may be a good connection
                 const { name } = connection;
-                // Attach pongs
-                ws.on('pong', () => {
-                    debug('pong');
-                });
-
-                // Listen to all messages
-                ws.on('message', (data) => {
-                    try {
-                        const message = JSON.parse(data.toString());
-                        debug('message', name, message);
-                        // TODO: where does it go?
-                    }
-                    catch (error) {
-                        debug('invalid message', name, error, data.toString());
-                    }
-                });
+                if (this.connected.has(name)) {
+                    debug('already connected', name);
+                    ws.terminate();
+                    return;
+                }
+                // Add it to the connected set
+                this.connected.add(name);
+                // Ok, we'll allow it
+                debug('accepted', name);
+                // And create a user for it
+                User.connected(name, ws)
+                    .gone.then(() => this.connected.delete(name))
             });
         });
 
@@ -93,8 +93,9 @@ export default class WsServer {
         this.invitations.set(token, connection);
         debug('added invitation for', name, token);
         setTimeout(() => {
-            this.invitations.delete(token);
-            debug('expired invitation for', name, token);
+            if (this.invitations.delete(token)) {
+                debug('expired invitation for', name, token);
+            }
         }, INVITATION_EXPIRY);
         return token;
     }

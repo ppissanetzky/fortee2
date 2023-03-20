@@ -58,10 +58,9 @@ const server = app.listen(PORT, async () => {
 
 const wss = new WsServer(parseInt(PORT, 10) + 1);
 
-app.get('/connect', (req, res) => {
-    const connection = {
-        name: 'pablo'
-    };
+app.get('/connect/:name', (req, res) => {
+    const { params: { name } } = req;
+    const connection = {name};
     const token = wss.invite(connection);
     // If no token was returned, this user is not authorized
     if (!token) {

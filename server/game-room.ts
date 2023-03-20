@@ -1,17 +1,10 @@
 
-import { WebSocket, RawData } from 'ws';
-import { Debugger, makeDebug, makeToken } from './utility';
-
-interface HumanPlayer {
-    readonly name: string;
-    readonly ws: WebSocket;
-}
+import { makeDebug, makeToken } from './utility';
+import type User from './user';
 
 interface Bot {
     readonly name: string;
 }
-
-type Listener = (data: RawData, isBinary: boolean) => void;
 
 export default class GameRoom {
 
@@ -20,40 +13,41 @@ export default class GameRoom {
     public readonly id = `${GameRoom.ID++}`;
     public readonly token = makeToken();
 
-    public readonly humans: HumanPlayer[] = [];
-    public readonly bots: Bot[] = [];
+    public readonly users = new Map<string, User>();
+    public readonly bots = new Map<string, Bot>();
 
-    private readonly debug: Debugger;
-    private readonly listeners = new Map<HumanPlayer, Listener>();
+    private readonly debug = makeDebug('game-room');
 
     constructor() {
-        this.debug = makeDebug('game-room').extend(this.id);
-        this.debug('created room');
+        this.debug = this.debug.extend(this.id);
+        this.debug('created');
     }
 
     get size(): number {
-        return this.humans.length + this.bots.length;
+        return this.users.size + this.bots.size;
     }
 
-    private remove(player: HumanPlayer): void {
-        const listener = this.listeners.get(player);
-        if (listener) {
-            this.debug('removing player', player.name);
-            player.ws.off('message', listener);
-            this.listeners.delete(player);
-            // TODO: notify others
-        }
-        else {
-            this.debug('remove: no listener for', player.name);
+    all(cb: (user: User) => void) {
+        for (const user of this.users.values()) {
+            cb(user);
         }
     }
 
-    join(player: HumanPlayer, token: string) {
-        if (this.humans.some(({name}) => name === player.name)) {
-            throw new Error(`Human "${player.name}" already joined`);
+    not(name: string, cb: (user: User) => void) {
+        this.all((user) => {
+            if (user.name !== name) {
+                cb(user);
+            }
+        })
+    }
+
+    join(user: User, token: string) {
+        const { name } = user;
+        if (this.users.get(name)) {
+            throw new Error(`User "${name}" exists`);
         }
-        if (this.bots.some(({name}) => name === player.name)) {
-            throw new Error(`Human "${player.name}" has existing bot name`);
+        if (this.bots.get(name)) {
+            throw new Error(`User "${name}" has existing bot name`);
         }
         if (this.size >= 4) {
             throw new Error('Game room is full');
@@ -61,25 +55,20 @@ export default class GameRoom {
         if (token !== this.token) {
             throw new Error('Token mismatch');
         }
-        this.debug('joined', player.name);
-        this.humans.push(player);
-        const listener = (data: RawData) => {
-            const s = data.toString();
-            this.debug('ws message from', player.name, s);
-            this.message(player, JSON.parse(s));
-        };
-        this.listeners.set(player, listener);
-        player.ws.on('message', listener);
-        player.ws.once('close', () => {
-            this.debug('ws close for', player.name);
-            this.remove(player);
+        this.debug('joined', name);
+        this.users.set(name, user);
+        // If and when the user leaves
+        user.gone.then(() => {
+            this.users.delete(name);
+            this.debug('removed', name);
+            this.not(name, (other) => {
+                other.send('leftGameRoom', {name});
+            });
         });
-        // TODO: notify others
+        // Tell everyone else that this user is here
+        this.not(name, (other) => other.send('enteredGameRoom', {name}));
+        // Tell the user about the room
+        user.send('youEnteredGameRoom', null);
     }
-
-    message(player: HumanPlayer, message: Record<string, any>) {
-        //
-    }
-
 }
 
