@@ -1,119 +1,68 @@
-import ms from 'ms';
+import type { Request } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 
-import { makeDebug, makeToken } from './utility';
+import { makeDebug } from './utility';
 import User from './user';
-
-/**
- * This is how long an invitation to connect from the web
- * server is valid.
- */
-
-const INVITATION_EXPIRY = ms('10s');
 
 //------------------------------------------------------------------------------
 
 const debug = makeDebug('wss');
 
-export interface Connection {
-    readonly name: string;
-}
-
 export default class WsServer {
 
-    public readonly port: number;
+    private readonly wss: WebSocketServer;
+    private readonly connected = new Map<string, WebSocket>();
 
-    private invitations = new Map<string, Connection>();
-    private connected = new Set<string>();
-
-    constructor(port: number) {
-        const wss = new WebSocketServer({port});
-
-        this.port = port;
-
-        wss.on('connection', (ws: WebSocket) => {
-            debug('connect');
-            // Listen for the first message, which should be an invitation token
-            ws.once('message', (data) => {
-                const token = data.toString();
-                debug('message', token);
-                const connection = this.invitations.get(token);
-                if (!connection) {
-                    debug('invalid token, closing');
-                    ws.terminate();
-                    return;
-                }
-                // Delete it
-                this.invitations.delete(token);
-                // Otherwise, it may be a good connection
-                const { name } = connection;
-                if (this.connected.has(name)) {
-                    debug('already connected', name);
-                    ws.terminate();
-                    return;
-                }
-                // Add it to the connected set
-                this.connected.add(name);
-                // Ok, we'll allow it
-                debug('accepted', name);
-                // And create a user for it
-                User.connected(name, ws)
-                    .gone.then(() => this.connected.delete(name))
-            });
+    constructor() {
+        // From https://github.com/websockets/ws/blob/master/examples/express-session-parse/index.js
+        this.wss = new WebSocketServer({
+            clientTracking: false,
+            noServer: true
         });
+        // setInterval(() => {
+        //     const message = JSON.stringify({
+        //         ping: new Date().toString()
+        //     });
+        //     this.wss.clients.forEach((ws) => {
+        //         debug('ping');
+        //         ws.send(message);
+        //         ws.ping();
+        //     });
+        // }, ms('30m'));
 
-        setInterval(() => {
-            const message = JSON.stringify({
-                ping: new Date().toString()
-            });
-            wss.clients.forEach((ws) => {
-                debug('ping');
-                ws.send(message);
-                ws.ping();
-            });
-        }, ms('30m'));
-
-        debug('started at', port);
+        debug('started');
     }
 
-    invite(connection: Connection): string | undefined {
-        const { name } = connection;
-        // Make sure there is no existing invitation for this "name"
-        for (const other of this.invitations.values()) {
-            if (other.name === name) {
-                debug('existing invitation for', name);
-                return undefined;
+    async upgrade(req: Request) {
+        try {
+            const { session: { name, userId } } = req;
+            if (!(name && userId)) {
+                throw new Error('missing session name and userId');
             }
-        }
-        // Make a token and ensure it doesn't exist
-        let token = makeToken();
-        while (this.invitations.get(token)) {
-            token = makeToken();
-        }
-        this.invitations.set(token, connection);
-        debug('added invitation for', name, token);
-        setTimeout(() => {
-            if (this.invitations.delete(token)) {
-                debug('expired invitation for', name, token);
+            const key = `${name}:${userId}`;
+            if (this.connected.has(key)) {
+                throw new Error(`user ${key} already connected`);
             }
-        }, INVITATION_EXPIRY);
-        return token;
+            // Upgrade to a ws
+            const ws = await new Promise<WebSocket>((resolve) => {
+                const head = Buffer.alloc(0);
+                this.wss.handleUpgrade(req, req.socket, head, resolve);
+            });
+            // Check again now, just in case
+            if (this.connected.has(key)) {
+                throw new Error(`user ${key} already connected`);
+            }
+            // All good
+            debug('accepted', key);
+            this.connected.set(key, ws);
+            // Create a user for it
+            User.connected(name, ws)
+                .gone.then(() => this.connected.delete(key));
+        }
+        catch (error) {
+            debug(error instanceof Error ? error.message : error);
+            req.socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            req.socket.destroy();
+        }
     }
 }
-
-//-----------------------------------------------------------------------------
-// Control messages that are broadcast to all the WS clients
-//-----------------------------------------------------------------------------
-
-// app.post('/control', (req, res) => {
-//     const {body} = req;
-//     console.log('WS control', body.type);
-//     const data = JSON.stringify(body);
-//     wss.clients.forEach((ws) => {
-//         ws.send(data);
-//     });
-//     res.status(200).end();
-// });
-
-//-----------------------------------------------------------------------------
-

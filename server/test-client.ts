@@ -5,13 +5,26 @@ import { makeDebug } from './utility';
 const debug = makeDebug('test-client');
 debug.enabled = true;
 
+const PORT = 4004;
+
 const name = process.argv[2] || 'pablo';
 
-fetch(`http://localhost:4004/connect/${name}`)
+fetch(`http://localhost:${PORT}/login/${name}`)
     .then(async (response) => {
-        const {port, token} = await response.json();
-        const client = new WebSocket(`ws://localhost:${port}`);
-
+        debug(response.status, response.statusText);
+        if (!response.ok) {
+            return;
+        }
+        const { headers } = response;
+        debug(JSON.stringify(headers));
+        const cookie = headers.get('set-cookie');
+        if (!cookie) {
+            debug('no set-cookie');
+            return;
+        }
+        const client = new WebSocket(`ws://localhost:${PORT}/ws`, {
+            headers: {cookie}
+        });
         function send(type: string, message: any) {
             client.send(JSON.stringify({type, message}));
         }
@@ -19,7 +32,6 @@ fetch(`http://localhost:4004/connect/${name}`)
         // On open, send the token
         client.on('open', () => {
             debug('open');
-            client.send(token);
             client.on('ping', () => debug('ping'));
             client.on('message', (data) => {
                 debug('raw', data.toString());
