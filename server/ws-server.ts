@@ -35,13 +35,16 @@ export default class WsServer {
 
     async upgrade(req: Request) {
         try {
-            const { session: { name, userId } } = req;
-            if (!(name && userId)) {
+            const { user } = req;
+            if (!user) {
+                throw new Error('missing user');
+            }
+            const { id, name } = user;
+            if (!(name && id)) {
                 throw new Error('missing session name and userId');
             }
-            const key = `${name}:${userId}`;
-            if (this.connected.has(key)) {
-                throw new Error(`user ${key} already connected`);
+            if (this.connected.has(id)) {
+                throw new Error(`user ${id} already connected`);
             }
             // Upgrade to a ws
             const ws = await new Promise<WebSocket>((resolve) => {
@@ -49,15 +52,15 @@ export default class WsServer {
                 this.wss.handleUpgrade(req, req.socket, head, resolve);
             });
             // Check again now, just in case
-            if (this.connected.has(key)) {
-                throw new Error(`user ${key} already connected`);
+            if (this.connected.has(id)) {
+                throw new Error(`user ${id} already connected`);
             }
             // All good
-            debug('accepted', key);
-            this.connected.set(key, ws);
+            debug('accepted', id);
+            this.connected.set(id, ws);
             // Create a user for it
             User.connected(name, ws)
-                .gone.then(() => this.connected.delete(key));
+                .gone.then(() => this.connected.delete(id));
         }
         catch (error) {
             debug(error instanceof Error ? error.message : error);

@@ -14,3 +14,9 @@ export function makeDebug(area: string): Debugger {
     return debug(`42:${area}`);
 }
 
+export function hashString(data: string, hash = 'md5'): string {
+    return crypto
+        .createHash(hash)
+        .update(Buffer.from(data, 'utf-8'))
+        .digest('hex');
+}

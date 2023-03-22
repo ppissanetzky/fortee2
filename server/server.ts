@@ -3,12 +3,11 @@ import fs from 'node:fs';
 import http from 'node:http';
 
 import express from 'express';
-import Session from 'express-session';
 
 import './config';
 
 import WsServer from './ws-server';
-import { makeDebug, makeToken } from './utility';
+import { makeDebug } from './utility';
 import setupAuthentication from './authentication';
 
 const debug = makeDebug('server');
@@ -25,7 +24,7 @@ app.disable('etag');
 //-----------------------------------------------------------------------------
 
 app.use(express.urlencoded({extended: true}));
-app.use(express.json({limit: '5mb'}));
+app.use(express.json({limit: '1mb'}));
 
 //-----------------------------------------------------------------------------
 
@@ -45,55 +44,7 @@ else {
 
 //-----------------------------------------------------------------------------
 
-const sessionParser = Session({
-    saveUninitialized: false,
-    secret: makeToken(32),
-    resave: false,
-    // cookie: {
-    //     // Don't know if this is needed in order to have the browser
-    //     // send the cookie
-    //     // httpOnly: false
-    // }
-});
-
-// Data we attach to the session
-
-declare module 'express-session' {
-    interface SessionData {
-        name: string;
-        userId: string;
-    }
-}
-
-app.use(sessionParser);
-
-//-----------------------------------------------------------------------------
-
 setupAuthentication(app);
-
-//-----------------------------------------------------------------------------
-
-/**
- * Our awesome user database
- */
-
-const users = new Map([
-    'pablo', 'bubba'
-].map((name) => ([name, makeToken(16)])));
-
-app.get('/login/:name', (req, res) => {
-    const { session, params: { name } } = req;
-    if (!session.name) {
-        const userId = users.get(name);
-        if (!userId) {
-            debug('invalid user', name);
-            return res.sendStatus(401);
-        }
-        session.name = name;
-        session.userId = userId;
-    }
-    res.sendStatus(200);
-});
 
 //-----------------------------------------------------------------------------
 // The port that the Express application listens to

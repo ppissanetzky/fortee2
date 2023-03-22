@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
 import { makeDebug } from './utility';
+import config from './config';
 
 const debug = makeDebug('test-client');
 debug.enabled = true;
@@ -9,7 +10,14 @@ const PORT = 4004;
 
 const name = process.argv[2] || 'pablo';
 
-fetch(`http://localhost:${PORT}/login/${name}`)
+fetch(`http://localhost:${PORT}/local-login`, {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({
+        username: name,
+        password: config.FT2_LOCAL_PASSWORD
+    })
+})
     .then(async (response) => {
         debug(response.status, response.statusText);
         if (!response.ok) {

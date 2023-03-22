@@ -1,12 +1,18 @@
 
 import type { Express } from 'express';
-import passport, { session } from 'passport';
+import session from 'express-session';
+import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as LocalStrategy } from 'passport-local';
 
-import { makeDebug } from './utility';
+import { makeDebug, hashString } from './utility';
 import config from './config';
 
 const debug = makeDebug('server').extend('auth');
+
+/**
+ * The shape of our Express user
+ */
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -35,45 +41,26 @@ declare global {
  * Google profile.
  */
 
-export default function setupAuthentication(app: Express): void {
-
-    /**
-     * This one is called when a new user object is returned by the strategy's
-     * callback. It is meant to serialize that into session.passport.user
-     */
-
-    passport.serializeUser((user, done) => done(null, user));
-
-    /**
-     * This one is called to take session.passport.user and put the result
-     * in req.user
-     */
-
-    passport.deserializeUser((user: Express.User, done) => done(null, user));
-
-    /**
-     * The strategy
-     */
+function google(app: Express): void {
 
     passport.use(new GoogleStrategy({
-            clientID: config.FT2_GSI_CLIENT_ID,
-            clientSecret: config.FT2_GSI_SECRET,
-            callbackURL: '/google-login'
-        },
-        (accessToken, refreshToken, profile, cb) => {
-            try {
-                debug('google profile', JSON.stringify(profile));
-                const user = {
-                    id: `${profile.provider}/${profile.id}`,
-                    name: profile.displayName,
-                };
-                cb(null, user);
-            }
-            catch (error) {
-                cb(error as Error);
-            }
+        clientID: config.FT2_GSI_CLIENT_ID,
+        clientSecret: config.FT2_GSI_SECRET,
+        callbackURL: '/google-login'
+    },
+    (accessToken, refreshToken, profile, cb) => {
+        try {
+            debug('google profile', JSON.stringify(profile));
+            const user = {
+                id: `${profile.provider}/${profile.id}`,
+                name: profile.displayName,
+            };
+            cb(null, user);
         }
-    ));
+        catch (error) {
+            cb(error as Error);
+        }
+    }));
 
     /**
      * Called by Google with 'credential' in the body. Passport does all the
@@ -102,6 +89,64 @@ export default function setupAuthentication(app: Express): void {
             res.redirect('/login-done');
         }
     );
+}
+
+function local(app: Express): void {
+
+    passport.use(new LocalStrategy(
+        (name: string, password: string, cb) => {
+            if (password !== config.FT2_LOCAL_PASSWORD) {
+                return cb(null);
+            }
+            cb(null, {
+                /**
+                 * Use a hash of the name, so the ID corresponds to it
+                 * and no user can connect with the same ID.
+                 */
+                id: `local/${hashString(name.toLowerCase())}`,
+                name: name
+            });
+        }
+    ));
+
+    app.post('/local-login',
+        (req, res, next) => {
+            debug('local login with', req.body);
+            next();
+        },
+        passport.authenticate('local'),
+        (req, res) => {
+            debug('user', req.user);
+            res.sendStatus(200);
+        });
+}
+
+export default function setupAuthentication(app: Express): void {
+
+    app.use(session({
+        name: config.FT2_SESSION_COOKIE_NAME,
+        secret: config.FT2_SESSION_SECRET,
+        saveUninitialized: false,
+        resave: false,
+    }));
+
+    /**
+     * This one is called when a new user object is returned by the strategy's
+     * callback. It is meant to serialize that into session.passport.user
+     */
+
+    passport.serializeUser((user, done) => done(null, user));
+
+    /**
+     * This one is called to take session.passport.user and put the result
+     * in req.user
+     */
+
+    passport.deserializeUser((user: Express.User, done) => done(null, user));
+
+
+    google(app);
+    local(app);
 
     /**
      * This one takes the user from
