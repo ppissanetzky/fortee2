@@ -24,4 +24,10 @@ export default interface OutgoingMessages {
     leftGameRoom: {
         name: string;
     }
+
+    /**
+     * The game room is full
+     */
+
+    gameRoomFull: null
 }

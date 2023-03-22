@@ -51,6 +51,9 @@ fetch(`http://localhost:${PORT}/local-login`, {
                 if (type === 'welcome') {
                     send('createGame', {});
                 }
+                if (type === 'youEnteredGameRoom') {
+                    send('inviteBot', {fillRoom: true});
+                }
             });
         });
         client.on('close', () => debug('close'));

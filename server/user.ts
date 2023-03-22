@@ -2,10 +2,11 @@ import { WebSocket } from 'ws';
 
 import { makeDebug } from './utility';
 import type OutgoingMessages from './outgoing-messages';
-import type IncomingMessages from './incoming-messages';
+import type { IncomingMessages } from './incoming-messages';
+import Dispatcher from './dispatcher';
 import UserHandler from './user-handler';
 
-export default class User {
+export default class User extends Dispatcher<IncomingMessages> {
 
     static connected(name: string, ws: WebSocket): User {
         return new User(name, ws);
@@ -37,6 +38,7 @@ export default class User {
     private readonly handler: UserHandler;
 
     private constructor(name: string, ws: WebSocket) {
+        super();
         this.name = name;
         this.debug = this.debug.extend(name);
         this.ws = ws;
@@ -63,7 +65,7 @@ export default class User {
                     this.debug('ack', ack);
                 }
                 if (type) {
-                    this.handler.handle(type, message);
+                    this.emit(type, message);
                 }
             }
             catch (error) {

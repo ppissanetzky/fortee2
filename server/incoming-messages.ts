@@ -1,10 +1,22 @@
 
-export default interface IncomingMessages {
+export interface UserMessages {
+
+    /**
+     * When a user wants to create and host a game *
+     */
+
     createGame: object;
-    doSomethingElse: {id: number};
 }
 
-export type IncomingHandlers = {
-    [K in keyof IncomingMessages]:
-        (message: IncomingMessages[K]) => void | Promise<void>;
+export interface GameRoomMessages {
+
+    /**
+     * The host invites bot(s) to the game room
+     */
+
+    inviteBot: {
+        fillRoom: boolean;
+    }
 }
+
+export type IncomingMessages = UserMessages & GameRoomMessages;

@@ -6,8 +6,8 @@ type Debugger = debug.Debugger;
 
 export { Debugger };
 
-export function makeToken(length = 32): string {
-    return crypto.randomBytes(length).toString('base64');
+export function makeToken(length = 32, encoding: BufferEncoding = 'base64'): string {
+    return crypto.randomBytes(length).toString(encoding);
 }
 
 export function makeDebug(area: string): Debugger {

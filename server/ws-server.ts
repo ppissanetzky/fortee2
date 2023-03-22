@@ -11,7 +11,7 @@ const debug = makeDebug('wss');
 export default class WsServer {
 
     private readonly wss: WebSocketServer;
-    private readonly connected = new Map<string, WebSocket>();
+    private readonly connected = new Set<string>();
 
     constructor() {
         // From https://github.com/websockets/ws/blob/master/examples/express-session-parse/index.js
@@ -57,7 +57,7 @@ export default class WsServer {
             }
             // All good
             debug('accepted', id);
-            this.connected.set(id, ws);
+            this.connected.add(id);
             // Create a user for it
             User.connected(name, ws)
                 .gone.then(() => this.connected.delete(id));
