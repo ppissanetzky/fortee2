@@ -78,8 +78,8 @@ export default class User extends Dispatcher<IncomingMessages> {
     }
 
     send<T extends keyof OutgoingMessages>(type: T, message: OutgoingMessages[T]) {
-        const ack = this.MID++;
-        this.sent.add(ack);
+        const ack = undefined; // this.MID++;
+        // this.sent.add(ack);
         this.ws.send(JSON.stringify({
             ack,
             type,
@@ -88,7 +88,7 @@ export default class User extends Dispatcher<IncomingMessages> {
             if (error) {
                 this.debug('->', 'failed', error);
             } else {
-                this.debug('->', ack, type, message);
+                this.debug('->', ack || '', type, message);
             }
         });
     }

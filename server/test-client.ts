@@ -42,9 +42,8 @@ fetch(`http://localhost:${PORT}/local-login`, {
             debug('open');
             client.on('ping', () => debug('ping'));
             client.on('message', (data) => {
-                debug('raw', data.toString());
                 const { ack, type, message } = JSON.parse(data.toString());
-                debug('message', ack, type, message);
+                debug('message', type, message || '');
                 if (ack) {
                     client.send(JSON.stringify({ack}));
                 }

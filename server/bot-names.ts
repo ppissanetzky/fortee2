@@ -1,6 +1,15 @@
 import _ from 'lodash';
 
-const names = _.shuffle([
+/**
+ * Put them in a set first to eliminate duplicates, then shuffle them
+ */
+
+const names = _.shuffle(Array.from(new Set([
+
+    /**
+     * Shakespeare names from old 42
+     */
+
     'abraham','adrian','adriana','adriano','aegeon','aemilia','alonso','amiens',
     'angelo','angus','antigonus','antipholus','antonio','ariel','arviragus',
     'audrey','balthazar','banquo','baptista','bardolph','barnardine','barnardo',
@@ -30,8 +39,42 @@ const names = _.shuffle([
     'simple','siward','snug','solanio','solinus','speed','stephano',
     'theseus','thurio','timandra','timon','titania','toby','touchstone','tranio',
     'trinculo','tubal','tybalt','ursula','valentine','varrius',
-    'vencentio','verges','vincentio','viola'
-]);
+    'vencentio','verges','vincentio','viola',
+
+    /**
+     * 'Gothic names' ?
+     */
+
+    'agriwulf', 'aidoingus', 'ala', 'alatheus', 'alaviv', 'aligern',
+    'amalaberga', 'amalafrida', 'amalaric', 'amalasuintha', 'ammius', 'andagis',
+    'anogis', 'aoric', 'ardabur', 'ardaric', 'argaith', 'ariaric', 'arimir',
+    'asbad', 'athaulf', 'aunulf', 'berimund', 'bessa', 'bigeis', 'brandila',
+    'butilin', 'candac', 'cannabaudes', 'cniva', 'colias', 'colosseus',
+    'dubius', 'duda', 'dulcilla', 'eberwulf', 'ebrimud', 'edica', 'eraric',
+    'ereleuva', 'eriult', 'ermanaric', 'euric', 'eusebia', 'eutharic',
+    'farnobius', 'fastida', 'frideric', 'fridibad', 'fritigern', 'fundobad',
+    'gaatha', 'gainas', 'gaiseric', 'galindus', 'gento', 'gesalec', 'gesimund',
+    'giso', 'godigisclus', 'goiaricus', 'gudeliva', 'gundiok', 'gunteric',
+    'gutthikas', 'heribrand', 'herminafrid', 'hildebad', 'hilderith',
+    'hildreic', 'himnerith', 'huneric', 'hunila', 'hunimund', 'lagariman',
+    'leovigild', 'livila', 'matasuntha', 'mondares', 'munderic', 'mundo',
+    'nidada', 'niketas', 'odoin', 'odotheus', 'odovacar', 'ostrogotho',
+    'ovida', 'paulus', 'pelagia', 'procula', 'radagaisus', 'ragnahild',
+    'ranilda', 'rausimod', 'recceswith', 'sidimund', 'sigeric', 'sigesar',
+    'sindila', 'sisebut', 'sisenand', 'soas', 'suericus', 'sunigilda',
+    'sunilda', 'teja', 'tharuaro', 'thela', 'theodahad', 'theroderid',
+    'theudegisel', 'theudis', 'thiudimir', 'thiutigotho', 'thorismund',
+    'thrasamund', 'totila', 'triarius', 'tribigild', 'tufa', 'tuldila',
+    'tuluin', 'ulfilas', 'unila', 'valdamerca', 'valia', 'valkamir', 'vandil',
+    'vedudco', 'videric', 'vidigoia', 'vidimir', 'visimar', 'vithimiris',
+    'vitigis', 'wamba', 'winguric',
+
+    /**
+     * What we do in the shadows
+     */
+
+    'nandor', 'laslo', 'guillermo', 'nadja'
+])));
 
 let index = 0;
 
@@ -42,4 +85,3 @@ export default function nextBotName(): string {
     }
     return result;
 }
-
