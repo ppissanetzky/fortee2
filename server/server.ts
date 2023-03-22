@@ -5,8 +5,11 @@ import http from 'node:http';
 import express from 'express';
 import Session from 'express-session';
 
+import './config';
+
 import WsServer from './ws-server';
 import { makeDebug, makeToken } from './utility';
+import setupAuthentication from './authentication';
 
 const debug = makeDebug('server');
 
@@ -63,6 +66,12 @@ declare module 'express-session' {
 }
 
 app.use(sessionParser);
+
+//-----------------------------------------------------------------------------
+
+setupAuthentication(app);
+
+//-----------------------------------------------------------------------------
 
 /**
  * Our awesome user database
@@ -143,3 +152,4 @@ process.on('SIGTERM', () => {
         process.exit(0);
     });
 });
+
