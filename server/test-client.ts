@@ -1,7 +1,13 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
+
 import { makeDebug } from './utility';
 import config from './config';
+import { IncomingMessages } from './incoming-messages';
+import { OutgoingMessages } from './outgoing-messages';
+import PromptPlayer from './prompt-player';
+import { Bid, Trump, Bone } from './core';
+import { stringify, parse } from './json';
 
 const debug = makeDebug('test-client');
 debug.enabled = true;
@@ -33,25 +39,52 @@ fetch(`http://localhost:${PORT}/local-login`, {
         const client = new WebSocket(`ws://localhost:${PORT}/ws`, {
             headers: {cookie}
         });
-        function send(type: string, message: any) {
-            client.send(JSON.stringify({type, message}));
+
+        function send<K extends keyof IncomingMessages>(
+            type: K,
+            message: IncomingMessages[K],
+            ack?: number)
+        {
+            client.send(stringify({ack, type, message}));
         }
+
+        const promptPlayer = new PromptPlayer();
 
         // On open, send the token
         client.on('open', () => {
             debug('open');
             client.on('ping', () => debug('ping'));
             client.on('message', (data) => {
-                const { ack, type, message } = JSON.parse(data.toString());
-                debug('message', type, message || '');
-                if (ack) {
-                    client.send(JSON.stringify({ack}));
-                }
+                debug('<-', data.toString());
+                const { ack, type, message }
+                : { ack?: number, type: keyof OutgoingMessages, message: any}
+                    = parse(data.toString());
                 if (type === 'welcome') {
-                    send('createGame', {});
+                    return send('createGame', {});
                 }
                 if (type === 'youEnteredGameRoom') {
-                    send('inviteBot', {fillRoom: true});
+                    return send('inviteBot', {fillRoom: true});
+                }
+                if (type === 'gameRoomFull') {
+                    return send('startGame', null)
+                }
+                if (type === 'startingHand') {
+                    return send('readyToStartHand', null, ack);
+                }
+                if (type === 'bid') {
+                    return promptPlayer.bid(message).then((bid) => {
+                        send('submitBid', {bid}, ack);
+                    });
+                }
+                if (type === 'call') {
+                    return promptPlayer.call(message).then((trump) => {
+                        send('callTrump', {trump}, ack);
+                    });
+                }
+                if (type === 'play') {
+                    return promptPlayer.play(message).then((bone) => {
+                        send('playBone', {bone}, ack);
+                    });
                 }
             });
         });

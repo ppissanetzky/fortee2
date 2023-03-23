@@ -1,6 +1,5 @@
 import type { Bone, Trump, Bid } from './core';
 import type { Team, Status } from './driver';
-import { GameRoomMessages } from './incoming-messages';
 
 export interface OutgoingGlobalMessages {
 
@@ -145,5 +144,5 @@ export interface GameMessages {
 
 export type OutgoingMessages =
     OutgoingGlobalMessages &
-    GameRoomMessages &
+    OutgoingGameRoomMessages &
     GameMessages;

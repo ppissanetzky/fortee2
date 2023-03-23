@@ -1,4 +1,6 @@
 
+import type { Bid, Trump, Bone } from './core';
+
 export interface UserMessages {
 
     /**
@@ -16,6 +18,42 @@ export interface GameRoomMessages {
 
     inviteBot: {
         fillRoom: boolean;
+    }
+
+    /**
+     * The host starts the game
+     */
+
+    startGame: null
+
+    /**
+     * A user is ready to start the hand
+     */
+
+    readyToStartHand: null,
+
+    /**
+     * A user submits their bid
+     */
+
+    submitBid: {
+        bid: Bid
+    }
+
+    /**
+     * A user calls trump
+     */
+
+    callTrump: {
+        trump: Trump;
+    }
+
+    /**
+     * A user plays a bone
+     */
+
+    playBone: {
+        bone: Bone;
     }
 }
 

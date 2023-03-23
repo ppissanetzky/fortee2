@@ -35,6 +35,10 @@ export default class Bone {
         this.id = `${this.suit}.${this.other_suit(this.suit)}`;
     }
 
+    get name(): string {
+        return this.id;
+    }
+
     toString(): string {
         return this.id;
     }

@@ -5,6 +5,7 @@ import { OutgoingMessages } from './outgoing-messages';
 import type { IncomingMessages } from './incoming-messages';
 import Dispatcher from './dispatcher';
 import UserHandler from './user-handler';
+import { stringify, parse } from './json';
 
 export default class User extends Dispatcher<IncomingMessages> {
 
@@ -21,16 +22,16 @@ export default class User extends Dispatcher<IncomingMessages> {
     public readonly gone: Promise<string>;
 
     /**
-     * The next message ID
+     * The next ack ID
      */
 
-    private MID = 2000;
+    private ACK = 2000;
 
     /**
-     * A set of message IDs that have not been acked yet
+     * A map of message IDs that were sent and are waiting for an ack.
      */
 
-    private sent = new Set<number>();
+    private readonly outstanding = new Map<number, CallableFunction>();
 
     private readonly debug = makeDebug('user');
     private readonly ws: WebSocket;
@@ -60,9 +61,17 @@ export default class User extends Dispatcher<IncomingMessages> {
                 this.debug('<-', s);
                 const { ack, type, message }
                     : { ack?: number, type: keyof IncomingMessages, message: any }
-                    = JSON.parse(s);
-                if (ack && this.sent.delete(ack)) {
-                    this.debug('ack', ack);
+                    = parse(s);
+                if (ack) {
+                    const resolve = this.outstanding.get(ack);
+                    if (resolve) {
+                        this.outstanding.delete(ack);
+                        this.debug('ack', ack);
+                        resolve(message);
+                    }
+                    else {
+                        this.debug('ack', ack, 'not outstanding');
+                    }
                 }
                 if (type) {
                     this.emit(type, message);
@@ -77,19 +86,30 @@ export default class User extends Dispatcher<IncomingMessages> {
         this.send('welcome', null);
     }
 
-    send<T extends keyof OutgoingMessages>(type: T, message: OutgoingMessages[T]) {
-        const ack = undefined; // this.MID++;
-        // this.sent.add(ack);
-        this.ws.send(JSON.stringify({
-            ack,
-            type,
-            message: message || undefined
-        }), (error) => {
-            if (error) {
-                this.debug('->', 'failed', error);
-            } else {
-                this.debug('->', ack || '', type, message);
+    send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(
+        type: T,
+        message: OutgoingMessages[T],
+        reply?: R
+    ): Promise<IncomingMessages[R] | void> {
+        return new Promise((resolve, reject) => {
+            const ack = reply ? this.ACK++ : undefined;
+            if (ack) {
+                this.outstanding.set(ack, resolve);
             }
+            this.ws.send(stringify({
+                ack,
+                type,
+                message: message || undefined
+            }), (error) => {
+                if (error) {
+                    this.debug('->', 'failed', error);
+                    return reject(error);
+                }
+                this.debug('->', ack || '', type, message);
+                if (!ack) {
+                    resolve();
+                }
+            });
         });
     }
 }

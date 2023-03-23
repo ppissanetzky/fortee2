@@ -1,11 +1,10 @@
 import assert from 'node:assert';
 import { makeDebug, makeToken } from './utility';
-import nextBotName from './bot-names';
 import type User from './user';
-
-interface Bot {
-    readonly name: string;
-}
+import Player from './player';
+import RandomBot, { PassBot } from './random-bot';
+import RemotePlayer from './remote-player';
+import GameDriver, { Rules } from './driver';
 
 export default class GameRoom {
 
@@ -15,7 +14,9 @@ export default class GameRoom {
 
     public readonly host: string;
     public readonly users = new Map<string, User>();
-    public readonly bots = new Map<string, Bot>();
+    public readonly bots = new Map<string, Player>();
+
+    private started = false;
 
     private readonly debug = makeDebug('game-room');
     private readonly token = makeToken();
@@ -28,16 +29,33 @@ export default class GameRoom {
 
         host.on('inviteBot', ({fillRoom}) => {
             assert(this.size < 4, 'Room is full');
+            assert(!this.started, 'Game has already started');
             const size = fillRoom ? 4 : this.size + 1;
             while (this.size < size ) {
-                const name = nextBotName();
-                this.bots.set(name, {name});
+                const bot = new PassBot();
+                const { name } = bot;
+                this.bots.set(name, bot);
                 this.debug('added bot', name);
                 this.all((user) => user.send('enteredGameRoom', {name}));
             }
             if (this.size === 4) {
                 this.all((user) => user.send('gameRoomFull', null));
             }
+        });
+
+        host.on('startGame', () => {
+            assert(this.size === 4, 'Room is not full');
+            assert(!this.started, 'A game has already started');
+            const players: Player[] = [];
+            for (const user of this.users.values()) {
+                players.push(new RemotePlayer(user));
+            }
+            for (const bot of this.bots.values()) {
+                players.push(bot);
+            }
+            this.started = true;
+            GameDriver.start(new Rules(), players)
+                .finally(() => this.started = false);
         });
     }
 

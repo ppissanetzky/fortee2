@@ -54,7 +54,7 @@ export class RandomPlayer implements Player {
         this.debug('drew', bones.map((bone) => bone.toString()));
     }
 
-    waitingForBid({ from }: { from: string}): void {
+    waitingForBid({ from } : { from: string}): void {
         this.debug('waiting for bid from', from);
     }
 
