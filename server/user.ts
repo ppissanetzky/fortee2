@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 
 import { makeDebug } from './utility';
-import type OutgoingMessages from './outgoing-messages';
+import { OutgoingMessages } from './outgoing-messages';
 import type { IncomingMessages } from './incoming-messages';
 import Dispatcher from './dispatcher';
 import UserHandler from './user-handler';

@@ -1,20 +1,31 @@
 
 import { Rules } from './core';
 import GameDriver from './driver';
-import BasePlayerAdapter from './base-player-adapter';
+import { RandomPlayer } from './player';
+import { PassBot } from './random-bot';
+import PromptPlayer from './prompt-player';
 
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
 
+class ChattyPlayer extends RandomPlayer {
+    protected debug(...args: any[]): void {
+        console.log(...args);
+    }
+}
+
 function play(): Promise<void> {
-    const players = [
-        new BasePlayerAdapter('1', auto && count > 0, auto),
-        new BasePlayerAdapter('2', true, true),
-        new BasePlayerAdapter('3', true, true),
-        new BasePlayerAdapter('4', true, true),
-    ];
 
     const rules = new Rules();
+
+    const me = new PromptPlayer();
+
+    const players = [
+        me,
+        new PassBot(),
+        new PassBot(),
+        new PassBot(),
+    ];
 
     return GameDriver.start(rules, players).then(() => {
         if (!auto) {
