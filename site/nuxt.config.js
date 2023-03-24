@@ -12,7 +12,7 @@ export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
     titleTemplate: '%s',
-    title: 'forty-two',
+    title: 'fortee2',
     htmlAttrs: {
       lang: 'en'
     },
@@ -62,7 +62,8 @@ export default {
 
   proxy: {
     '/api/': {
-      target: 'http://localhost:4004'
+      target: 'http://localhost:4004/',
+      pathRewrite: { '^/api/': '/' }
     }
   },
 

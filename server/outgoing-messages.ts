@@ -22,6 +22,13 @@ export interface OutgoingGlobalMessages {
     };
 }
 
+export interface RoomUpdate {
+    full: boolean;
+    started: boolean;
+    players: string[];
+    bots: string[];
+}
+
 export interface OutgoingGameRoomMessages {
 
     /**
@@ -29,35 +36,20 @@ export interface OutgoingGameRoomMessages {
      * details about the room.
      */
 
-    youEnteredGameRoom: {
-        full: boolean;
-        started: boolean;
-        players: string[];
-        bots: string[];
-    }
+    youEnteredGameRoom: RoomUpdate;
 
     /**
-     * Tell everyone else that this user has entered the game room
+     * Whe someone enters the room, update
      */
 
-    enteredGameRoom: {
-        name: string;
-    }
+    enteredGameRoom: RoomUpdate;
 
     /**
      * Tell everyone else this user has left
      */
 
-    leftGameRoom: {
+    leftGameRoom: RoomUpdate & {
         name: string;
-    }
-
-    /**
-     * The game room is full
-     */
-
-    gameRoomFull: {
-        started: boolean;
     }
 }
 

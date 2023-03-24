@@ -7,6 +7,7 @@ import Player from './player';
 import RandomBot, { PassBot } from './random-bot';
 import RemotePlayer from './remote-player';
 import GameDriver, { Rules } from './driver';
+import type { RoomUpdate } from './outgoing-messages';
 
 const enum State {
     /**
@@ -107,6 +108,15 @@ export default class GameRoom {
         });
     }
 
+    private roomUpdate(): RoomUpdate {
+        return {
+            full: this.full,
+            started: this.started,
+            players: this.sockets.map(({name}) => name),
+            bots: this.bots.map(({name}) => name),
+        };
+    }
+
     public join(socket: Socket) {
         const { name } = socket;
         assert(!this.names.has(name), `User "${name}" exists`);
@@ -119,25 +129,21 @@ export default class GameRoom {
             _.pull(this.sockets, socket);
             this.debug('removed', name, 'have', this.size);
             this.not(name, (other) => {
-                other.send('leftGameRoom', {name});
+                other.send('leftGameRoom', {
+                    name,
+                    ...this.roomUpdate(),
+                });
             });
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;
             }
         });
         // Tell everyone else that this user is here
-        this.not(name, (other) => other.send('enteredGameRoom', {name}));
+        this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate()));
         // Tell the user about the room
-        socket.send('youEnteredGameRoom', {
-            full: this.full,
-            started: this.started,
-            players: this.sockets.map(({name}) => name),
-            bots: this.bots.map(({name}) => name),
-        });
+        socket.send('youEnteredGameRoom', this.roomUpdate());
         // Is it full?
         if (this.full) {
-            this.all((user) => user.send('gameRoomFull', {started: this.started}));
-
             // The game is paused, but everyone just came back, so we can
             // automatically resume it
 
@@ -165,12 +171,8 @@ export default class GameRoom {
                     const { name } = bot;
                     this.bots.push(bot);
                     this.debug('added bot', name);
-                    this.all((socket) => socket.send('enteredGameRoom', {name}));
                 }
-                if (this.full) {
-                    this.all((socket) =>
-                        socket.send('gameRoomFull', {started: this.started}));
-                }
+                this.all((socket) => socket.send('enteredGameRoom', this.roomUpdate()));
             });
 
             /**

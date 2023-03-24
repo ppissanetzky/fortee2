@@ -57,7 +57,7 @@ const PORT = process.env.FT_PORT || '4004';
 //-----------------------------------------------------------------------------
 
 const server = http.createServer(app).listen(PORT, () => {
-    console.log(`FortyTwo ready at http://localhost:${PORT}`);
+    console.log(`fortee2 ready at http://localhost:${PORT}`);
 });
 
 //-----------------------------------------------------------------------------
