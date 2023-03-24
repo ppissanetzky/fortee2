@@ -1,7 +1,8 @@
 import WebSocket from 'ws';
 import fetch from 'node-fetch';
+import ms from 'ms';
 
-import { makeDebug } from './utility';
+import { makeDebug, makeToken } from './utility';
 import config from './config';
 import { IncomingMessages } from './incoming-messages';
 import { OutgoingMessages } from './outgoing-messages';
@@ -50,22 +51,38 @@ fetch(`http://localhost:${PORT}/local-login`, {
 
         const promptPlayer = new PromptPlayer();
 
-        // On open, send the token
         client.on('open', () => {
             debug('open');
-            client.on('ping', () => debug('ping'));
+            /*
+            client.on('ping', (data) => debug('ping', data.toString()));
+            client.on('pong', (data) => debug('pong', data.toString()));
+            setInterval(() => {
+                const data = `c:${makeToken(4, 'hex')}`;
+                client.send(JSON.stringify({ping: data}));
+                client.ping(data);
+            }, ms('8s'));
+            */
             client.on('message', (data) => {
                 debug('<-', data.toString());
                 const { ack, type, message }
                 : { ack?: number, type: keyof OutgoingMessages, message: any}
                     = parse(data.toString());
                 if (type === 'welcome') {
+                    if (message.hosting) {
+                        return send('joinGame', {id: message.hosting});
+                    }
                     return send('createGame', {});
                 }
                 if (type === 'youEnteredGameRoom') {
+                    if (message.full) {
+                        return;
+                    }
                     return send('inviteBot', {fillRoom: true});
                 }
                 if (type === 'gameRoomFull') {
+                    if (message.started) {
+                        return;
+                    }
                     return send('startGame', null)
                 }
                 if (type === 'startingHand') {

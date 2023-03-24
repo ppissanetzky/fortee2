@@ -8,6 +8,15 @@ export interface UserMessages {
      */
 
     createGame: object;
+
+    /**
+     * When a user wants to join a game room
+     */
+
+    joinGame: {
+        id: number;
+    }
+
 }
 
 export interface GameRoomMessages {

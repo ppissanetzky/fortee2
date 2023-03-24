@@ -7,7 +7,19 @@ export interface OutgoingGlobalMessages {
      * When the user connects to the server
      */
 
-    welcome: null;
+    welcome: {
+        /**
+         * If the user is hosting a game room, this will be the ID
+         */
+
+        hosting?: number,
+
+        /**
+         * The IDs of all the game rooms this user has been invited to
+         */
+
+        invited: number[];
+    };
 }
 
 export interface OutgoingGameRoomMessages {
@@ -17,7 +29,12 @@ export interface OutgoingGameRoomMessages {
      * details about the room.
      */
 
-    youEnteredGameRoom: null;
+    youEnteredGameRoom: {
+        full: boolean;
+        started: boolean;
+        players: string[];
+        bots: string[];
+    }
 
     /**
      * Tell everyone else that this user has entered the game room
@@ -39,7 +56,9 @@ export interface OutgoingGameRoomMessages {
      * The game room is full
      */
 
-    gameRoomFull: null
+    gameRoomFull: {
+        started: boolean;
+    }
 }
 
 export interface GameMessages {
