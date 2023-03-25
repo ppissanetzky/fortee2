@@ -75,7 +75,7 @@ export default {
       ws: undefined,
       joining: false,
       text: '',
-      bones: [],
+      bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
       choices: [],
       choose: () => undefined
     }
@@ -156,7 +156,6 @@ export default {
 
         case 'draw':
           this.bones = message.bones
-            .map(bone => bone.replace('#bone:', '').replace('.', ''))
           break
 
         case 'waitingForBid':
@@ -210,7 +209,7 @@ export default {
           this.choices = message.possible
           this.choose = (bone) => {
             this.choices = []
-            this.bones[this.bones.indexOf(bone.replace('.', ''))] = ''
+            this.bones[this.bones.indexOf(bone)] = 'null'
             this.send('play', { bone: `#bone:${bone}` }, ack)
           }
           break
