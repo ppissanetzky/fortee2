@@ -1,7 +1,9 @@
 {
   "scripts": {
     "test": "eslint .",
-    "server": "DEBUG=42:* nodemon server.ts"
+    "server": "DEBUG=42:* nodemon server.ts",
+    "play": "DEBUG=42* ts-node test-client.ts",
+    "build": "tsc"
   },
   "dependencies": {
     "better-sqlite3": "^7.5.3",

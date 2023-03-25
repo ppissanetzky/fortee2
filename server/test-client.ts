@@ -79,7 +79,7 @@ fetch(`http://localhost:${PORT}/local-login`, {
                     }
                     return send('inviteBot', {fillRoom: true});
                 }
-                if (type === 'gameRoomFull') {
+                if (type === 'enteredGameRoom') {
                     if (message.started) {
                         return;
                     }

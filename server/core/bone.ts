@@ -163,4 +163,12 @@ export default class Bone {
         }
         return result
     }
+
+    /**
+     * If this bone is lead, returns true if it beats the other one
+     */
+
+    beats(trump: Trump, other: Bone): boolean {
+        return this.value(this, trump) > other.value(this, trump);
+    }
 }
