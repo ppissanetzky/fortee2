@@ -52,11 +52,17 @@
         </h3>
       </div>
       <v-card-actions v-if="value.play">
+        <!-- <v-badge
+          v-model="winner"
+          color="yellow"
+          overlap
+        > -->
         <v-img
           :src="`${value.play}.png`"
           contain
           max-height="80"
         />
+        <!-- </v-badge> -->
       </v-card-actions>
     </div>
   </v-card>
@@ -86,6 +92,9 @@ export default {
         this.value.waitingForBid ||
         this.value.waitingForTrump ||
         this.value.waitingForPlay)
+    },
+    winner () {
+      return this.value.trickWinner
     }
   },
 

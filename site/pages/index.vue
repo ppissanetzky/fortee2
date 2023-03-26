@@ -18,10 +18,32 @@
             <Status v-model="right" color="primary" />
           </v-col>
         </v-row>
+        <v-row>
+          <v-col cols="4" />
+          <v-col cols="4">
+            <Status v-model="me" color="secondary" />
+          </v-col>
+          <v-col cols="4">
+            <v-card
+              flat
+              width="280"
+            >
+              <v-btn
+                v-for="choice in choices"
+                :key="choice"
+                small
+                class="ma-1"
+                @click="choose(choice)"
+              >
+                {{ choice }}
+              </v-btn>
+            </v-card>
+          </v-col>
+        </v-row>
         <!-- My stuff -->
         <v-row>
           <v-col cols="12">
-            <v-item-group active-class="primary">
+            <v-item-group>
               <v-container>
                 <v-row>
                   <v-col
@@ -29,13 +51,14 @@
                     :key="n"
                     cols="3"
                   >
-                    <v-item v-slot="{ active, toggle }">
+                    <v-item v-slot="{ /* active,*/ toggle }">
                       <v-img
                         :src="`${bones[n - 1]}.png`"
                         contain
+                        max-height="80"
                         @click="toggle"
                       >
-                      <div v-if="active" ext-h2 flex-grow-1 text-center></div>
+                      <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
                       </v-img>
                     </v-item>
                   </v-col>
@@ -47,32 +70,20 @@
                     :key="n"
                     cols="3"
                   >
-                    <v-item v-slot="{ active, toggle }">
+                    <v-item v-slot="{ /* active, */ toggle }">
                       <v-img
                         :src="`${bones[n + 3]}.png`"
                         contain
+                        max-height="80"
                         @click="toggle"
                       >
-                      <div v-if="active" ext-h2 flex-grow-1 text-center>
-                      </div>
+                      <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
                       </v-img>
                     </v-item>
                   </v-col>
                 </v-row>
               </v-container>
             </v-item-group>
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col cols="12">
-            <v-btn
-              v-for="choice in choices"
-              :key="choice"
-              class="ma-1"
-              @click="choose(choice)"
-            >
-              {{ choice }}
-            </v-btn>
           </v-col>
         </v-row>
       </v-container>
@@ -94,8 +105,9 @@ export default {
       trump: {},
       waitingForPlay: undefined,
       plays: {},
-      text: '',
+      trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
+
       choices: [],
       choose: () => undefined
     }
@@ -139,6 +151,9 @@ export default {
     },
     right () {
       return this.status(2)
+    },
+    me () {
+      return this.status()
     }
   },
   watch: {},
@@ -179,7 +194,6 @@ export default {
           this.trump = {}
           this.choices = ['Ready?']
           this.choose = () => {
-            this.text = ''
             this.choices = []
             this.send('readyToStartHand', null, ack)
           }
@@ -188,92 +202,84 @@ export default {
           this.bones = message.bones
           break
         case 'waitingForBid':
-          this.text += `\nWaiting for ${message.from} to bid`
           this.waitingForBid = message.from
           break
         case 'bid':
-          this.text += '\nYour bid'
-          this.waitingForBid = undefined
+          this.waitingForBid = 'you'
           this.choices = message.possible
           this.choose = (bid) => {
+            this.waitingForBid = undefined
             this.choices = []
+            this.bids.you = bid
             this.send('submitBid', { bid: `#bid:${bid}` }, ack)
           }
           break
         case 'bidSubmitted':
-          this.text += `\n${message.from} bid ${message.bid}`
           this.waitingForBid = undefined
           this.bids[message.from] = message.bid
           break
         case 'reshuffle':
-          this.text += '\nReshuffle'
           this.bids = {}
           break
         case 'bidWon':
-          this.text += `\n${message.winner} won the bid with ${message.bid}`
           this.bids = { [message.winner]: message.bid }
           break
         case 'waitingForTrump':
-          this.text += `\nWaiting for ${message.from} to call trumps`
           this.waitingForTrump = message.from
           break
         case 'call':
-          this.text += '\nYou call trumps'
+          this.waitingForTrump = 'you'
           this.choices = message.possible
           this.choose = (trump) => {
+            this.trump = { you: trump }
             this.choices = []
             this.send('callTrump', { trump: `#trump:${trump}` }, ack)
           }
           break
         case 'trumpSubmitted':
-          this.text += `\n${message.from} called trumps ${message.trump}`
           this.waitingForTrump = undefined
           this.trump = { [message.from]: message.trump }
           break
         case 'waitingForPlay':
-          this.text += `\nWaiting for ${message.from} to play`
           this.waitingForPlay = message.from
           break
         case 'play':
-          this.text += '\nYour turn'
+          this.waitingForPlay = 'you'
           this.choices = message.possible
           this.choose = (bone) => {
+            this.plays.you = bone
             this.choices = []
             this.bones[this.bones.indexOf(bone)] = 'null'
             this.send('play', { bone: `#bone:${bone}` }, ack)
           }
           break
         case 'playSubmitted':
-          this.text += `\n${message.from} played the ${message.bone}`
           this.waitingForPlay = undefined
           this.plays[message.from] = message.bone
           break
         case 'endOfTrick':
-          this.text += `\n${message.winner} won the trick with ${message.points}`
-          this.plays = {}
+          this.trickWinner = message.winner
           this.choices = ['Next trick']
           this.choose = () => {
-            this.text = ''
+            this.plays = {}
+            this.trickWinner = undefined
             this.choices = []
             this.send('readyToContinue', null, ack)
           }
           break
         case 'endOfHand':
-          this.text += `\n${message.winner} wins the hand\nUS ${message.status.US.marks} THEM ${message.status.THEM.marks}`
           this.choices = ['Next hand']
           this.choose = () => {
-            this.text = ''
             this.choices = []
             this.send('readyToContinue', null, ack)
           }
           break
         case 'gameOver':
-          this.text = `\nGame over\nUS ${message.status.US.marks} THEM ${message.status.THEM.marks}`
           break
       }
     },
     status (index) {
-      const name = this.table[index]?.name
+      const name = typeof index === 'undefined' ? 'you' : this.table[index]?.name
       if (!name) {
         return {}
       }
@@ -284,7 +290,8 @@ export default {
         waitingForTrump: this.waitingForTrump === name,
         trump: this.trump[name],
         waitingForPlay: this.waitingForPlay === name,
-        play: this.plays[name]
+        play: this.plays[name],
+        trickWinner: this.trickWinner === name
       }
     }
   }
