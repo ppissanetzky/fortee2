@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import _ from 'lodash';
-import type Trump from './trump';
+import Trump from './trump';
 
 type Dots = number;
 
@@ -15,6 +15,8 @@ export default class Bone {
         new Bone(5,5),new Bone(5,6),
         new Bone(6,6)
     ];
+
+    public static readonly MONEY = Bone.ALL.filter(({is_money}) => is_money);
 
     public static pull(): Bone[] {
         return _.shuffle(this.ALL);
@@ -129,7 +131,7 @@ export default class Bone {
      * 9 to 16 is a trump where 16 is the trump double
      */
 
-    value(lead: Bone, trump: Trump): number {
+    value(lead: Bone, trump: Trump, withNello = false): number {
         let result = 0;
 
         if (this.is_trump(trump)) {
@@ -161,14 +163,44 @@ export default class Bone {
                 result = this.other_suit(lead.suit) + 1;
             }
         }
+
+        /**
+         * The original function did not take into account nello, where the
+         * value is reversed, so, if you pass withNello = true, we reverse it
+         */
+        if (trump.nello && withNello) {
+            return 8 - result;
+        }
+
         return result
     }
 
-    /**
-     * If this bone is lead, returns true if it beats the other one
-     */
+    /** If this bone is lead, returns true if it beats the other one */
 
     beats(trump: Trump, other: Bone): boolean {
-        return this.value(this, trump) > other.value(this, trump);
+        return this.value(this, trump, true) > other.value(this, trump, true);
+    }
+
+    /**
+     * When this bone is the lead, returns the other bones sorted from
+     * highest value to lowest.
+     */
+
+    ordered(trump: Trump, bones: Bone[]): Bone[] {
+        return _.sortBy(bones, (bone) => -bone.value(this, trump, true));
+    }
+
+    /** Returns the best possible bone in the same suit as this one */
+
+    bestInSuit(trump: Trump): Bone {
+        const bones = Bone.ALL.filter((bone) => bone.is_same_suit(this, trump));
+        const [bone] = this.ordered(trump, bones);
+        return bone;
+    }
+
+    /** This orders a set of bones by decreasing value according to the trump */
+
+    static orderedForTrump(trump: Trump, bones: Bone[]): Bone[] {
+        return _.sortBy(bones, (bone) => -bone.value(bone, trump, true));
     }
 }
