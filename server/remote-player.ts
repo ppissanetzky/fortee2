@@ -5,6 +5,11 @@ import type { Bid , Bone, Team, Trump } from './core';
 import type { Status } from './driver';
 import Socket from './socket';
 
+interface ThingWithName {
+    from?: string;
+    winner?: string;
+}
+
 export default class RemotePlayer implements Player {
 
     private socket: Socket;
@@ -32,6 +37,16 @@ export default class RemotePlayer implements Player {
         await old.replay(socket);
     }
 
+    private you<T extends ThingWithName>(msg: T): T {
+        if (msg.winner === this.name) {
+            msg.winner = 'you';
+        }
+        if (msg.from === this.name) {
+            msg.from = 'you';
+        }
+        return msg;
+    }
+
     startingHand(): Promise<void> {
         return this.socket.send('startingHand', null, 'readyToStartHand')
             .then(() => undefined);
@@ -42,7 +57,7 @@ export default class RemotePlayer implements Player {
     }
 
     waitingForBid(msg: { from: string}): void {
-        this.socket.send('waitingForBid', msg);
+        this.socket.send('waitingForBid', this.you(msg));
     }
 
     async bid(msg: { possible: Bid[] }): Promise<Bid> {
@@ -54,7 +69,7 @@ export default class RemotePlayer implements Player {
     }
 
     bidSubmitted(msg: { from: string, bid: Bid }): void {
-        this.socket.send('bidSubmitted', msg);
+        this.socket.send('bidSubmitted', this.you(msg));
     }
 
     reshuffle(): void {
@@ -62,7 +77,7 @@ export default class RemotePlayer implements Player {
     }
 
     bidWon(msg: { winner: string, bid: Bid }): void {
-        this.socket.send('bidWon', msg);
+        this.socket.send('bidWon', this.you(msg));
     }
 
     waitingForTrump(msg: { from: string }): void {
@@ -78,11 +93,11 @@ export default class RemotePlayer implements Player {
     }
 
     trumpSubmitted(msg: { from: string, trump: Trump; }): void {
-        this.socket.send('trumpSubmitted', msg);
+        this.socket.send('trumpSubmitted', this.you(msg));
     }
 
     waitingForPlay(msg: { from: string }): void {
-        this.socket.send('waitingForPlay', msg);
+        this.socket.send('waitingForPlay', this.you(msg));
     }
 
     async play(msg: { possible: Bone[] }): Promise<Bone> {
@@ -94,15 +109,17 @@ export default class RemotePlayer implements Player {
     }
 
     playSubmitted(msg: { from: string, bone: Bone }): void {
-        this.socket.send('playSubmitted', msg);
+        this.socket.send('playSubmitted', this.you(msg));
     }
 
     async endOfTrick(msg: { winner: string, points: number, status: Status }): Promise<void> {
-        return this.socket.send('endOfTrick', msg, 'readyToContinue').then(() => undefined);
+        return this.socket.send('endOfTrick', this.you(msg),
+            'readyToContinue').then(() => undefined);
     }
 
     async endOfHand(msg: { winner: Team, made: boolean, status: Status}): Promise<void> {
-        return this.socket.send('endOfHand', msg, 'readyToContinue').then(() => undefined);
+        return this.socket.send('endOfHand', this.you(msg),
+            'readyToContinue').then(() => undefined);
     }
 
     gameOver(msg: { status: Status }): void {
