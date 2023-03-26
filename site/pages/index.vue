@@ -251,9 +251,21 @@ export default {
         case 'endOfTrick':
           this.text += `\n${message.winner} won the trick with ${message.points}`
           this.plays = {}
+          this.choices = ['Next trick']
+          this.choose = () => {
+            this.text = ''
+            this.choices = []
+            this.send('readyToContinue', null, ack)
+          }
           break
         case 'endOfHand':
           this.text += `\n${message.winner} wins the hand\nUS ${message.status.US.marks} THEM ${message.status.THEM.marks}`
+          this.choices = ['Next hand']
+          this.choose = () => {
+            this.text = ''
+            this.choices = []
+            this.send('readyToContinue', null, ack)
+          }
           break
         case 'gameOver':
           this.text = `\nGame over\nUS ${message.status.US.marks} THEM ${message.status.THEM.marks}`

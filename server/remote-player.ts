@@ -97,12 +97,12 @@ export default class RemotePlayer implements Player {
         this.socket.send('playSubmitted', msg);
     }
 
-    endOfTrick(msg: { winner: string, points: number, status: Status }): void {
-        this.socket.send('endOfTrick', msg);
+    async endOfTrick(msg: { winner: string, points: number, status: Status }): Promise<void> {
+        return this.socket.send('endOfTrick', msg, 'readyToContinue').then(() => undefined);
     }
 
-    endOfHand(msg: { winner: Team, made: boolean, status: Status}): void {
-        this.socket.send('endOfHand', msg);
+    async endOfHand(msg: { winner: Team, made: boolean, status: Status}): Promise<void> {
+        return this.socket.send('endOfHand', msg, 'readyToContinue').then(() => undefined);
     }
 
     gameOver(msg: { status: Status }): void {

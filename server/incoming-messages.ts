@@ -27,6 +27,7 @@ export interface GameRoomMessages {
 
     inviteBot: {
         fillRoom: boolean;
+        fastAF?: boolean;
     }
 
     /**
@@ -64,6 +65,12 @@ export interface GameRoomMessages {
     playBone: {
         bone: Bone;
     }
+
+    /**
+     * After a trick or hand are over, the player acknowledges
+     */
+
+    readyToContinue: null
 }
 
 export type IncomingMessages = UserMessages & GameRoomMessages;

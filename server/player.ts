@@ -2,7 +2,7 @@ import assert from 'assert';
 import _ from 'lodash';
 
 import type { GameMessages } from './outgoing-messages';
-import { Bid , Bone, Team, Trump } from './core';
+import { Bid , Bone, Game, Team, Trump } from './core';
 import type { Status } from './driver';
 
 type Result = void | Bid | Trump | Bone;
@@ -27,6 +27,10 @@ export default interface Player extends PlayerHandler {
     call(msg: GameMessages['call']): Promise<Trump>;
 
     play(msg: GameMessages['play']): Promise<Bone>;
+
+    endOfTrick(msg: GameMessages['endOfTrick']): Promise<void>;
+
+    endOfHand(msg: GameMessages['endOfHand']): Promise<void>;
 }
 
 export class RandomPlayer implements Player {
@@ -104,13 +108,13 @@ export class RandomPlayer implements Player {
         this.debug(from, 'played the', bone.toString());
     }
 
-    endOfTrick({ winner, points, status } : { winner: string, points: number, status: Status }): void {
+    async endOfTrick({ winner, points, status } : { winner: string, points: number, status: Status }): Promise<void> {
         this.debug(winner,
             'won the trick with', points, `point${points === 1 ? '' : 's'}`);
         this.debug('US', status.US.points, 'THEM', status.THEM.points);
     }
 
-    endOfHand({ winner, made, status } : { winner: Team, made: boolean, status: Status}): void {
+    async endOfHand({ winner, made, status } : { winner: Team, made: boolean, status: Status}): Promise<void> {
         this.debug('hand over');
         this.debug(winner, made ? 'made the bid' : 'set');
         this.debug('US', status.US.marks, 'marks',

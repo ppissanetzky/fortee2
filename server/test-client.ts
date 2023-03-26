@@ -77,7 +77,10 @@ fetch(`http://localhost:${PORT}/local-login`, {
                     if (message.full) {
                         return;
                     }
-                    return send('inviteBot', {fillRoom: true});
+                    return send('inviteBot', {
+                        fillRoom: true,
+                        fastAF: true
+                    });
                 }
                 if (type === 'enteredGameRoom') {
                     if (message.started) {
@@ -102,6 +105,12 @@ fetch(`http://localhost:${PORT}/local-login`, {
                     return promptPlayer.play(message).then((bone) => {
                         send('playBone', {bone}, ack);
                     });
+                }
+                if (type === 'endOfTrick') {
+                    return send('readyToContinue', null, ack);
+                }
+                if (type === 'endOfHand') {
+                    return send('readyToContinue', null, ack);
                 }
             });
         });

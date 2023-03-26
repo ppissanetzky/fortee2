@@ -162,12 +162,12 @@ export default class GameRoom {
         // Now, attach listeners
 
         if (name === this.host) {
-            socket.on('inviteBot', ({fillRoom}) => {
+            socket.on('inviteBot', ({fillRoom, fastAF}) => {
                 assert(!this.full, 'Room is full');
                 assert(this.state === State.WAITING, 'Game has already started');
                 const size = fillRoom ? 4 : this.size + 1;
                 while (this.size < size ) {
-                    const bot = new PassBot();
+                    const bot = new PassBot(fastAF);
                     const { name } = bot;
                     this.bots.push(bot);
                     this.debug('added bot', name);

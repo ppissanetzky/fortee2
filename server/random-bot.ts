@@ -8,17 +8,23 @@ import { TrumpStats } from './bidder';
 
 export default class RandomBot extends RandomPlayer {
 
+    private readonly fastAF?: boolean;
+
     private bones?: Bone[];
     private trump?: Trump;
     private lead?: Bone;
 
-    constructor() {
+    constructor(fastAF?: boolean) {
         super(getNextBotName());
+        this.fastAF = fastAF;
     }
 
     protected delay(): Promise<void> {
         return new Promise((resolve) => {
-            setTimeout(resolve, _.random(1500, 3500));
+            if (this.fastAF) {
+                return resolve();
+            }
+            setTimeout(resolve, _.random(500, 2000));
         });
     }
 
@@ -59,12 +65,16 @@ export default class RandomBot extends RandomPlayer {
         }
     }
 
-    endOfTrick({ winner, points, status } : { winner: string, points: number, status: Status }): void {
+    async endOfTrick({ winner, points, status } : { winner: string, points: number, status: Status }): Promise<void> {
         this.lead = undefined;
     }
 }
 
 export class PassBot extends RandomBot {
+
+    constructor(fastAF?: boolean) {
+        super(fastAF);
+    }
 
     async bid({ possible } : { possible: Bid[] }): Promise<Bid> {
         const [lowest] = possible;

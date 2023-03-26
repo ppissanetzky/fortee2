@@ -22,9 +22,9 @@ function play(): Promise<void> {
 
     const players = [
         me,
-        new PassBot(),
-        new PassBot(),
-        new PassBot(),
+        new PassBot(true),
+        new PassBot(true),
+        new PassBot(true),
     ];
 
     return GameDriver.start(rules, players).then(() => {

@@ -144,8 +144,9 @@ export default class GameDriver {
                     if (result.trick_over) {
                         const winner = this.game.players[result.trick_winner];
                         const points = result.trick_points;
-                        this.all((player) =>
-                            player.endOfTrick({winner, points, status: new Status(this.game)}));
+                        await Promise.all(this.players.map((player) =>
+                            player.endOfTrick({winner, points, status: new Status(this.game)})
+                        ));
                     }
                     if (result.hand_over) {
                         if (result.early_finish) {
@@ -156,8 +157,8 @@ export default class GameDriver {
                         assert(winner, 'Missing winner');
                         const made = result.bid_made;
                         this.game.finish_hand(result);
-                        this.all((player) =>
-                            player.endOfHand({winner, made, status: new Status(this.game)}));
+                        await Promise.all(this.players.map((player) =>
+                            player.endOfHand({winner, made, status: new Status(this.game)})));
                     }
                 }
                 break;
