@@ -1,6 +1,7 @@
 
 import fs from 'node:fs';
 import http from 'node:http';
+import https from 'node:https';
 
 import express from 'express';
 
@@ -47,18 +48,25 @@ else {
 setupAuthentication(app);
 
 //-----------------------------------------------------------------------------
-// The port that the Express application listens to
-//-----------------------------------------------------------------------------
-
-const PORT = process.env.FT_PORT || '4004';
-
-//-----------------------------------------------------------------------------
 // Start listening
 //-----------------------------------------------------------------------------
 
-const server = http.createServer(app).listen(PORT, () => {
-    console.log(`fortee2 ready at http://localhost:${PORT}`);
-});
+function createServer() {
+    const PORT = process.env.FT_PORT || '4004';
+    if (PORT === '443') {
+        return https.createServer({
+            key: fs.readFileSync('./certs/privkey.pem'),
+            cert: fs.readFileSync('./certs/fullchain.pem'),
+        }, app)
+        .listen(PORT, () => console.log(`fortee2 ready with https at port ${PORT}`));
+    }
+    return http.createServer(app).listen(PORT, () => {
+        console.log(`fortee2 ready with http at port ${PORT}`);
+    });
+}
+
+
+const server = createServer();
 
 //-----------------------------------------------------------------------------
 // Create the WebSocket server
