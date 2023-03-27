@@ -13,4 +13,4 @@ mkdir server/site
 cp -r site/dist/* server/site/
 
 # Install server dependencies
-(cd server && npm ci --only-prod && npx tsc)
+(cd server && npm ci && npx tsc)

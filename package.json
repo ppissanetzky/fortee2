@@ -9,6 +9,7 @@
     "generate": "(cd site && npm run generate)",
     "server": "(cd server && npm run server)",
     "start": "(cd site && npm run generate) && (cd server && npx tsc) && docker-compose up --build",
+    "container": "./build.sh && docker-compose up --build",
     "preversion": "git checkout main && git pull origin main",
     "postversion": "git push origin main --tags"
   }

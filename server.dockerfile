@@ -7,15 +7,15 @@ WORKDIR /home/node/app
 COPY server/package.json server/package-lock.json ./
 
 # Now, install node modules inside the container
-RUN npm ci --only prod
+RUN npm ci
 
 RUN mkdir ./site
 
 # Copy the server code
-COPY server/dist/*.js ./
+COPY server/dist/ ./
 
 # Copy the static site
-COPY site/dist ./site
+COPY site/dist/ ./site
 
 # Command to start the server
 CMD ["node", "server.js"]

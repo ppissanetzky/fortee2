@@ -4,5 +4,10 @@ services:
     build:
       context: .
       dockerfile: server.dockerfile
-    image: forty-two
+    env_file:
+      - server/.env
+    environment:
+      FT_PORT: 80
+      DEBUG: 42:*
+    image: fortee2
     network_mode: host
