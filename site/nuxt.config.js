@@ -62,8 +62,7 @@ export default {
 
   proxy: {
     '/api/': {
-      target: 'http://localhost:4004/',
-      pathRewrite: { '^/api/': '/' }
+      target: 'http://localhost:4004/'
     }
   },
 

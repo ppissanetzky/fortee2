@@ -9,10 +9,16 @@ export interface OutgoingGlobalMessages {
 
     welcome: {
         /**
+         * Your name
+         */
+
+        youAre: string;
+
+        /**
          * If the user is hosting a game room, this will be the ID
          */
 
-        hosting?: number,
+        hosting?: number;
 
         /**
          * The IDs of all the game rooms this user has been invited to

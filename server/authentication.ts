@@ -85,8 +85,13 @@ function google(app: Express): void {
         (req, res) => {
             debug('user', req.user);
             debug('session', req.session);
-            // Successful authentication, redirect
-            res.redirect('/login-done');
+            /**
+             * Successful authentication, redirect
+             * During development, you will get a 404 because the redirect
+             * goes to the server port, but the session cookie is there and
+             * you can refresh /
+             */
+            res.redirect('/');
         }
     );
 }
@@ -109,7 +114,7 @@ function local(app: Express): void {
         }
     ));
 
-    app.post('/local-login',
+    app.post('/api/local-login',
         (req, res, next) => {
             debug('local login with', req.body);
             next();

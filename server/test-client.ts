@@ -17,7 +17,7 @@ const PORT = 4004;
 
 const name = process.argv[2] || 'pablo';
 
-fetch(`http://localhost:${PORT}/local-login`, {
+fetch(`http://localhost:${PORT}/api/local-login`, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
     body: JSON.stringify({

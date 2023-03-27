@@ -106,7 +106,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         const hosting = rooms.find((room) => room.host === name)?.id;
         const invited = rooms.filter(({id}) => id !== hosting)
             .map(({id}) => id);
-        this.send('welcome', {hosting, invited});
+        this.send('welcome', {youAre: name, hosting, invited});
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(

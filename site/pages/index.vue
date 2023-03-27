@@ -112,15 +112,18 @@ export default {
       choose: () => undefined
     }
   },
-  async fetch () {
-    await this.$axios.$post('/api/local-login', {
-      username: 'pablo',
-      password: 'Sl5px1qZfMp27a1sIm+tA7WKkjn05t2AGuebf+kuCl5A0XdVDQpzCx6Qw01PL5gzHxMffjuVSKS9d6iUUjyew=='
-    })
+  fetch () {
+    // await this.$axios.$post('/api/local-login', {
+    //   username: 'pablo',
+    //   password: ''
+    // })
     this.joining = true
     let port = parseInt(window.location.port || '80', 10)
-    port = 4003
-    const url = `ws://${window.location.hostname}:${port + 1}/ws`
+    // For development
+    if (port === 3000) {
+      port = 4004
+    }
+    const url = `ws://${window.location.hostname}:${port}/ws`
     const ws = new WebSocket(url)
     ws.onclose = (event) => {
       this.ws = undefined
