@@ -4,6 +4,12 @@ import dotenv from 'dotenv';
 const variables: Record<string, string> = {
 
     /**
+     * Whether to allow local logins
+     */
+    
+    FT2_ALLOW_LOCAL: 'no',
+
+    /**
      * How often to send a ping - a string that 'ms' can understand
      */
 
@@ -47,6 +53,10 @@ dotenv.config();
 
 for (const name in variables) {
     const value = process.env[name];
+    if (!value && variables[name]) {
+        console.log(`Using default value for ${name}`);
+        continue;
+    }
     assert(value, `Missing environment variable ${name}`);
     variables[name] = value;
 }

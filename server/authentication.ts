@@ -98,6 +98,10 @@ function google(app: Express): void {
 
 function local(app: Express): void {
 
+    if (config.FT2_ALLOW_LOCAL !== 'yes') {
+        return;
+    }
+
     passport.use(new LocalStrategy(
         (name: string, password: string, cb) => {
             if (password !== config.FT2_LOCAL_PASSWORD) {

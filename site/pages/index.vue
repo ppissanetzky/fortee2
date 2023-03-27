@@ -112,15 +112,15 @@ export default {
       choose: () => undefined
     }
   },
-  fetch () {
-    // await this.$axios.$post('/api/local-login', {
-    //   username: 'pablo',
-    //   password: ''
-    // })
+  async fetch () {
     this.joining = true
     let url = `wss://${window.location.hostname}/ws`
     if (process.env.NUXT_ENV_DEV) {
       url = `ws://${window.location.hostname}:4004/ws`
+      await this.$axios.$post('/api/local-login', {
+        username: 'pablo',
+        password: '12345'
+      })
     }
     const ws = new WebSocket(url)
     ws.onclose = (event) => {

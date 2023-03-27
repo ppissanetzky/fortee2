@@ -17,10 +17,7 @@ const app = express()
 
 //-----------------------------------------------------------------------------
 
-app.set('trust proxy', 1);
 app.set('x-powered-by', false);
-
-app.disable('etag');
 
 //-----------------------------------------------------------------------------
 
@@ -31,6 +28,7 @@ app.use(express.json({limit: '1mb'}));
 
 app.use((req, res, next) => {
     debug(req.method, req.url, req.get('content-length') || '');
+    debug('%o', req.headers);
     next();
 });
 
