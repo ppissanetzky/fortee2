@@ -118,19 +118,17 @@ export default {
     //   password: ''
     // })
     this.joining = true
-    let port = parseInt(window.location.port || '80', 10)
-    // For development
-    if (port === 3000) {
-      port = 4004
+    let url = `wss://${window.location.hostname}/ws`
+    if (process.env.NUXT_ENV_DEV) {
+      url = `ws://${window.location.hostname}:4004/ws`
     }
-    const url = `ws://${window.location.hostname}:${port}/ws`
     const ws = new WebSocket(url)
     ws.onclose = (event) => {
       this.ws = undefined
     }
-    // ws.addEventListener('error', (event) => {
-    //   console.log(event)
-    // })
+    ws.addEventListener('error', (event) => {
+      console.log('error', event)
+    })
     ws.onopen = (event) => {
       this.ws = ws
       console.log('open')
