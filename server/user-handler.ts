@@ -22,15 +22,16 @@ export default class UserHandler {
 
         this.socket.gone.then(() => this.gameRoom = undefined);
 
-        socket.on('createGame', () => {
-            assert(!this.gameRoom, `${this.name} already has a game room`);
-            this.gameRoom = new GameRoom(this.socket);
-        });
+        // socket.on('createGame', () => {
+        //     assert(!this.gameRoom, `${this.name} already has a game room`);
+        //     this.gameRoom = new GameRoom(this.name);
+        //     this.gameRoom.join(this.socket);
+        // });
 
-        socket.on('joinGame', ({id}) => {
+        socket.on('joinGame', ({token}) => {
             assert(!this.gameRoom, `${this.name} already has a game room`);
-            const room = GameRoom.rooms.get(id);
-            assert(room, `Room ${id} not found`);
+            const room = GameRoom.rooms.get(token);
+            assert(room, `Room ${token} not found`);
             room.join(this.socket);
             this.gameRoom = room;
         });

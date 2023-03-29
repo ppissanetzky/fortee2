@@ -173,17 +173,6 @@ export default function setupAuthentication(app: Express): void {
         debug('session', req.session);
         res.sendStatus(200);
     });
-
-    /**
-     * This one will only allow requests that have a user, otherwise it's a 401
-     */
-
-    app.use((req, res, next) => {
-        if (req.user) {
-            return next();
-        }
-        res.sendStatus(401);
-    });
 }
 
 //-----------------------------------------------------------------------------

@@ -1,17 +1,16 @@
 import assert from 'node:assert';
-import _ from 'lodash';
 
-import { makeDebug } from './utility';
+import { makeDebug, makeToken } from './utility';
 import type Socket from './socket';
 import Player from './player';
-import RandomBot, { PassBot } from './random-bot';
 import RemotePlayer from './remote-player';
+import { PassBot } from './random-bot';
 import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 
 const enum State {
     /**
-     * Before the game starts or after it is over
+     * Before the game starts
      */
 
     WAITING,
@@ -26,7 +25,13 @@ const enum State {
      * When a player disconnects, the game is paused
      */
 
-    PAUSED
+    PAUSED,
+
+    /**
+     * Once the game is over
+     */
+
+    OVER,
 }
 
 /**
@@ -41,7 +46,13 @@ export default class GameRoom {
      * A map of all the game rooms that are "active"
      */
 
-    public static readonly rooms = new Map<number, GameRoom>();
+    public static readonly rooms = new Map<string, GameRoom>();
+
+    /**
+     * A token for this room
+     */
+
+    public readonly token = makeToken(32, 'base64url');
 
     /**
      * Returns an array of all active game rooms that this user
@@ -56,12 +67,17 @@ export default class GameRoom {
     public readonly id = GameRoom.ID++;
 
     public readonly host: string;
-    public readonly sockets: Socket[] = [];
-    public readonly bots: Player[] = [];
 
-    public players: RemotePlayer[] = [];
+    private readonly positions: string[] = [];
+
+    public readonly sockets = new Map<string, Socket>();
+
+    public readonly bots = new Map<string, Player>();
+
+    private players: Player[] = [];
 
     private state: State = State.WAITING;
+
     private readonly debug = makeDebug('game-room');
 
     /**
@@ -70,22 +86,43 @@ export default class GameRoom {
      */
     public readonly invited = new Set<string>();
 
-    constructor(host: Socket) {
+    constructor(host: string, partner = '', others: string[] = []) {
+        assert(host, 'Host cannot be blank');
+        GameRoom.rooms.set(this.token, this);
         this.debug = this.debug.extend(String(this.id));
-        this.debug('created');
-        GameRoom.rooms.set(this.id, this);
-        this.host = host.name;
-        this.invited.add(this.host);
-        this.join(host);
+        this.debug('created for', host, partner, others, this.token);
+        this.host = host;
+
+        const nameOrBot = (index: number, name: string) => {
+            if (name) {
+                this.positions[index] = name;
+                this.invited.add(name);
+            }
+            else {
+                const bot = new PassBot();
+                this.positions[index] = bot.name;
+                this.bots.set(bot.name, bot);
+            }
+        }
+
+        nameOrBot(0, host);
+        nameOrBot(1, others[0]);
+        nameOrBot(2, partner);
+        nameOrBot(3, others[1]);
+
+        assert(this.positions.every((name) => name), 'Positions are wrong');
+        this.debug('positions %j', this.positions);
     }
 
     get size(): number {
-        return this.sockets.length + this.bots.length;
+        return this.sockets.size + this.bots.size;
     }
 
     get names(): Set<string> {
-        return new Set([...this.sockets, ...this.bots]
-            .map(({name}) => name));
+        return new Set([
+            ...Array.from(this.sockets.keys()),
+            ...Array.from(this.bots.keys()),
+        ]);
     }
 
     get full(): boolean {
@@ -93,7 +130,12 @@ export default class GameRoom {
     }
 
     get started(): boolean {
-        return this.state !== State.WAITING;
+        switch (this.state) {
+            case State.PLAYING:
+            case State.PAUSED:
+                return true;
+        }
+        return false;
     }
 
     private all(cb: (user: Socket) => void) {
@@ -112,21 +154,20 @@ export default class GameRoom {
         return {
             full: this.full,
             started: this.started,
-            players: this.sockets.map(({name}) => name),
-            bots: this.bots.map(({name}) => name),
+            players: [...this.positions]
         };
     }
 
-    public join(socket: Socket) {
+    public async join(socket: Socket) {
         const { name } = socket;
         assert(!this.names.has(name), `User "${name}" exists`);
         assert(!this.full, 'Game room is full');
         assert(this.invited.has(name), `User "${name}" has not been invited`);
         this.debug('joined', name);
-        this.sockets.push(socket);
+        this.sockets.set(name, socket);
         // If and when the user leaves
         socket.gone.then(() => {
-            _.pull(this.sockets, socket);
+            this.sockets.delete(name);
             this.debug('removed', name, 'have', this.size);
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
@@ -144,68 +185,53 @@ export default class GameRoom {
         socket.send('youEnteredGameRoom', this.roomUpdate());
         // Is it full?
         if (this.full) {
-            // The game is paused, but everyone just came back, so we can
-            // automatically resume it
-
-            if (this.state === State.PAUSED) {
-                this.sockets.forEach((socket) => {
-                    // Find the player with the same name
-                    const player = this.players.find(({name}) =>
-                        name === socket.name);
-                    assert(player, `Player ${socket.name} not found in players list`);
-                    // Reset this player's socket - it'll do nothing if it's the
-                    // same as before
-                    player.reset(socket);
-                });
-            }
-        }
-        // Now, attach listeners
-
-        if (name === this.host) {
-            socket.on('inviteBot', ({fillRoom, fastAF}) => {
-                assert(!this.full, 'Room is full');
-                assert(this.state === State.WAITING, 'Game has already started');
-                const size = fillRoom ? 4 : this.size + 1;
-                while (this.size < size ) {
-                    const bot = new PassBot(fastAF);
-                    const { name } = bot;
-                    this.bots.push(bot);
-                    this.debug('added bot', name);
-                }
-                this.all((socket) => socket.send('enteredGameRoom', this.roomUpdate()));
-            });
-
-            /**
-             * The host wants to start the game
-             */
-
-            socket.on('startGame', async () => {
-                assert(this.size === 4, 'Room is not full');
-                assert(this.state === State.WAITING, 'A game has already started');
-                // Un-invite anyone that is not part of this game so that if
-                // someone drops out, another previously-invited user cannot
-                // steal their place
-                this.invited.clear();
-                this.sockets.forEach(({name}) => this.invited.add(name));
-                // Create the remote players
-                this.players = this.sockets.map((socket) => new RemotePlayer(socket));
+            // Everyone is here and the game is ready to start
+            if (this.state === State.WAITING) {
                 // Update state
                 this.state = State.PLAYING;
                 try {
+                    // Create the players
+                    this.players = this.positions.map((name) => {
+                        const socket = this.sockets.get(name);
+                        if (socket) {
+                            return new RemotePlayer(socket);
+                        }
+                        const bot = this.bots.get(name);
+                        assert(bot, `"${name}" is missing`);
+                        return bot;
+                    });
                     // Start'er up
-                    await GameDriver.start(new Rules(),
-                        [...this.players, ...this.bots]);
+                    await GameDriver.start(new Rules(), this.players);
                 }
                 catch (error) {
                     // TODO: what should we do?
                     this.debug('game error', error);
                 }
                 finally {
-                    this.state = State.WAITING;
+                    // TODO: We have to delete the invitation
+                    this.state = State.OVER;
                     this.players = [];
                     this.debug('game over');
                 }
-            });
+            }
+
+            // The game is paused, but everyone just came back, so we can
+            // automatically resume it
+
+            else if (this.state === State.PAUSED) {
+                this.sockets.forEach((socket) => {
+                    // Find the player with the same name
+                    const player = this.players.find(({name}) =>
+                        name === socket.name);
+                    assert(player, `Player ${socket.name} not found in players list`);
+                    assert(player instanceof RemotePlayer, `Player ${socket.name} is not remote`);
+                    // Reset this player's socket - it'll do nothing if it's the
+                    // same as before
+                    player.reset(socket);
+                });
+            }
+
+            // TODO: rejoin after the game is over?
         }
     }
 }

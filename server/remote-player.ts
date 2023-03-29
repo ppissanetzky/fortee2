@@ -38,12 +38,12 @@ export default class RemotePlayer implements Player {
     }
 
     private you<T extends ThingWithName>(msg: T): T {
-        if (msg.winner === this.name) {
-            msg.winner = 'you';
-        }
-        if (msg.from === this.name) {
-            msg.from = 'you';
-        }
+        // if (msg.winner === this.name) {
+        //     msg.winner = 'you';
+        // }
+        // if (msg.from === this.name) {
+        //     msg.from = 'you';
+        // }
         return msg;
     }
 

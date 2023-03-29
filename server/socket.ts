@@ -104,8 +104,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         // Send the welcome message
         const rooms = GameRoom.roomsForUser(name);
         const hosting = rooms.find((room) => room.host === name)?.id;
-        const invited = rooms.filter(({id}) => id !== hosting)
-            .map(({id}) => id);
+        const invited = rooms.map(({id}) => id);
         this.send('welcome', {youAre: name, hosting, invited});
     }
 

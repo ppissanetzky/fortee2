@@ -32,7 +32,6 @@ export interface RoomUpdate {
     full: boolean;
     started: boolean;
     players: string[];
-    bots: string[];
 }
 
 export interface OutgoingGameRoomMessages {

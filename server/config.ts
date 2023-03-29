@@ -6,7 +6,7 @@ const variables: Record<string, string> = {
     /**
      * Whether to allow local logins
      */
-    
+
     FT2_ALLOW_LOCAL: 'no',
 
     /**
@@ -14,6 +14,12 @@ const variables: Record<string, string> = {
      */
 
     FT2_PING_INTERVAL: '',
+
+    /**
+     * How long after we expire an invitation from slack - a 'ms' string
+     */
+
+    FT2_SLACK_INVITATION_EXPIRY: '10m',
 
     /**
      * How long to go without pongs or pings - a string that 'ms' can understand
@@ -44,7 +50,14 @@ const variables: Record<string, string> = {
      * Password for local users
      */
 
-    FT2_LOCAL_PASSWORD: ''
+    FT2_LOCAL_PASSWORD: '',
+
+    /**
+     * Slack tokens
+     */
+
+    FT2_SLACK_BOT_TOKEN: '',
+    FT2_SLACK_APP_TOKEN: '',
 };
 
 export default variables;

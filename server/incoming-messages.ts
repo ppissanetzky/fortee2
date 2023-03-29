@@ -4,17 +4,12 @@ import type { Bid, Trump, Bone } from './core';
 export interface UserMessages {
 
     /**
-     * When a user wants to create and host a game *
-     */
-
-    createGame: object;
-
-    /**
-     * When a user wants to join a game room
+     * When a user wants to join a game room.
+     * 'token' is the game room token
      */
 
     joinGame: {
-        id: number;
+        token: string;
     }
 
 }
