@@ -22,7 +22,7 @@ RUN mkdir ./site
 COPY server/dist/ ./
 
 # Copy the static site
-COPY site/dist/ ./site
+COPY site/dist/ ./site/
 
 # Command to start the server
 CMD ["node", "server.js"]
