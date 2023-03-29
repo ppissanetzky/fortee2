@@ -67,12 +67,12 @@ fetch(`http://localhost:${PORT}/api/local-login`, {
                 const { ack, type, message }
                 : { ack?: number, type: keyof OutgoingMessages, message: any}
                     = parse(data.toString());
-                if (type === 'welcome') {
-                    if (message.hosting) {
-                        return send('joinGame', {id: message.hosting});
-                    }
-                    return send('createGame', {});
-                }
+                // if (type === 'welcome') {
+                //     if (message.hosting) {
+                //         return send('joinGame', {id: message.hosting});
+                //     }
+                //     return send('createGame', {});
+                // }
                 if (type === 'youEnteredGameRoom') {
                     if (message.full) {
                         return;
