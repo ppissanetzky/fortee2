@@ -43,6 +43,10 @@ declare global {
 
 function google(app: Express): void {
 
+    if (config.PRODUCTION) {
+        return;
+    }
+
     passport.use(new GoogleStrategy({
         clientID: config.FT2_GSI_CLIENT_ID,
         clientSecret: config.FT2_GSI_SECRET,
@@ -98,7 +102,7 @@ function google(app: Express): void {
 
 function local(app: Express): void {
 
-    if (config.FT2_ALLOW_LOCAL !== 'yes') {
+    if (config.PRODUCTION) {
         return;
     }
 
@@ -137,6 +141,12 @@ export default function setupAuthentication(app: Express): void {
         secret: config.FT2_SESSION_SECRET,
         saveUninitialized: false,
         resave: false,
+        cookie: {
+            secure: true,
+            httpOnly: true,
+            path: '/',
+            sameSite: true
+        }
     }));
 
     /**

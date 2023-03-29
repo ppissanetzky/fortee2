@@ -6,7 +6,7 @@ import assert from 'node:assert';
 
 import express from 'express';
 
-import './config';
+import config from './config';
 
 import WsServer from './ws-server';
 import { makeDebug } from './utility';
@@ -76,8 +76,7 @@ app.get('/slack-play/:id/:userToken', async (req, res) => {
             });
             debug('logged in from slack', userId, name);
         }
-        // TODO
-        res.redirect(`http://localhost:3000/play/${invitation.gameRoomToken}`);
+        res.redirect(`${config.FT2_SITE_BASE_URL}/play/${invitation.gameRoomToken}`);
     }
     catch (error) {
         console.log('slack-play failed', error);
@@ -108,6 +107,10 @@ function createServer() {
             cert: fs.readFileSync('./certs/fullchain.pem'),
         }, app)
         .listen(PORT, () => console.log(`fortee2 ready with https at port ${PORT}`));
+    }
+    if (config.PRODUCTION) {
+        console.error('Not starting HTTP server in production');
+        return process.exit(1);
     }
     return http.createServer(app).listen(PORT, () => {
         console.log(`fortee2 ready with http at port ${PORT}`);

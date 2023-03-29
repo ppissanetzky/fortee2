@@ -99,8 +99,7 @@ export class Invitation {
                 userToken = makeToken(8, 'hex');
             }
             this.tokens.set(userToken, user);
-            // TODO - fix URL
-            this.urls.set(user, `http://localhost:4004/slack-play/${this.id}/${userToken}`);
+            this.urls.set(user, `${config.FT2_SERVER_BASE_URL}/slack-play/${this.id}/${userToken}`);
         }
 
         /** Create the game room */

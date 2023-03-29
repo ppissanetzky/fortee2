@@ -4,10 +4,16 @@ import dotenv from 'dotenv';
 const variables: Record<string, string> = {
 
     /**
-     * Whether to allow local logins
+     * The base URL for the site
      */
 
-    FT2_ALLOW_LOCAL: 'no',
+    FT2_SITE_BASE_URL: 'https://fortee2.com',
+
+    /**
+     * The base URL for the server. It's only different in development
+     */
+
+    FT2_SERVER_BASE_URL: 'https://fortee2.com',
 
     /**
      * How often to send a ping - a string that 'ms' can understand
@@ -73,3 +79,5 @@ for (const name in variables) {
     assert(value, `Missing environment variable ${name}`);
     variables[name] = value;
 }
+
+variables.PRODUCTION = process.env.NODE_ENV === 'production' ? 'yes' : '';
