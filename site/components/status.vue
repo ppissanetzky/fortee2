@@ -58,7 +58,7 @@
           overlap
         > -->
         <v-img
-          :src="`${value.play}.png`"
+          :src="`/${value.play}.png`"
           contain
           max-height="80"
         />

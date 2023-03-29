@@ -90,7 +90,7 @@
               >
                 <v-item v-slot="{ /* active,*/ toggle }">
                   <v-img
-                    :src="`${bones[n - 1]}.png`"
+                    :src="`/${bones[n - 1]}.png`"
                     contain
                     max-height="80"
                     @click="toggle"
@@ -109,7 +109,7 @@
               >
                 <v-item v-slot="{ /* active, */ toggle }">
                   <v-img
-                    :src="`${bones[n + 3]}.png`"
+                    :src="`/${bones[n + 3]}.png`"
                     contain
                     max-height="80"
                     @click="toggle"
