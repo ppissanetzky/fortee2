@@ -1,7 +1,7 @@
 import assert  from 'node:assert';
 import { App, ModalView } from '@slack/bolt';
 import { makeDebug } from './utility';
-import { START_GAME, PLAY_DM } from './slack-views';
+import { START_GAME, PLAY_DM, GAME_STARTED } from './slack-views';
 import config from './config';
 import { InvitationInputs, Invitation } from './invitations';
 
@@ -55,7 +55,7 @@ export default async function connectToSlack() {
         //         }
         //     }
         // }
-        debug('view', JSON.stringify(view.state));
+        debug('view state : %j', view.state);
 
         const partners = view.state.values['partner-block']['partner'].selected_users;
         const team = view.state.values['team-block']['team'].selected_users;
@@ -147,10 +147,6 @@ export default async function connectToSlack() {
             }
         }
 
-        /** Now, we can acknowledge the submission */
-
-        ack();
-
         /** Create the invitation and send the initial messages */
 
         const invitation = new Invitation(inputs);
@@ -161,18 +157,14 @@ export default async function connectToSlack() {
 
         /**
          * If it is just this user that wants to play with bots, we're going to
-         * send them a DM and leave it at that
+         * update the view and be done.
          */
 
         if (invitation.users.length === 1) {
-            const result = await app.client.chat.postMessage({
-                channel: invitation.host,
-                blocks: PLAY_DM(invitation.host, invitation),
-                text: `Your game is ready to start!`
+            return ack({
+                response_action: 'push',
+                view: GAME_STARTED(inputs.host, '', invitation)
             });
-            debug('posted single DM: %j', result);
-            /** Done */
-            return;
         }
 
         /**
@@ -195,6 +187,13 @@ export default async function connectToSlack() {
         await client.chat.postMessage({
             channel,
             text: `:face_with_cowboy_hat: <@${invitation.host}> wants to a play a game with y'all`
+        });
+
+        /** 'Push' the second page of the modal */
+
+        ack({
+            response_action: 'push',
+            view: GAME_STARTED(inputs.host, channel, invitation)
         });
 
         /** Post an ephemeral to each user */

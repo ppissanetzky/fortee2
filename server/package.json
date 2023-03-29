@@ -22,6 +22,7 @@
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
+    "slack-block-builder": "^2.7.2",
     "ws": "^8.6.0"
   },
   "devDependencies": {

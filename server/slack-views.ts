@@ -1,6 +1,31 @@
 import type { KnownBlock } from '@slack/bolt';
 import _ from 'lodash';
 import { Invitation } from './invitations';
+import { Button, Modal, Section, setIfTruthy } from 'slack-block-builder';
+
+export function GAME_STARTED(host: string, channel: string, invitation: Invitation) {
+    const others = invitation.users.filter((user) => user !== host);
+
+    return Modal()
+        .title('Your game is ready!')
+        .notifyOnClose(false)
+        .clearOnClose(true)
+        .blocks(
+            setIfTruthy(others.length > 0,
+                Section()
+                    .text(`I started a new chat with <#${channel}>`),
+            ),
+            Section()
+                .text('To join the game, just click Play')
+                .accessory(
+                    Button()
+                        .text('Play')
+                        .primary(true)
+                        .actionId('play-action')
+                        .url(invitation.urls.get(host))
+                )
+        ).buildToObject();
+}
 
 export const START_GAME = {
     type: 'modal',
