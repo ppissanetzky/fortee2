@@ -76,7 +76,7 @@ app.get('/slack-play/:id/:userToken', async (req, res) => {
             });
             debug('logged in from slack', userId, name);
         }
-        res.redirect(`${config.FT2_SITE_BASE_URL}/play/${invitation.gameRoomToken}`);
+        res.redirect(`${config.FT2_SITE_BASE_URL}/play/?t=${invitation.gameRoomToken}`);
     }
     catch (error) {
         console.log('slack-play failed', error);

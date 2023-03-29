@@ -1,133 +1,129 @@
 <template>
-  <v-app>
-    <v-main>
-      <v-container>
-        <v-row>
-          <v-col cols="4">
-            <v-card flat width="260">
-              <v-container>
-                <v-row>
-                  <v-col cols="8">
-                    <strong>US</strong>
-                    <br>
-                    <span class="caption">{{ me.name }} & {{ top.name }}</span>
-                  </v-col>
-                  <v-col>
-                    <h3>{{ US.marks }}</h3>
-                    <span class="caption">{{ US.points }}</span>
-                    <span v-if="bidForTeam('US')" class="caption">/ {{ bidForTeam('US') }}</span>
-                  </v-col>
-                </v-row>
-                <v-row>
-                  <v-col cols="12">
-                    <v-divider />
-                  </v-col>
-                </v-row>
-                <v-row>
-                  <v-col cols="8">
-                    <strong>THEM</strong>
-                    <br>
-                    <span class="caption">{{ left.name }} & {{ right.name }}</span>
-                  </v-col>
-                  <v-col>
-                    <h3>{{ THEM.marks }}</h3>
-                    <span class="caption">{{ THEM.points }}</span>
-                    <span v-if="bidForTeam('THEM')" class="caption">/ {{ bidForTeam('THEM') }}</span>
-                  </v-col>
-                </v-row>
-              </v-container>
-            </v-card>
-          </v-col>
-          <v-col cols="4">
-            <Status v-model="top" color="secondary" />
-          </v-col>
-          <v-col cols="4" />
-        </v-row>
-        <v-row>
-          <v-col cols="4">
-            <Status v-model="left" color="red darken-4" />
-          </v-col>
-          <v-col cols="4" />
-          <v-col cols="4">
-            <Status v-model="right" color="red darken-4" />
-          </v-col>
-        </v-row>
-        <v-row>
-          <v-col cols="4" />
-          <v-col cols="4">
-            <Status v-model="me" color="secondary" />
-          </v-col>
-          <v-col cols="4">
-            <v-card
-              flat
-              width="280"
-            >
-              <p v-if="choiceTitle">
-                {{ choiceTitle }}
-              </p>
-              <v-chip
-                v-for="choice in choices"
-                :key="choice"
-                small
-                label
-                color="primary"
-                class="mr-1 mb-1"
-                @click="choose(choice)"
+  <v-container>
+    <v-row>
+      <v-col cols="4">
+        <v-card flat width="260">
+          <v-container>
+            <v-row>
+              <v-col cols="8">
+                <strong>US</strong>
+                <br>
+                <span class="caption">{{ me.name }} & {{ top.name }}</span>
+              </v-col>
+              <v-col>
+                <h3>{{ US.marks }}</h3>
+                <span class="caption">{{ US.points }}</span>
+                <span v-if="bidForTeam('US')" class="caption">/ {{ bidForTeam('US') }}</span>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="12">
+                <v-divider />
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="8">
+                <strong>THEM</strong>
+                <br>
+                <span class="caption">{{ left.name }} & {{ right.name }}</span>
+              </v-col>
+              <v-col>
+                <h3>{{ THEM.marks }}</h3>
+                <span class="caption">{{ THEM.points }}</span>
+                <span v-if="bidForTeam('THEM')" class="caption">/ {{ bidForTeam('THEM') }}</span>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card>
+      </v-col>
+      <v-col cols="4">
+        <Status v-model="top" color="secondary" />
+      </v-col>
+      <v-col cols="4" />
+    </v-row>
+    <v-row>
+      <v-col cols="4">
+        <Status v-model="left" color="red darken-4" />
+      </v-col>
+      <v-col cols="4" />
+      <v-col cols="4">
+        <Status v-model="right" color="red darken-4" />
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="4" />
+      <v-col cols="4">
+        <Status v-model="me" color="secondary" />
+      </v-col>
+      <v-col cols="4">
+        <v-card
+          flat
+          width="280"
+        >
+          <p v-if="choiceTitle">
+            {{ choiceTitle }}
+          </p>
+          <v-chip
+            v-for="choice in choices"
+            :key="choice"
+            small
+            label
+            color="primary"
+            class="mr-1 mb-1"
+            @click="choose(choice)"
+          >
+            {{ choice }}
+          </v-chip>
+        </v-card>
+      </v-col>
+    </v-row>
+    <!-- My stuff -->
+    <v-row>
+      <v-col cols="12">
+        <v-item-group>
+          <v-container>
+            <v-row>
+              <v-col
+                v-for="n in 4"
+                :key="n"
+                cols="3"
               >
-                {{ choice }}
-              </v-chip>
-            </v-card>
-          </v-col>
-        </v-row>
-        <!-- My stuff -->
-        <v-row>
-          <v-col cols="12">
-            <v-item-group>
-              <v-container>
-                <v-row>
-                  <v-col
-                    v-for="n in 4"
-                    :key="n"
-                    cols="3"
+                <v-item v-slot="{ /* active,*/ toggle }">
+                  <v-img
+                    :src="`${bones[n - 1]}.png`"
+                    contain
+                    max-height="80"
+                    @click="toggle"
                   >
-                    <v-item v-slot="{ /* active,*/ toggle }">
-                      <v-img
-                        :src="`${bones[n - 1]}.png`"
-                        contain
-                        max-height="80"
-                        @click="toggle"
-                      >
-                      <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
-                      </v-img>
-                    </v-item>
-                  </v-col>
-                </v-row>
-                <v-row>
-                  <v-col cols="1" />
-                  <v-col
-                    v-for="n in 3"
-                    :key="n"
-                    cols="3"
+                  <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
+                  </v-img>
+                </v-item>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="1" />
+              <v-col
+                v-for="n in 3"
+                :key="n"
+                cols="3"
+              >
+                <v-item v-slot="{ /* active, */ toggle }">
+                  <v-img
+                    :src="`${bones[n + 3]}.png`"
+                    contain
+                    max-height="80"
+                    @click="toggle"
                   >
-                    <v-item v-slot="{ /* active, */ toggle }">
-                      <v-img
-                        :src="`${bones[n + 3]}.png`"
-                        contain
-                        max-height="80"
-                        @click="toggle"
-                      >
-                      <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
-                      </v-img>
-                    </v-item>
-                  </v-col>
-                </v-row>
-              </v-container>
-            </v-item-group>
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-main>
-  </v-app>
+                  <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
+                  </v-img>
+                </v-item>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-item-group>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 <script>
 import Status from '~/components/status.vue'
@@ -212,7 +208,7 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
-          this.send('joinGame', { token: this.$route.params.token })
+          this.send('joinGame', { token: this.$route.query.t })
           break
         case 'youEnteredGameRoom':
         case 'enteredGameRoom':
