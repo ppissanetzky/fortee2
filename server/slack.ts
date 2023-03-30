@@ -2,14 +2,14 @@ import assert  from 'node:assert';
 import { App, ModalView } from '@slack/bolt';
 import { makeDebug } from './utility';
 import { START_GAME, PLAY_DM, GAME_STARTED } from './slack-views';
-import config from './config';
+import config, {off} from './config';
 import { InvitationInputs, Invitation } from './invitations';
 
 const debug = makeDebug('slack');
 
 export default async function connectToSlack() {
 
-    if (config.FT2_SLACK_ON !== 'yes') {
+    if (off(config.FT2_SLACK_ON)) {
         debug('not connecting to Slack');
         return;
     }

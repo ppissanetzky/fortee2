@@ -12,6 +12,7 @@ import { makeDebug } from './utility';
 import setupAuthentication from './authentication';
 import connectToSlack from './slack';
 import { setupSlackAuthentication } from './slack-authentication';
+import GameRoom from './game-room';
 
 const debug = makeDebug('server');
 
@@ -48,6 +49,22 @@ else {
 setupAuthentication(app);
 
 setupSlackAuthentication(app);
+
+/**
+ * For testing - logs me in, creates a room and redirects to play
+ */
+
+if (!config.PRODUCTION) {
+    app.get('/api/test-game', async (req, res) => {
+        const name = 'Pablo Test';
+        await new Promise<void>((resolve, reject) => {
+            req.login({id: 'test/pablo', name},
+                (error) => error ? reject(error) : resolve());
+        });
+        const room = new GameRoom(name);
+        res.redirect(`${config.FT2_SITE_BASE_URL}/play?t=${room.token}`);
+    });
+}
 
 /**
  * This one will only allow requests that have a user, otherwise it's a 401

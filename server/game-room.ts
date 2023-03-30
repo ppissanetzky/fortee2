@@ -155,7 +155,10 @@ export default class GameRoom {
             full: this.full,
             started: this.started,
             players: [...this.positions],
-            connected: Array.from(this.sockets.keys())
+            connected: [
+                ...Array.from(this.sockets.keys()),
+                ...Array.from(this.bots.keys())
+            ]
         };
     }
 

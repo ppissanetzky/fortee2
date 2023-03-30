@@ -143,7 +143,7 @@ export default function setupAuthentication(app: Express): void {
         resave: false,
         proxy: config.PRODUCTION ? false : true,
         cookie: {
-            secure: true,
+            secure: config.PRODUCTION ? true : false,
             httpOnly: true,
             path: '/',
             /** Using 'strict' breaks sign-in-with-slack */

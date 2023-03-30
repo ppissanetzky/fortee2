@@ -1,6 +1,8 @@
 import assert from 'node:assert';
 import dotenv from 'dotenv';
 
+const YES = 'yes';
+
 const variables: Record<string, string> = {
 
     /**
@@ -59,11 +61,11 @@ const variables: Record<string, string> = {
     FT2_LOCAL_PASSWORD: '',
 
     /**
-     * Whether to connect to Slack, turn it off when developing, so
-     * that we don't interfer with the real server
+     * Whether to connect to Slack. Turn it off when developing, so
+     * that we don't interfere with the real server
      */
 
-    FT2_SLACK_ON: 'yes',
+    FT2_SLACK_ON: YES,
 
     /**
      * Slack tokens
@@ -89,4 +91,12 @@ for (const name in variables) {
     variables[name] = value;
 }
 
-variables.PRODUCTION = process.env.NODE_ENV === 'production' ? 'yes' : '';
+variables.PRODUCTION = process.env.NODE_ENV === 'production' ? YES : '';
+
+export function on(value: string): boolean {
+    return variables[value] === YES;
+}
+
+export function off(value: string): boolean {
+    return !on(value);
+}

@@ -5,7 +5,7 @@ import { Issuer, generators, BaseClient } from 'openid-client';
 
 import { Invitation } from './invitations';
 import { makeDebug } from './utility';
-import config from './config';
+import config, { off } from './config';
 
 const debug = makeDebug('slack-auth');
 
@@ -23,6 +23,10 @@ declare module 'express-session' {
 const SLACK_DISCOVER_URL = 'https://slack.com/.well-known/openid-configuration';
 
 export function setupSlackAuthentication(app: Express) {
+
+    if (off(config.FT2_SLACK_ON)) {
+        return;
+    }
 
     // Do this once, starting now
     const promiseForIssuer = Issuer.discover(SLACK_DISCOVER_URL);
