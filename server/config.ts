@@ -46,12 +46,6 @@ const variables: Record<string, string> = {
     FT2_SESSION_COOKIE_NAME: '',
 
     /**
-     * The 'SameSite' attribute for the session cookie
-     */
-
-    FT2_SESSION_COOKIE_SAME_SITE: 'strict',
-
-    /**
      * For Google Sign in, set up at the developer's console
      */
 

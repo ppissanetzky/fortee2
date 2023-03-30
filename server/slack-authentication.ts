@@ -11,29 +11,32 @@ const debug = makeDebug('slack-auth');
 
 declare module 'express-session' {
     interface SessionData {
-        codeVerifier: string;
+        codeVerifier?: string;
     }
 }
+
+/**
+ * The URL used to get the OpenID configuration from Slack, the "issuer"
+ * @see https://api.slack.com/authentication/sign-in-with-slack
+ */
 
 const SLACK_DISCOVER_URL = 'https://slack.com/.well-known/openid-configuration';
 
 export function setupSlackAuthentication(app: Express) {
 
-    let client: BaseClient;
+    // Do this once, starting now
+    const promiseForIssuer = Issuer.discover(SLACK_DISCOVER_URL);
 
-    async function getClient(redirectUri: string): Promise<BaseClient> {
-        if (!client) {
-            const issuer = await Issuer.discover(SLACK_DISCOVER_URL);
-            debug('issuer : %j', issuer.metadata);
-            client = new issuer.Client({
-                client_id: config.FT2_SLACK_CLIENT_ID,
-                client_secret: config.FT2_SLACK_CLIENT_SECRET,
-                redirect_uris: [redirectUri],
-                response_types: ['code']
-            });
-            debug('client created');
-        }
-        return client;
+    // Creates a client once we have the issuer details
+
+    async function createClient(redirectUri: string): Promise<BaseClient> {
+        const issuer = await promiseForIssuer;
+        return new issuer.Client({
+            client_id: config.FT2_SLACK_CLIENT_ID,
+            client_secret: config.FT2_SLACK_CLIENT_SECRET,
+            redirect_uris: [redirectUri],
+            response_types: ['code']
+        });
     }
 
     function getUser(iid: string, userToken: string) {
@@ -45,9 +48,9 @@ export function setupSlackAuthentication(app: Express) {
         assert(name, `No name for user ${user}`);
         const userId = `slack/${user}`;
         return {
-            invitation,
+            /** The raw user ID from Slack */
             user,
-            name,
+            /** Our own user ID */
             userId,
             redirectUri: `${config.FT2_SITE_BASE_URL}/slack-login/${iid}/${userToken}`,
             playUri: `${config.FT2_SITE_BASE_URL}/play/?t=${invitation.gameRoomToken}`
@@ -58,43 +61,37 @@ export function setupSlackAuthentication(app: Express) {
         const { params: {iid, userToken } } = req;
         const { userId , redirectUri, playUri } = getUser(iid, userToken);
 
-        debug('start %j', req.session);
-
-        // If we have the right user, just redirect to play
-
+        /** If we have the right user, just redirect to play */
         if (req.user?.id === userId) {
             return res.redirect(playUri);
         }
 
         try {
-            // We have a user but it's not the one we expect, so we logout
+            /** We have a user but it's not the one we expect, so we logout */
             if (req.user) {
                 debug('have another user : %j', req.user);
                 await new Promise<void>((resolve, reject) =>
                     req.logout({keepSessionInfo: false}, (error) => error ? reject(error) : resolve()));
-                debug('after logout %j', req.session);
             }
 
+            /** Make a challenge verification code and save it in the session */
             const codeVerifier = generators.codeVerifier();
             req.session.codeVerifier = codeVerifier;
-
-            debug('with cv %j', req.session);
-
             await new Promise<void>((resolve, reject) => {
                 req.session.save((error) => error ? reject(error) : resolve());
             });
 
-            debug('saved %j', req.session);
+            /** Create the OpenId client */
+            const client = await createClient(redirectUri);
 
-            // Create the OpenId client
-            const client = await getClient(redirectUri);
-            // Get the Slack auth URL
+            /** Get the Slack auth URL */
             const url = client.authorizationUrl({
                 scope: 'openid email profile',
                 code_challenge: generators.codeChallenge(codeVerifier),
                 code_challenge_method: 'S256',
             });
-            // Go there
+
+            /** Go there */
             res.redirect(url);
         }
         catch (error) {
@@ -109,26 +106,27 @@ export function setupSlackAuthentication(app: Express) {
             const { params: {iid, userToken } } = req;
             const { user, userId, redirectUri, playUri } = getUser(iid, userToken);
 
-            debug('start %j', req.session);
-
+            /** Pull the challenge verifier from the session */
             const { codeVerifier } = req.session;
             assert(codeVerifier, 'Missing session.codeVerifier');
+            req.session.codeVerifier = undefined;
 
-            const tokenSet = await client.callback(redirectUri,
+            /** Verify the code */
+            const client = await createClient(redirectUri);
+            const { access_token } = await client.callback(redirectUri,
                 client.callbackParams(req),
                 {code_verifier: codeVerifier});
-            debug('received and validated tokens %j', tokenSet);
-            debug('validated ID token claims %j', tokenSet.claims());
-            const { access_token } = tokenSet;
             assert(access_token, 'Missing access_token');
+
+            /** Get the user info */
             const userInfo = await client.userinfo(access_token);
             debug('userinfo %j', userInfo);
             assert(userInfo.ok, 'User info not ok');
-
             const { sub, name } = userInfo;
             assert(sub === user, `Expecting ${user} but got ${sub}`);
             assert(name, 'Missing userInfo.name');
 
+            /** All is good, sign-in this user */
             await new Promise<void>((resolve, reject) => {
                 req.login({id: userId, name},
                     (error) => error ? reject(error) : resolve());
@@ -138,6 +136,7 @@ export function setupSlackAuthentication(app: Express) {
             assert(req.user.id === userId, 'User ID came out wrong');
             assert(req.user.name, 'User name came out wrong');
 
+            /** Go play */
             res.redirect(playUri);
         }
         catch (error) {

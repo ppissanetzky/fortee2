@@ -146,7 +146,8 @@ export default function setupAuthentication(app: Express): void {
             secure: true,
             httpOnly: true,
             path: '/',
-            sameSite: config.FT2_SESSION_COOKIE_SAME_SITE as any
+            /** Using 'strict' breaks sign-in-with-slack */
+            sameSite: 'lax'
         }
     }));
 
