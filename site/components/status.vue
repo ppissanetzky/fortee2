@@ -18,15 +18,11 @@
     </v-sheet>
 
     <div>
-      <!-- <v-card-text>
-        <v-progress-linear
-          :active="thinking"
-          color="white"
-          indeterminate
-          rounded
-          height="6"
-        />
-      </v-card-text> -->
+      <div v-if="!value.connected">
+        <h3 class="text-center">
+          Waiting to join
+        </h3>
+      </div>
       <div v-if="value.waitingForBid">
         <h3 class="text-center">
           Waiting for bid
@@ -89,6 +85,7 @@ export default {
   computed: {
     thinking () {
       return this.value && (
+        !this.value.connected ||
         this.value.waitingForBid ||
         this.value.waitingForTrump ||
         this.value.waitingForPlay)

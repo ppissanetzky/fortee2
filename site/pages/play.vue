@@ -143,6 +143,7 @@ export default {
         points: undefined
       },
       table: [],
+      connected: [],
       waitingForBid: undefined,
       bids: {},
       bidWinner: undefined,
@@ -221,6 +222,7 @@ export default {
                 index = 0
               }
             }
+            this.connected = message.connected
           }
           break
         case 'startingHand':
@@ -328,6 +330,7 @@ export default {
       }
       return {
         name,
+        connected: this.connected.includes(name),
         waitingForBid: this.waitingForBid === name,
         bid: this.bids[name],
         waitingForTrump: this.waitingForTrump === name,

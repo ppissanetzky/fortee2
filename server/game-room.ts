@@ -154,7 +154,8 @@ export default class GameRoom {
         return {
             full: this.full,
             started: this.started,
-            players: [...this.positions]
+            players: [...this.positions],
+            connected: Array.from(this.sockets.keys())
         };
     }
 

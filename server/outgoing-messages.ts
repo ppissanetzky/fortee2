@@ -32,6 +32,8 @@ export interface RoomUpdate {
     full: boolean;
     started: boolean;
     players: string[];
+    /** The list of user names that have a socket - are connected */
+    connected: string[];
 }
 
 export interface OutgoingGameRoomMessages {
