@@ -59,6 +59,13 @@ const variables: Record<string, string> = {
     FT2_LOCAL_PASSWORD: '',
 
     /**
+     * Whether to connect to Slack, turn it off when developing, so
+     * that we don't interfer with the real server
+     */
+
+    FT2_SLACK_ON: 'yes',
+
+    /**
      * Slack tokens
      */
 

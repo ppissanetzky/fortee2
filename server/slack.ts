@@ -8,6 +8,12 @@ import { InvitationInputs, Invitation } from './invitations';
 const debug = makeDebug('slack');
 
 export default async function connectToSlack() {
+
+    if (config.FT2_SLACK_ON !== 'yes') {
+        debug('not connecting to Slack');
+        return;
+    }
+
     const app = new App({
         token: config.FT2_SLACK_BOT_TOKEN,
         socketMode: true,
