@@ -46,6 +46,12 @@ const variables: Record<string, string> = {
     FT2_SESSION_COOKIE_NAME: '',
 
     /**
+     * The 'SameSite' attribute for the session cookie
+     */
+
+    FT2_SESSION_COOKIE_SAME_SITE: 'strict',
+
+    /**
      * For Google Sign in, set up at the developer's console
      */
 
@@ -64,6 +70,8 @@ const variables: Record<string, string> = {
 
     FT2_SLACK_BOT_TOKEN: '',
     FT2_SLACK_APP_TOKEN: '',
+    FT2_SLACK_CLIENT_ID: '',
+    FT2_SLACK_CLIENT_SECRET: ''
 };
 
 export default variables;

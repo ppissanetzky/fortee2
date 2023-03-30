@@ -141,11 +141,12 @@ export default function setupAuthentication(app: Express): void {
         secret: config.FT2_SESSION_SECRET,
         saveUninitialized: false,
         resave: false,
+        proxy: config.PRODUCTION ? false : true,
         cookie: {
             secure: true,
             httpOnly: true,
             path: '/',
-            sameSite: true
+            sameSite: config.FT2_SESSION_COOKIE_SAME_SITE as any
         }
     }));
 

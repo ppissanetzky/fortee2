@@ -2,7 +2,6 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
-import assert from 'node:assert';
 
 import express from 'express';
 
@@ -12,7 +11,7 @@ import WsServer from './ws-server';
 import { makeDebug } from './utility';
 import setupAuthentication from './authentication';
 import connectToSlack from './slack';
-import { Invitation } from './invitations';
+import { setupSlackAuthentication } from './slack-authentication';
 
 const debug = makeDebug('server');
 
@@ -24,8 +23,8 @@ app.set('x-powered-by', false);
 
 //-----------------------------------------------------------------------------
 
-app.use(express.urlencoded({extended: true}));
-app.use(express.json({limit: '1mb'}));
+app.use(express.urlencoded({extended: true, limit: '20kb'}));
+app.use(express.json({limit: '20kb'}));
 
 //-----------------------------------------------------------------------------
 
@@ -48,48 +47,14 @@ else {
 
 setupAuthentication(app);
 
-/**
- * This one is unathenticated because it is tied to an invitation send to
- * Slack.
- */
-
-app.get('/slack-play/:id/:userToken', async (req, res) => {
-    const { params: {id, userToken } } = req;
-    try {
-        const invitation = Invitation.all.get(id);
-        assert(invitation, `Invitation "${id}" not found`);
-        const user = invitation.tokens.get(userToken);
-        assert(user, `User token "${userToken}" not found`);
-        const name = invitation.inputs.names.get(user);
-        assert(name, `No name for user ${user}`);
-
-        const userId = `slack/${user}`;
-
-        if (req.user) {
-            // If there is already a session for this caller, it must
-            // be for the same user.
-            assert(req.user.id === userId, 'Session mismatch');
-        }
-        else {
-            await new Promise((resolve) => {
-                req.login({id: userId, name}, resolve);
-            });
-            debug('logged in from slack', userId, name);
-        }
-        res.redirect(`${config.FT2_SITE_BASE_URL}/play/?t=${invitation.gameRoomToken}`);
-    }
-    catch (error) {
-        console.log('slack-play failed', error);
-        res.sendStatus(403).end();
-    }
-});
+setupSlackAuthentication(app);
 
 /**
  * This one will only allow requests that have a user, otherwise it's a 401
  */
 
 app.use((req, res, next) => {
-    if (!req.isAuthenticated()) {
+    if (req.isUnauthenticated()) {
         return res.sendStatus(401);
     }
     next();
