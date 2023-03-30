@@ -94,7 +94,7 @@ for (const name in variables) {
 variables.PRODUCTION = process.env.NODE_ENV === 'production' ? YES : '';
 
 export function on(value: string): boolean {
-    return variables[value] === YES;
+    return value === YES;
 }
 
 export function off(value: string): boolean {
