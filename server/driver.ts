@@ -58,18 +58,20 @@ export default class GameDriver {
      *
      */
 
-    static async start(rules: Rules, players: Player[]): Promise<void> {
-        const driver = new GameDriver(rules, players);
+    static async start(rules: Rules, players: Player[], fixed?: Map<number, Bone[]>): Promise<void> {
+        const driver = new GameDriver(rules, players, fixed);
         return driver.next();
     }
 
     private readonly players: Player[];
     private readonly game: Game;
 
-    private constructor(rules: Rules, players: Player[]) {
+    private constructor(rules: Rules, players: Player[], fixed?: Map<number, Bone[]>) {
         assert(players.length === 4, 'Too few players');
         this.players = players;
-        this.game = new Game(players.map(({name}) => name), rules);
+        const table = players.map(({name}) => name);
+        this.all((player) => player.table({table}));
+        this.game = new Game(table, rules, fixed);
     }
 
     private all(cb: Callback): void {

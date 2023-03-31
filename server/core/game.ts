@@ -91,17 +91,33 @@ class Hand {
         return this.tricks.at(-1);
     }
 
-    shake_and_pull() {
+    shake_and_pull(fixed?: Map<number, Bone[]>) {
         const bones = Bone.pull();
+        if (fixed) {
+            for (const rigged of fixed.values()) {
+                _.pullAll(bones, rigged);
+            }
+        }
         this.pulled_bones = [];
         this.bones_left = [];
         loop(4, (i) => {
-            const start = i * 7;
-            const pulled = bones.slice(start, start + 7);
+            let pulled: Bone[];
+            const rigged = fixed?.get(i);
+            if (rigged) {
+                assert(rigged.length === 7);
+                assert(_.uniq(rigged).length === 7);
+                pulled = rigged;
+            }
+            else {
+                pulled = bones.splice(0, 7);
+            }
+            assert(pulled.length === 7);
+            assert(_.uniq(pulled).length === 7);
             // An array of 4 arrays, each with 7 bones
             this.pulled_bones.push([...pulled]);
             this.bones_left.push([...pulled]);
         });
+        assert(_.uniq(_.flatten(this.pulled_bones)).length === 28);
     }
 }
 
@@ -118,6 +134,7 @@ export class PlayResult {
 
 export default class Game {
 
+    private fixed?: Map<number, Bone[]>;
     public readonly rules: Rules;
 
     public players: Player[];
@@ -127,9 +144,10 @@ export default class Game {
     public hands          : Hand [] = [];
     public next_step      = STEP.START_HAND;
 
-    constructor(players: Player[] , rules: Rules) {
-        this.players = [...players];
+    constructor(players: Player[] , rules: Rules, fixed?: Map<number, Bone[]>) {
         this.rules = rules;
+        this.players = [...players];
+        this.fixed = fixed;
         this.new_game();
     }
 
@@ -183,7 +201,7 @@ export default class Game {
     }
 
     shake_and_pull() {
-        this.this_hand.shake_and_pull();
+        this.this_hand.shake_and_pull(this.fixed);
     }
 
     reset_hand() {

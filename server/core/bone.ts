@@ -175,10 +175,23 @@ export default class Bone {
         return result
     }
 
+    static list(bones: string[]): Bone[] {
+        return bones.map((id) => Bone.find(id));
+    }
+
     /** If this bone is lead, returns true if it beats the other one */
 
     beats(trump: Trump, other: Bone): boolean {
         return this.value(this, trump, true) > other.value(this, trump, true);
+    }
+
+    /**
+     * If this bone is lead, returns true if it beats all the other ones. It
+     * ignores this bone if it exists in the 'others' array.
+     * */
+
+    beatsAll(trump: Trump, others: Bone[]): boolean {
+        return others.every((other) => other === this || this.beats(trump, other));
     }
 
     /**
@@ -202,5 +215,35 @@ export default class Bone {
 
     static orderedForTrump(trump: Trump, bones: Bone[]): Bone[] {
         return _.sortBy(bones, (bone) => -bone.value(bone, trump, true));
+    }
+
+    /** Returns the worst bone for the given trump, trying to avoid money */
+
+    static trash(trump:Trump, bones: Bone[]): Bone {
+        const ordered = this.orderedForTrump(trump, bones).reverse();
+        const notMoney = ordered.filter((bone) => !bone.is_money);
+        if (notMoney.length > 0) {
+            return notMoney[0];
+        }
+        return ordered[0];
+    }
+
+    /** Returns the highest money bone, if any */
+
+    static mostMoney(bones: Bone[]): Bone | undefined {
+        const money = _.sortBy(bones.filter((bone) => bone.is_money),
+            (bone) => -bone.money);
+        const [first, second] = money;
+        /**
+         * If the result includes both the 5.5 and 6.4 we're going to
+         * choose the 6.4
+         * */
+        if (first && second && (first.money + second.money) === 20) {
+            return first.is_double ? second : first;
+        }
+        /** Otherwise, we return the first one, if any */
+        if (first) {
+            return first;
+        }
     }
 }

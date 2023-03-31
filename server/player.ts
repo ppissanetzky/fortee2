@@ -49,6 +49,10 @@ export class RandomPlayer implements Player {
         return Promise.resolve(result);
     }
 
+    table({ table } : { table: string[]}): void {
+        this.debug('table', table);
+    }
+
     startingHand(): Promise<void> {
         this.debug('starting hand');
         return Promise.resolve();

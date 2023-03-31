@@ -47,6 +47,10 @@ export default class RemotePlayer implements Player {
         return msg;
     }
 
+    table(msg: { table: string[]}): void {
+        this.socket.send('table', msg);
+    }
+
     startingHand(): Promise<void> {
         return this.socket.send('startingHand', null, 'readyToStartHand')
             .then(() => undefined);

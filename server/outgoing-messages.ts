@@ -62,6 +62,11 @@ export interface OutgoingGameRoomMessages {
 
 export interface GameMessages {
     /**
+     * The table, sent once when the game is started
+     */
+    table: { table: string[] };
+
+    /**
      * A new hand is about to start, just notifies all the players
      * and it actually starts when they reply.
      */
