@@ -4,7 +4,7 @@ import { makeDebug, makeToken } from './utility';
 import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
-import { PassBot } from './random-bot';
+import RandomBot from './random-bot';
 import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 
@@ -99,7 +99,7 @@ export default class GameRoom {
                 this.invited.add(name);
             }
             else {
-                const bot = new PassBot();
+                const bot = new RandomBot();
                 this.positions[index] = bot.name;
                 this.bots.set(bot.name, bot);
             }

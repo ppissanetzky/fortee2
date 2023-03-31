@@ -60,11 +60,66 @@ export interface OutgoingGameRoomMessages {
     }
 }
 
+export interface StartingGame {
+    table: string[];
+}
+
+export interface Draw {
+    bones: Bone[];
+}
+
+export interface Waiting {
+    from: string;
+}
+
+export interface YourBid {
+    possible: Bid[];
+}
+
+export interface BidSubmitted {
+    from: string;
+    bid: Bid;
+}
+
+export interface YourCall {
+    possible: Trump[];
+}
+
+export interface TrumpSubmitted {
+    from: string;
+    trump: Trump;
+}
+
+export interface YourPlay {
+    possible: Bone[];
+}
+
+export interface PlaySubmitted {
+    from: string;
+    bone: Bone;
+}
+
+export interface EndOfTrick {
+    winner: string;
+    points: number;
+    status: Status;
+}
+
+export interface EndOfHand {
+    winner: Team;
+    made: boolean;
+    status: Status;
+}
+
+export interface GameOver {
+    status: Status;
+}
+
 export interface GameMessages {
     /**
      * The table, sent once when the game is started
      */
-    table: { table: string[] };
+    startingGame: StartingGame;
 
     /**
      * A new hand is about to start, just notifies all the players
@@ -78,25 +133,25 @@ export interface GameMessages {
      * or after a reshuffle
      */
 
-    draw: { bones: Bone[]; };
+    draw: Draw;
 
     /**
      * Waiting on someone else to bid, doesn't require ack
      */
 
-    waitingForBid: { from: string; };
+    waitingForBid: Waiting;
 
     /**
      * Wait for this player to bid, one the possible bids
      */
 
-    bid: { possible: Bid[]; }; /** Promise<Bid> */
+    bid: YourBid; /** Promise<Bid> */
 
     /**
      * A player has bid
      */
 
-    bidSubmitted: { from: string; bid: Bid; };
+    bidSubmitted: BidSubmitted;
 
     /**
      * Everyone passed, so we are going to reshuffle
@@ -108,61 +163,61 @@ export interface GameMessages {
      * A player has won the bid
      */
 
-    bidWon: { winner: string; bid: Bid; };
+    bidWon: BidSubmitted;
 
     /**
      * Waiting for someone else to call trumps
      */
 
-    waitingForTrump: { from: string; };
+    waitingForTrump: Waiting;
 
     /**
      * This player calls trumps
      */
 
-    call: { possible: Trump[]; }; /** Promise<Trump> */
+    call: YourCall; /** Promise<Trump> */
 
     /**
      * A player called trumps
      */
 
-    trumpSubmitted: { from: string; trump: Trump; };
+    trumpSubmitted: TrumpSubmitted;
 
     /**
      * Waiting for someone else to play
      */
 
-    waitingForPlay: { from: string; };
+    waitingForPlay: Waiting;
 
     /**
      * This player plays a bone
      */
 
-    play: { possible: Bone[]; }; /** Promise<Bone> */
+    play: YourPlay; /** Promise<Bone> */
 
     /**
      * Someone played a bone
      */
 
-    playSubmitted: { from: string; bone: Bone; };
+    playSubmitted: PlaySubmitted;
 
     /**
      * A trick is over
      */
 
-    endOfTrick: { winner: string; points: number; status: Status; };
+    endOfTrick: EndOfTrick;
 
     /**
      * A hand is over. Will arrive right after endOfTrick
      */
 
-    endOfHand: { winner: Team; made: boolean; status: Status; };
+    endOfHand: EndOfHand;
 
     /**
      * The game is over, will arrive right after endOfHand
      */
 
-    gameOver: { status: Status; };
+    gameOver: GameOver;
 }
 
 export type OutgoingMessages =

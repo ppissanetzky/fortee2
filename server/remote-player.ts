@@ -47,8 +47,8 @@ export default class RemotePlayer implements Player {
         return msg;
     }
 
-    table(msg: { table: string[]}): void {
-        this.socket.send('table', msg);
+    startingGame(msg: { table: string[]}): void {
+        this.socket.send('startingGame', msg);
     }
 
     startingHand(): Promise<void> {
@@ -80,7 +80,7 @@ export default class RemotePlayer implements Player {
         this.socket.send('reshuffle', null);
     }
 
-    bidWon(msg: { winner: string, bid: Bid }): void {
+    bidWon(msg: { from: string, bid: Bid }): void {
         this.socket.send('bidWon', this.you(msg));
     }
 

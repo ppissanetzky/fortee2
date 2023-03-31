@@ -1,14 +1,14 @@
 
 import { Rules, Bone } from './core';
 import GameDriver from './driver';
-import { RandomPlayer } from './player';
-import { PassBot, DebugBot} from './random-bot';
+import { BasePlayer } from './base-player';
+import RandomBot from './random-bot';
 import PromptPlayer from './prompt-player';
 
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
 
-class ChattyPlayer extends RandomPlayer {
+class ChattyPlayer extends BasePlayer {
     protected debug(...args: any[]): void {
         console.log(...args);
     }
@@ -22,9 +22,9 @@ function play(): Promise<void> {
 
     const players = [
         me,
-        new PassBot(true),
-        new DebugBot(),
-        new PassBot(true),
+        new RandomBot(true),
+        new RandomBot(true),
+        new RandomBot(true),
     ];
 
     const fixed = new Map<number, Bone[]>([

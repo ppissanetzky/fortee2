@@ -179,6 +179,10 @@ export default class Bone {
         return bones.map((id) => Bone.find(id));
     }
 
+    static toList(bones: Bone[]): string[] {
+        return bones.map((bone) => bone.toString());
+    }
+
     /** If this bone is lead, returns true if it beats the other one */
 
     beats(trump: Trump, other: Bone): boolean {

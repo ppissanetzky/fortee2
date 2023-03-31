@@ -70,7 +70,7 @@ export default class GameDriver {
         assert(players.length === 4, 'Too few players');
         this.players = players;
         const table = players.map(({name}) => name);
-        this.all((player) => player.table({table}));
+        this.all((player) => player.startingGame({table}));
         this.game = new Game(table, rules, fixed);
     }
 
@@ -125,7 +125,7 @@ export default class GameDriver {
                         const index = this.game.this_hand.high_bidder;
                         const bid = this.game.this_hand.high_bid;
                         this.all((player) =>
-                            player.bidWon({winner: this.players[index].name, bid}));
+                            player.bidWon({from: this.players[index].name, bid}));
                     }
                 }
                 break;
