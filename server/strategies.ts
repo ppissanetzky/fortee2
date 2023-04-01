@@ -76,9 +76,16 @@ export const TryToKeepMyPartnersTrumps: Strategy = {
                 debug('playing unbeatable that is not a trump');
                 return unbeatable;
             }
+            /** See if my partner may have a trump */
+            const partner = player.has(table.partner);
+            /** If they don't, this strategy doesn't apply */
+            if (!partner.some((bone) => bone.is_trump(trump))) {
+                debug('my partner has no trumps');
+                return;
+            }
             /**
-             * I don't have an unbeatable that is not a trump, see if the other
-             * team has any trumps.
+             * I don't have an unbeatable that is not a trump, and my partner
+             * may have a trump. See if the other team has any trumps.
              */
             const have = table.others.reduce((result, other) =>
                 _.union(result, player.has(other)), [] as Bone[])
@@ -90,7 +97,6 @@ export const TryToKeepMyPartnersTrumps: Strategy = {
                  * Now, see if I have a bone that is unbeatable, or only
                  * beatable by my partner's trumps
                  */
-                const partner = player.has(table.partner);
                 const withoutPartner = _.difference(remaining, partner);
                 const [unbeatable] = Bone.orderedForTrump(trump, notTrumps)
                     .filter((bone) => bone.beatsAll(trump, withoutPartner));
