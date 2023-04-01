@@ -16,7 +16,6 @@ function play(): Promise<void> {
         return name.padEnd('partner'.length + 1, ' ');
     }
 
-    const rules = new Rules();
     const me = new PromptPlayer(pad('me'));
     me.debug.enabled = false;
 
@@ -55,17 +54,12 @@ function play(): Promise<void> {
 
     const mine = Bone.list(['3.0', '2.1', '0.0', '1.0', '6.0', '5.2', '4.1']);
     const p = Bone.list(['4.4', '6.4', '3.3', '3.1', '5.5', '1.1', '5.1']);
-
     const remaining = _.difference(Bone.ALL, mine, p);
+    const bones = _.concat(mine, remaining.slice(0, 7), p, remaining.slice(7));
 
-    const fixed = new Map<number, Bone[]>([
-        [0, mine],
-        [1, remaining.slice(0, 7)],
-        [2, p],
-        [3, remaining.slice(7)]
-    ]);
+    const rules = new Rules(bones);
 
-    return GameDriver.start(rules, players, fixed).then(() => {
+    return GameDriver.start(rules, players).then(() => {
         if (!auto) {
             console.log('\nDONE');
         }

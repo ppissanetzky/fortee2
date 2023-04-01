@@ -1,3 +1,7 @@
+import assert from 'node:assert';
+import _ from 'lodash';
+import Bone from './bone';
+
 // '''
 // AllPass = FORCE | SHUFFLE
 // NelloAllowed = NEVER | ALWAYS | FORCE
@@ -15,6 +19,7 @@
 // PlungeMaxMarks = 2
 // MinBid = 30
 // ForcedMinBid = 30
+
 
 // defaults
 
@@ -56,8 +61,15 @@ export default class Rules {
     // A bid name
     public readonly forced_min_bid: string = '30';
 
-    constructor() { void 0 }
+    /** For testing, we fix the bones that are pulled */
+    public readonly bones?: Bone[];
 
+    constructor(bones?: Bone[]) {
+        if (bones) {
+            assert(_.uniq(bones).length = Bone.ALL.length);
+        }
+        this.bones = bones;
+    }
 
     // in_set<T>(value: any, set: Set<T>):
 
