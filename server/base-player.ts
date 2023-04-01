@@ -111,6 +111,10 @@ export class BasePlayer implements Player {
             _.union(result, this.has(name)), [] as Bone[]);
     }
 
+    get trickBones(): Bone[] {
+        return this.trick.map(({bone}) => bone);
+    }
+
     /**
      * Returns all the bones that have not been played, are not in my hand,
      * and are also not in the 'exclude' array.

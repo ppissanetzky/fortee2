@@ -12,6 +12,24 @@ export interface Strategy {
     play?: (player: BasePlayer, possible: Bone[]) => Promise<Bone | void>;
 }
 
+/**
+ * A helper to figure out all the bones in 'possible' that can beat all the
+ * bones in 'against'
+ */
+
+function unbeatable(player: BasePlayer, against: Bone[], possible: Bone[]): Bone[] {
+    const { lead , trump } = player;
+    assert(trump);
+    /** The highest value of all bones in 'against' */
+    const value = Bone.highestValue(trump, against, lead?.bone);
+    /** This happens if 'against' is empty, which is probably a bug */
+    if (value < 0) {
+        return [];
+    }
+    return possible.filter((bone) =>
+        bone.value(lead?.bone || bone, trump, true) >= value);
+}
+
 export const PassStrategy: Strategy = {
     name: 'pass',
     async bid(player: BasePlayer, possible: Bid[]): Promise<Bid | void> {
@@ -68,18 +86,23 @@ export const TryToKeepMyPartnersTrumps: Strategy = {
         assert(table);
         if (!lead) {
             const remaining = player.deepRemaining();
+            if (!remaining.some((bone) => bone.is_trump(trump))) {
+                /** All trumps are gone */
+                debug('all trumps are out');
+                return;
+            }
             const notTrumps = possible.filter((bone) => !bone.is_trump(trump));
             /** See if I have an unbeatable bone that is not a trump */
-            const [unbeatable] = notTrumps.filter((bone) =>
-                bone.beatsAll(trump, remaining));
-            if (unbeatable) {
+            const [winner] = unbeatable(player, remaining, notTrumps);
+            if (winner) {
                 debug('playing unbeatable that is not a trump');
-                return unbeatable;
+                return winner;
             }
             /** See if my partner may have a trump */
-            const partner = player.has(table.partner);
+            const partner = player.has(table.partner).filter((bone) =>
+                bone.is_trump(trump));
             /** If they don't, this strategy doesn't apply */
-            if (!partner.some((bone) => bone.is_trump(trump))) {
+            if (partner.length === 0) {
                 debug('my partner has no trumps');
                 return;
             }
@@ -98,11 +121,10 @@ export const TryToKeepMyPartnersTrumps: Strategy = {
                  * beatable by my partner's trumps
                  */
                 const withoutPartner = _.difference(remaining, partner);
-                const [unbeatable] = Bone.orderedForTrump(trump, notTrumps)
-                    .filter((bone) => bone.beatsAll(trump, withoutPartner));
-                if (unbeatable) {
+                const [winner] = unbeatable(player, withoutPartner, notTrumps);
+                if (winner) {
                     debug('only my partner can beat this one');
-                    return unbeatable;
+                    return winner;
                 }
             }
         }
@@ -116,12 +138,41 @@ export const UnbeatableLead: Strategy = {
         const { lead, trump } = player;
         assert(trump);
         if (!lead) {
-            const remaining = player.deepRemaining();
-            const [best] = possible.filter((bone) => bone.beatsAll(trump, remaining));
-            if (best) {
+            const [winner] = unbeatable(player, player.deepRemaining(), possible);
+            if (winner) {
                 debug('this is an unbeatable lead');
-                return best;
+                return winner;
             }
+        }
+    }
+}
+
+export const WinWithMoney: Strategy = {
+    name: 'win with money',
+    async play(player: BasePlayer, possible: Bone[]): Promise<Bone | void> {
+        const debug = player.debug.extend(this.name);
+        const { lead, trump } = player;
+        assert(trump);
+        const trick = player.trickBones;
+        /** I am playing last */
+        if (lead && trick.length === 3) {
+            /** My bones that can beat everything else in the trick */
+            const bones = unbeatable(player, trick, possible);
+            /** I don't have any, move on */
+            if (bones.length === 0) {
+                return;
+            }
+            debug('i can win with %o', Bone.toList(bones));
+            /** See if any are money */
+            const money = Bone.mostMoney(bones);
+            if (money) {
+                debug('winning with money, yo');
+                return money;
+            }
+            // TODO: should we pick the first, or can we do better?
+            const [first] = bones;
+            debug('i cannot win with money, but i can win');
+            return first;
         }
     }
 }
@@ -208,9 +259,9 @@ export const TakeTheLead: Strategy = {
         assert(trump);
 
         if (lead) {
-            const [best] = lead.bone.ordered(trump, player.deepRemaining());
+            const [best] = unbeatable(player, player.deepRemaining(), possible);
             /** We have an unbeatable bone */
-            if (possible.includes(best)) {
+            if (best) {
                 debug('no one can beat', best.toString());
                 return best;
             }

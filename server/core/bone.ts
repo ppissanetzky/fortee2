@@ -250,4 +250,9 @@ export default class Bone {
             return first;
         }
     }
+
+    static highestValue(trump: Trump, bones: Bone[], lead?: Bone): number {
+        return bones.reduce((result, bone) =>
+            Math.max(result, bone.value(lead || bone, trump, true)), -Infinity);
+    }
 }

@@ -5,7 +5,7 @@ import GameDriver from './driver';
 import { BasePlayer } from './base-player';
 import RandomBot from './random-bot';
 import PromptPlayer from './prompt-player';
-import { FallbackStrategy, Forced, MoneyForPartner, NoMoneyOnUncertainLead, PassStrategy, PlayFirst, TakeTheLead, Trash, TryToKeepMyPartnersTrumps, UnbeatableLead } from './strategies';
+import { FallbackStrategy, Forced, MoneyForPartner, NoMoneyOnUncertainLead, PassStrategy, PlayFirst, TakeTheLead, Trash, TryToKeepMyPartnersTrumps, UnbeatableLead, WinWithMoney } from './strategies';
 
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
@@ -41,6 +41,7 @@ function play(): Promise<void> {
         TryToKeepMyPartnersTrumps,
         UnbeatableLead,
         NoMoneyOnUncertainLead,
+        WinWithMoney,
         Trash,
         FallbackStrategy
     );

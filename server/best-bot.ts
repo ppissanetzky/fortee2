@@ -2,7 +2,8 @@ import { BasePlayer } from './base-player';
 import { FallbackStrategy, Forced, MoneyForPartner,
     NoMoneyOnUncertainLead, PassStrategy,
     TakeTheLead, Trash, TryToKeepMyPartnersTrumps,
-    UnbeatableLead } from './strategies';
+    UnbeatableLead,
+    WinWithMoney} from './strategies';
 
 export default function bestBot(player: BasePlayer): BasePlayer {
     return player.with(
@@ -13,6 +14,7 @@ export default function bestBot(player: BasePlayer): BasePlayer {
         TryToKeepMyPartnersTrumps,
         UnbeatableLead,
         NoMoneyOnUncertainLead,
+        WinWithMoney,
         Trash,
         FallbackStrategy
     )
