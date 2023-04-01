@@ -6,8 +6,8 @@ import type { BidSubmitted, EndOfHand, EndOfTrick, GameOver, PlaySubmitted, Star
 
 export default class PromptPlayer extends BasePlayer {
 
-    constructor() {
-        super('you');
+    constructor(name = '') {
+        super(name || 'you');
         this.with({
             name: 'prompt',
             bid: async (player, possible) => {
@@ -24,10 +24,6 @@ export default class PromptPlayer extends BasePlayer {
         })
     }
 
-    protected debug(...args: any[]): void {
-        console.log(...args);
-    }
-
     protected async choose(message: string, choices: (Bid | Bone | Trump)[]): Promise<string> {
         const strings = choices.map((choice) => choice.toString());
         const { choice } = await prompts({
@@ -42,44 +38,42 @@ export default class PromptPlayer extends BasePlayer {
         return choice;
     }
 
-    startingGame(msg: StartingGame) {
+    override startingGame(msg: StartingGame) {
         super.startingGame(msg);
-        console.log('Your partner is', this.table?.partner);
     }
 
-    bidSubmitted(msg: BidSubmitted): void {
+    override bidSubmitted(msg: BidSubmitted): void {
         super.bidSubmitted(msg);
-        console.log(msg.from, 'bid', msg.bid.toString());
     }
 
-    bidWon(msg: BidSubmitted): void {
+    override bidWon(msg: BidSubmitted): void {
         super.bidWon(msg);
-        console.log(msg.from, 'wond the bid with', msg.bid.toString());
+        console.log(msg.from, 'won the bid with', msg.bid.toString());
     }
 
-    trumpSubmitted(msg: TrumpSubmitted): void {
+    override trumpSubmitted(msg: TrumpSubmitted): void {
         super.trumpSubmitted(msg);
         console.log('Trumps are', msg.trump.toString());
     }
 
-    playSubmitted(msg: PlaySubmitted): void {
+    override playSubmitted(msg: PlaySubmitted): void {
         super.playSubmitted(msg);
-        console.log(msg.from, 'played the', msg.bone.toString());
     }
 
-    async endOfTrick(msg: EndOfTrick): Promise<void> {
+    override async endOfTrick(msg: EndOfTrick): Promise<void> {
         await super.endOfTrick(msg);
         console.log(msg.winner, 'won the trick with', msg.points);
         console.log('US', msg.status.US.points, 'THEM', msg.status.THEM.points);
+        console.log('');
     }
 
-    async endOfHand(msg: EndOfHand): Promise<void> {
+    override async endOfHand(msg: EndOfHand): Promise<void> {
         await super.endOfHand(msg);
         console.log(msg.winner, 'won the hand');
         console.log('US', msg.status.US.marks, 'THEM', msg.status.THEM.marks);
     }
 
-    gameOver(msg: GameOver): void {
+    override gameOver(msg: GameOver): void {
         console.log('Game over');
         super.gameOver(msg);
         process.exit(0);

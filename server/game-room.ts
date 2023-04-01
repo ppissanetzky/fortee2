@@ -7,6 +7,7 @@ import RemotePlayer from './remote-player';
 import RandomBot from './random-bot';
 import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
+import bestBot from './best-bot';
 
 const enum State {
     /**
@@ -99,7 +100,7 @@ export default class GameRoom {
                 this.invited.add(name);
             }
             else {
-                const bot = new RandomBot();
+                const bot = bestBot(new RandomBot());
                 this.positions[index] = bot.name;
                 this.bots.set(bot.name, bot);
             }

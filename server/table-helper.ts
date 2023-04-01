@@ -45,7 +45,29 @@ export default class TableHelper {
         return this.players[this.position.right];
     }
 
+    get others(): string[] {
+        return [
+            this.players[this.position.left],
+            this.players[this.position.right]
+        ];
+    }
+
     isPartner(name: string) {
         return this.partner === name;
+    }
+
+    /** Returns all the players after me, given this lead player */
+    after(lead: string): string[] {
+        assert(this.players.includes(lead));
+        const result = [...this.players];
+        while (result[0] !== lead) {
+            const first = result.shift();
+            assert(first);
+            result.push(first);
+        }
+        while (result.shift() !== this.name) {
+            void 0;
+        }
+        return result;
     }
 }

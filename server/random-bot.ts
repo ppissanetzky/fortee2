@@ -1,38 +1,32 @@
-import assert from 'node:assert';
 import _ from 'lodash';
-import { Bid, Bone, Trump } from './core';
-import { Status } from './driver';
 import { BasePlayer } from './base-player';
 import getNextBotName from './bot-names';
-import { makeDebug } from './utility';
-import { BasicStrategy } from './strategies';
 
 export default class RandomBot extends BasePlayer {
 
     private readonly fastAF: boolean;
 
-    constructor(fastAF = false) {
-        super(getNextBotName());
+    constructor(name = '', fastAF = false) {
+        super(name || getNextBotName());
         this.fastAF = fastAF;
         this.with({
             name: 'delay',
             bid: () => this.delay(),
             call: () => this.delay(),
             play: () => this.delay(),
-        })
-        .with(new BasicStrategy());
-    }
-
-    protected async delay(): Promise<void> {
-        if (this.fastAF) {
-            return;
-        }
-        return new Promise<void>((resolve) => {
-            setTimeout(resolve, _.random(500, 2000));
         });
     }
 
-    startingHand(): Promise<void> {
+    protected async delay(): Promise<void> {
+        if (!this.fastAF) {
+            return new Promise<void>((resolve) => {
+                setTimeout(resolve, _.random(500, 2000));
+            });
+        }
+    }
+
+    override async startingHand(): Promise<void> {
+        await super.startingHand();
         return this.delay();
     }
 }

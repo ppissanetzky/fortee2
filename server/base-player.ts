@@ -8,6 +8,7 @@ import type {
 import { Bid , Bone, Trump } from './core';
 import TableHelper from './table-helper';
 import type { Strategy } from './strategies';
+import { Debugger, makeDebug } from './utility';
 
 function random<T>(from: T[]): T {
     assert(from.length > 0);
@@ -18,7 +19,9 @@ function random<T>(from: T[]): T {
 
 export class BasePlayer implements Player {
 
-    private readonly strategies: Strategy[] = [];
+    public readonly debug: Debugger;
+
+    public strategies: Strategy[] = [];
 
     public readonly name: string;
 
@@ -32,12 +35,13 @@ export class BasePlayer implements Player {
 
     constructor(name: string) {
         this.name = name;
+        this.debug = makeDebug(this.name);
     }
 
     /** Add a strategy */
 
-    with(strategy: Strategy): this {
-        this.strategies.push(strategy);
+    with(...strategies: Strategy[]): this {
+        strategies.forEach((strategy) => this.strategies.push(strategy));
         return this;
     }
 
@@ -59,12 +63,61 @@ export class BasePlayer implements Player {
     }
 
     /**
-     * Returns all the bones that have not been played and are also not
-     * in the 'exclude' array.
+     * This is a list of all POSSIBLE bones this player may have, given
+     * our knowledge: the pile, our hand and any time this player didn't
+     * follow suit
+     */
+
+    has(name: string): Bone[] {
+        assert(this.table?.players.includes(name));
+        const { trump } = this;
+        assert(trump);
+        /** Start with all the bones that we have not seen yet */
+        let has = this.remaining();
+        /** Now, look at each trick where this player followed */
+        for (const trick of this.pile) {
+            const [lead] = trick;
+            /** If this player was the lead, we cannot learn anything */
+            if (lead.from === name) {
+                continue;
+            }
+            /** Find what this player played */
+            const played = trick.find((play) => play.from === name);
+            /** In the case of Nello, this player may not have played */
+            if (!played) {
+                continue;
+            }
+            /**
+             * If their play was not in the same suit as the lead,
+             * we can remove all bones in the same suit */
+            if (!played.bone.is_same_suit(lead.bone, trump)) {
+                this.debug(name, 'did not follow', lead.bone.toString());
+                has = has.filter((bone) =>
+                    !bone.is_same_suit(lead.bone, trump));
+            }
+        }
+        return has;
+    }
+
+    deepRemaining(): Bone[] {
+        const { lead, table } = this;
+        assert(table);
+        /** The list of players that will play after me */
+        const after = table.after(lead?.from || this.name);
+        if (after.length === 0) {
+            return this.remaining();
+        }
+        return after.reduce((result, name) =>
+            _.union(result, this.has(name)), [] as Bone[]);
+    }
+
+    /**
+     * Returns all the bones that have not been played, are not in my hand,
+     * and are also not in the 'exclude' array.
      */
 
     remaining(exclude: Bone[] = []): Bone[] {
-        return _.difference(Bone.ALL, this.played, exclude);
+        return _.difference(Bone.ALL, this.bones, this.played, exclude);
     }
 
     // #region Player protocol
@@ -73,14 +126,13 @@ export class BasePlayer implements Player {
         this.table = new TableHelper(this.name, table);
     }
 
-    startingHand(): Promise<void> {
+    async startingHand(): Promise<void> {
         this.bones = [];
         this.bids = [];
         this.winningBid = undefined;
         this.trump = undefined;
         this.trick = [];
         this.pile = [];
-        return Promise.resolve();
     }
 
     draw({ bones } : Draw): void {
@@ -94,6 +146,7 @@ export class BasePlayer implements Player {
             if (strategy.bid) {
                 const bid = await strategy.bid(this, possible);
                 if (bid) {
+                    this.debug.extend(strategy.name)('bid', bid.toString());
                     return bid;
                 }
             }
@@ -121,6 +174,7 @@ export class BasePlayer implements Player {
             if (strategy.call) {
                 const trump = await strategy.call(this, possible);
                 if (trump) {
+                    this.debug.extend(strategy.name)('called', trump.toString());
                     return trump;
                 }
             }
@@ -139,6 +193,7 @@ export class BasePlayer implements Player {
             if (strategy.play) {
                 const bone = await strategy.play(this, possible);
                 if (bone) {
+                    this.debug.extend(strategy.name)('played', bone.toString());
                     return bone;
                 }
             }
@@ -151,31 +206,18 @@ export class BasePlayer implements Player {
     }
 
     async endOfTrick(msg: EndOfTrick): Promise<void> {
+        msg;
         this.pile.push(this.trick);
         this.trick = [];
     }
 
-    async endOfHand(msg: EndOfHand): Promise<void> { void 0 }
+    async endOfHand(msg: EndOfHand): Promise<void> {
+        msg;
+    }
 
-    gameOver(msg: GameOver): void { void 0 }
+    gameOver(msg: GameOver): void {
+        msg;
+    }
 
     // #endregion
 }
-
-// async endOfTrick({ winner, points, status } : EndOfTrick): Promise<void> {
-//     // this.debug(winner,
-//     //     'won the trick with', points, `point${points === 1 ? '' : 's'}`);
-//     // this.debug('US', status.US.points, 'THEM', status.THEM.points);
-// }
-
-// async endOfHand({ winner, made, status } : EndOfHand): Promise<void> {
-//     // this.debug('hand over');
-//     // this.debug(winner, made ? 'made the bid' : 'set');
-//     // this.debug('US', status.US.marks, 'marks',
-//     //     ':', 'THEM', status.THEM.marks, 'marks');
-// }
-
-// gameOver({ status } : GameOver): void {
-//     // this.debug('game over');
-//     // this.debug(status);
-// }
