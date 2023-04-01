@@ -254,8 +254,8 @@ export default {
           this.bids = {}
           break
         case 'bidWon':
-          this.bids = { [message.winner]: message.bid }
-          this.bidWinner = message.winner
+          this.bids = { [message.from]: message.bid }
+          this.bidWinner = message.from
           this.US.points = 0
           this.THEM.points = 0
           break
