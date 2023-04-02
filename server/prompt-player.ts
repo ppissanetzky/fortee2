@@ -2,26 +2,14 @@ import prompts from 'prompts';
 
 import { Bid , Bone, Trump } from './core';
 import { BasePlayer } from './base-player';
-import type { BidSubmitted, EndOfHand, EndOfTrick, GameOver, PlaySubmitted, StartingGame, TrumpSubmitted } from './outgoing-messages';
+import type { BidSubmitted, EndOfHand, EndOfTrick, GameOver,
+    PlaySubmitted, StartingGame, TrumpSubmitted, YourBid,
+    YourCall, YourPlay } from './outgoing-messages';
 
 export default class PromptPlayer extends BasePlayer {
 
     constructor(name = '') {
         super(name || 'you');
-        this.with({
-            name: 'prompt',
-            bid: async (player, possible) => {
-                console.log('You have', Bone.toList(player.bones).join(' '));
-                return Bid.find(await this.choose('Your bid', possible));
-            },
-            call: async (player, possible) => {
-                console.log('You have', Bone.toList(player.bones).join(' '));
-                return Trump.find(await this.choose('Call trumps', possible));
-            },
-            play: async (player, possible) => {
-                return Bone.find(await this.choose('Your turn', possible));
-            }
-        })
     }
 
     protected async choose(message: string, choices: (Bid | Bone | Trump)[]): Promise<string> {
@@ -42,6 +30,11 @@ export default class PromptPlayer extends BasePlayer {
         super.startingGame(msg);
     }
 
+    override async bid({ possible } : YourBid): Promise<Bid> {
+        console.log('You have %j', Bone.toList(this.bones));
+        return Bid.find(await this.choose('Your bid', possible));
+    }
+
     override bidSubmitted(msg: BidSubmitted): void {
         super.bidSubmitted(msg);
     }
@@ -51,9 +44,18 @@ export default class PromptPlayer extends BasePlayer {
         console.log(msg.from, 'won the bid with', msg.bid.toString());
     }
 
+    override async call({ possible } : YourCall): Promise<Trump> {
+        console.log('You have %o', Bone.toList(this.bones));
+        return Trump.find(await this.choose('Call trumps', possible));
+    }
+
     override trumpSubmitted(msg: TrumpSubmitted): void {
         super.trumpSubmitted(msg);
         console.log('Trumps are', msg.trump.toString());
+    }
+
+    override async play({ possible } : YourPlay): Promise<Bone> {
+        return Bone.find(await this.choose('Your turn', possible));
     }
 
     override playSubmitted(msg: PlaySubmitted): void {

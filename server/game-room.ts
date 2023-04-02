@@ -4,10 +4,9 @@ import { makeDebug, makeToken } from './utility';
 import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
-import RandomBot from './random-bot';
+import ProductionBot from './production-bot';
 import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
-import bestBot from './best-bot';
 
 const enum State {
     /**
@@ -100,7 +99,7 @@ export default class GameRoom {
                 this.invited.add(name);
             }
             else {
-                const bot = bestBot(new RandomBot());
+                const bot = new ProductionBot();
                 this.positions[index] = bot.name;
                 this.bots.set(bot.name, bot);
             }

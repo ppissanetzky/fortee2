@@ -2,10 +2,12 @@ import assert from 'node:assert';
 import _ from 'lodash';
 import { Rules, Bone } from './core';
 import GameDriver from './driver';
-import { BasePlayer } from './base-player';
-import RandomBot from './random-bot';
+import Bot from './bot';
 import PromptPlayer from './prompt-player';
-import { FallbackStrategy, Forced, MoneyForPartner, NoMoneyOnUncertainLead, PassStrategy, PlayFirst, TakeTheLead, Trash, TryToKeepMyPartnersTrumps, UnbeatableLead, WinWithMoney } from './strategies';
+import { Fallback, MoneyForPartner, NoMoneyOnUncertainLead,
+    Pass, PlayFirst, TakeTheLead, Trash, KeepPartnerTrumps,
+    UnbeatableLead, WinWithMoney } from './strategies';
+import Strategy from './strategy';
 
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
@@ -16,41 +18,44 @@ async function play(): Promise<void> {
         return name.padEnd('partner'.length + 1, ' ');
     }
 
-    const me = new PromptPlayer(pad('me'));
-    me.debug.enabled = false;
-
-    const partner = new RandomBot(pad('partner'), true).with(
-        {
-            name: 'show me',
-            async play(player: BasePlayer, possible: Bone[]) {
-                player.debug('remaining %o', Bone.toList(_.sortBy(player.remaining(player.bones), 'id')));
-                player.debug('deep      %o', Bone.toList(_.sortBy(player.deepRemaining(), 'id')));
-                const after = player.table?.after(player.lead?.from || player.name);
-                assert(after);
-                player.debug('after me %o', after);
-                for (const name of after) {
-                    player.debug('%s has %o', name.padEnd(15, ' '), Bone.toList(player.has(name)));
-                }
-                player.debug('i can play %o', Bone.toList(possible));
-            }
-        },
-        Forced,
-        PassStrategy,
+    const strategies = [
+        Pass,
         MoneyForPartner,
         TakeTheLead,
-        TryToKeepMyPartnersTrumps,
+        KeepPartnerTrumps,
         UnbeatableLead,
         NoMoneyOnUncertainLead,
         WinWithMoney,
         Trash,
-        FallbackStrategy
+        Fallback
+    ];
+
+    const me = new PromptPlayer(pad('me'));
+
+    const partnerDebug = new Strategy('debug', {
+        play({name, debug, remaining, table, lead, has, possible}) {
+            debug('remaining  %o', Bone.toList(_.sortBy(remaining, 'id')));
+            const after = table.after(lead?.from || name);
+            debug('after me   %o', after);
+            for (const name of after) {
+                debug('%s has %o', name.padEnd(15, ' '), Bone.toList(has(name)));
+            }
+            debug('i can play %o', Bone.toList(possible));
+        }
+    });
+
+
+
+    const partner = new Bot(pad('partner'), true).with(
+        partnerDebug,
+        ...strategies
     );
 
     const players = [
         me,
-        new RandomBot(pad('left'), true).with(PassStrategy, PlayFirst),
+        new Bot(pad('left'), true).with(...strategies),
         partner,
-        new RandomBot(pad('right'), true).with(PassStrategy, PlayFirst),
+        new Bot(pad('right'), true).with(...strategies),
     ];
 
     const mine = Bone.list(['3.0', '2.1', '0.0', '1.0', '6.0', '5.2', '4.1']);
@@ -60,12 +65,10 @@ async function play(): Promise<void> {
 
     const rules = new Rules(bones);
 
-    const j = rules.toJson();
-    console.log(j);
-    console.log(Rules.fromJson(j));
-    assert(Rules.fromJson(j).toJson() === j);
-
-    return;
+    // const j = rules.toJson();
+    // console.log(j);
+    // console.log(Rules.fromJson(j));
+    // assert(Rules.fromJson(j).toJson() === j);
 
     return GameDriver.start(rules, players).then(() => {
         if (!auto) {
