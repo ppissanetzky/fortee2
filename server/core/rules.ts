@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import _ from 'lodash';
-import Bone from './bone';
+import { Bid, Bone } from '.';
 
 // '''
 // AllPass = FORCE | SHUFFLE
@@ -46,6 +46,60 @@ type AllPass = 'FORCE' | 'SHUFFLE';
 type NelloAllowed = 'NEVER' | 'ALWAYS' | 'FORCE';
 type DoublesSuit = 'HIGH_SUIT' | 'LOW_SUIT' | 'HIGH' | 'LOW';
 
+function replacer(key: any, value: any): any {
+    if (key === 'nello_doubles' || key === 'follow_me_doubles') {
+        return Array.from(value.values());
+    }
+    if (key === 'bones' && value) {
+        return Bone.toList(value);
+    }
+    return value;
+}
+
+function reviver(key: string, value: any): any {
+    try {
+        switch (key) {
+            case 'all_pass':
+                assert(_.isString(value));
+                assert(['FORCE', 'SHUFFLE'].includes(value));
+                return value;
+            case 'nello_allowed':
+                assert(_.isString(value));
+                assert(['NEVER', 'ALWAYS', 'FORCE'].includes(value));
+                return value;
+            case 'nello_doubles':
+            case 'follow_me_doubles':
+                assert(_.isArray(value));
+                assert(value.every((item) =>
+                    _.isString(item) && ['HIGH_SUIT', 'LOW_SUIT', 'HIGH', 'LOW'].includes(item)));
+                return new Set(value);
+            case 'plunge_allowed':
+            case 'sevens_allowed':
+                assert(_.isBoolean(value));
+                return value;
+            case 'plunge_min_marks':
+            case 'plunge_max_marks':
+                assert(_.isNumber(value));
+                assert(value >= 0);
+                return value;
+            case 'min_bid':
+            case 'forced_min_bid':
+                assert(_.isString(value));
+                Bid.find(value);
+                return value;
+            case 'bones':
+                assert(_.isArray(value));
+                return Bone.list(value);
+            default:
+                break;
+        }
+        return value;
+    }
+    catch (error) {
+        assert(false, `"${key}" has a problem: ${error}"`);
+    }
+}
+
 export default class Rules {
 
     public readonly all_pass: AllPass = 'FORCE';
@@ -56,11 +110,8 @@ export default class Rules {
     public readonly follow_me_doubles: Set<DoublesSuit> = new Set(['HIGH']);
     public readonly plunge_min_marks: number = 2;
     public readonly plunge_max_marks: number = 2;
-    // A bid name
     public readonly min_bid: string = '30';
-    // A bid name
     public readonly forced_min_bid: string = '30';
-
     /** For testing, we fix the bones that are pulled */
     public readonly bones?: Bone[];
 
@@ -71,86 +122,11 @@ export default class Rules {
         this.bones = bones;
     }
 
-    // in_set<T>(value: any, set: Set<T>):
+    toJson() {
+        return JSON.stringify(this, replacer, '  ');
+    }
 
-    //     if value in set:
-    //         return 'YES'
-    //     else:
-    //         return 'NO'
-
-    // def change_set( self , value , set , yes_no ):
-
-    //     is_in = value in set
-
-    //     if yes_no == 'YES' and not is_in:
-    //         set.append( value )
-    //     elif yes_no == 'NO' and is_in:
-    //         set.remove( value )
-
-    // def as_string( self ):
-
-    //     strings = []
-
-    //     strings.append( 'AllPass=' + self.all_pass )
-    //     strings.append( 'NelloAllowed=' + self.nello_allowed )
-    //     strings.append( 'NelloDoublesHIGH=' + self.in_set( 'HIGH' , self.nello_doubles ) )
-    //     strings.append( 'NelloDoublesLOW=' + self.in_set( 'LOW' , self.nello_doubles ) )
-    //     strings.append( 'NelloDoublesHIGH_SUIT=' + self.in_set( 'HIGH_SUIT' , self.nello_doubles ) )
-    //     strings.append( 'NelloDoublesLOW_SUIT=' + self.in_set( 'LOW_SUIT' , self.nello_doubles ) )
-    //     strings.append( 'PlungeAllowed=' + self.plunge_allowed )
-    //     strings.append( 'SevensAllowed=' + self.sevens_allowed )
-    //     strings.append( 'FollowMeDoublesHIGH=' + self.in_set( 'HIGH' , self.follow_me_doubles ) )
-    //     strings.append( 'FollowMeDoublesLOW=' + self.in_set( 'LOW' , self.follow_me_doubles ) )
-    //     strings.append( 'FollowMeDoublesHIGH_SUIT=' + self.in_set( 'HIGH_SUIT' , self.follow_me_doubles ) )
-    //     strings.append( 'FollowMeDoublesLOW_SUIT=' + self.in_set( 'LOW_SUIT' , self.follow_me_doubles ) )
-    //     strings.append( 'PlungeMinMarks=' + str( self.plunge_min_marks ) )
-    //     strings.append( 'PlungeMaxMarks=' + str( self.plunge_max_marks ) )
-    //     strings.append( 'MinBid=' + self.min_bid )
-    //     strings.append( 'ForcedMinBid=' + self.forced_min_bid )
-
-    //     return ','.join( strings )
-
-    // def load_from_string( self , string ):
-
-    //     strings = string.split( ',' )
-
-    //     for s in strings:
-
-    //         key , separator , value = s.partition( '=' )
-
-    //         if len( separator ) == 0 or len( value ) == 0:
-    //             continue
-
-    //         if key == 'AllPass':
-    //             self.all_pass = value
-    //         elif key == 'NelloAllowed':
-    //             self.nello_allowed = value
-    //         elif key == 'PlungeAllowed':
-    //             self.plunge_allowed = value
-    //         elif key == 'SevensAllowed':
-    //             self.sevens_allowed = value
-    //         elif key == 'PlungeMinMarks':
-    //             self.plunge_min_marks = int( value )
-    //         elif key == 'PlungeMaxMarks':
-    //             self.plunde_max_marks = int( value )
-    //         elif key == 'MinBid':
-    //             self.min_bid = value
-    //         elif key == 'ForcedMinBid':
-    //             self.forced_min_bid = value
-    //         elif key == 'NelloDoublesHIGH':
-    //             self.change_set( 'HIGH' , self.nello_doubles , value )
-    //         elif key == 'NelloDoublesLOW':
-    //             self.change_set( 'LOW' , self.nello_doubles , value )
-    //         elif key == 'NelloDoublesHIGH_SUIT':
-    //             self.change_set( 'HIGH_SUIT' , self.nello_doubles , value )
-    //         elif key == 'NelloDoublesLOW_SUIT':
-    //             self.change_set( 'LOW_SUIT' , self.nello_doubles , value )
-    //         elif key == 'FollowMeDoublesHIGH':
-    //             self.change_set( 'HIGH' , self.follow_me_doubles , value )
-    //         elif key == 'FollowMeDoublesLOW':
-    //             self.change_set( 'LOW' , self.follow_me_doubles , value )
-    //         elif key == 'FollowMeDoublesHIGH_SUIT':
-    //             self.change_set( 'HIGH_SUIT' , self.follow_me_doubles , value )
-    //         elif key == 'FollowMeDoublesLOW_SUIT':
-    //             self.change_set( 'LOW_SUIT' , self.follow_me_doubles , value )
+    static fromJson(json: string): Rules {
+        return Object.assign(new Rules(), JSON.parse(json, reviver));
+    }
 }

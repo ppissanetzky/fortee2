@@ -10,7 +10,7 @@ import { FallbackStrategy, Forced, MoneyForPartner, NoMoneyOnUncertainLead, Pass
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
 
-function play(): Promise<void> {
+async function play(): Promise<void> {
 
     function pad(name: string) {
         return name.padEnd('partner'.length + 1, ' ');
@@ -59,6 +59,13 @@ function play(): Promise<void> {
     const bones = _.concat(mine, remaining.slice(0, 7), p, remaining.slice(7));
 
     const rules = new Rules(bones);
+
+    const j = rules.toJson();
+    console.log(j);
+    console.log(Rules.fromJson(j));
+    assert(Rules.fromJson(j).toJson() === j);
+
+    return;
 
     return GameDriver.start(rules, players).then(() => {
         if (!auto) {

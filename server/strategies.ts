@@ -151,11 +151,11 @@ export const WinWithMoney: Strategy = {
     name: 'win with money',
     async play(player: BasePlayer, possible: Bone[]): Promise<Bone | void> {
         const debug = player.debug.extend(this.name);
-        const { lead, trump } = player;
+        const { trump } = player;
         assert(trump);
         const trick = player.trickBones;
         /** I am playing last */
-        if (lead && trick.length === 3) {
+        if (trick.length === 3) {
             /** My bones that can beat everything else in the trick */
             const bones = unbeatable(player, trick, possible);
             /** I don't have any, move on */

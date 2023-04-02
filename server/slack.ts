@@ -1,11 +1,18 @@
 import assert  from 'node:assert';
-import { App, ModalView } from '@slack/bolt';
+import { App, ModalView, AckFn, ViewResponseAction } from '@slack/bolt';
 import { makeDebug } from './utility';
-import { START_GAME, PLAY_DM, GAME_STARTED } from './slack-views';
+import { START_GAME, PLAY_DM, GAME_STARTED, RULES } from './slack-views';
 import config, {off} from './config';
 import { InvitationInputs, Invitation } from './invitations';
+import { Rules } from './core';
 
 const debug = makeDebug('slack');
+
+const app = new App({
+    token: config.FT2_SLACK_BOT_TOKEN,
+    socketMode: true,
+    appToken: config.FT2_SLACK_APP_TOKEN,
+});
 
 export default async function connectToSlack() {
 
@@ -13,12 +20,6 @@ export default async function connectToSlack() {
         debug('not connecting to Slack');
         return;
     }
-
-    const app = new App({
-        token: config.FT2_SLACK_BOT_TOKEN,
-        socketMode: true,
-        appToken: config.FT2_SLACK_APP_TOKEN,
-    });
 
     app.command('/play', async ({ command, ack, respond }) => {
         debug('/play', command);
@@ -29,38 +30,56 @@ export default async function connectToSlack() {
         });
     });
 
+    app.command('/rules', async ({ command, ack, respond }) => {
+        debug('/rules', command);
+        await ack();
+        const view = RULES;
+        await app.client.views.open({
+            trigger_id: command.trigger_id,
+            view: view.buildToObject(),
+        });
+    });
+
+    app.action({callback_id: 'set-rules', }, async ({ack, body, client, respond}) => {
+        ack();
+        // This is for the 'reset' button, which doesn't seem to work
+        // if (body.type === 'block_actions') {
+        //     if (body.actions.find(({action_id}) => action_id === 'reset-rules')) {
+        //         debug('pushing update');
+        //         await client.views.update({
+        //             view_id: body.view?.id,
+        //             hash: body.view?.hash,
+        //             view: RULES.buildToObject(),
+        //         });
+        //     }
+        // }
+    });
+
+    /** When the rules view is submitted */
+
+    app.view({type: 'view_submission', callback_id: 'set-rules'},
+        async ({ ack, body, view, client, logger, respond }) => {
+            const iid = body.view.private_metadata;
+            debug('body %j', body);
+            const invitation = Invitation.all.get(iid);
+            assert(invitation);
+            // TODO: Get the rules
+            startInvitation(ack, invitation, new Rules());
+        }
+    )
+
     /** A user clicked 'Play' on an invitation ephemeral */
 
     app.action('play-action', async ({ack, body}) => {
-        debug('play-action', JSON.stringify(body));
+        debug('play-action %j', body);
         await ack();
     });
 
     /** When the 'Start Game' form is submitted */
 
     app.view({type: 'view_submission', callback_id: 'start-game'},
-        async ({ ack, body, view, client, logger, respond }) => {
-        // {
-        //     "values": {
-        //         "partner-block": {
-        //             "partner": {
-        //                 "type": "multi_users_select",
-        //                 "selected_users": [
-        //                     "U050GB33RDZ"
-        //                 ]
-        //             }
-        //         },
-        //         "team-block": {
-        //             "team": {
-        //                 "type": "multi_users_select",
-        //                 "selected_users": [
-        //                     "U050B8167TP",
-        //                     "U050SUU8SV7"
-        //                 ]
-        //             }
-        //         }
-        //     }
-        // }
+        async ({ ack, body, view, client }) => {
+
         debug('view state : %j', view.state);
 
         const partners = view.state.values['partner-block']['partner'].selected_users;
@@ -75,9 +94,7 @@ export default async function connectToSlack() {
 
         /** Add the host to the set so they don't invite themselves */
 
-        // PUT IT BACK
-
-        const set = new Set<string>([/*inputs.host*/]);
+        const set = new Set<string>([inputs.host]);
 
         if (partners) {
             if (partners.length > 1) {
@@ -133,9 +150,6 @@ export default async function connectToSlack() {
             });
         }
 
-        // REMOVE
-        set.add(inputs.host);
-
         /** Get user info for everyone in the set */
 
         const infos = await Promise.all(Array.from(set.values())
@@ -157,65 +171,76 @@ export default async function connectToSlack() {
 
         const invitation = new Invitation(inputs);
 
-        invitation.onceExpired.then(() => {
-            // TODO - update/delete messages
-        });
+        /** Set the invitation ID in the rules view and push it */
 
-        /**
-         * If it is just this user that wants to play with bots, we're going to
-         * update the view and be done.
-         */
-
-        if (invitation.users.length === 1) {
-            return ack({
-                response_action: 'push',
-                view: GAME_STARTED(inputs.host, '', invitation)
-            });
-        }
-
-        /**
-         * Otherwise, there is at least one other human involved so we're
-         * going to open up a direct message conversation between everyone
-         */
-
-        const conversation = await client.conversations.open({
-            users: invitation.users.join(',')
-        });
-
-        debug('conversation started: %j', conversation);
-
-        const channel = conversation.channel?.id;
-
-        assert(channel, 'conversation missing channel.id');
-
-        /** Post an opening message to the channel */
-
-        await client.chat.postMessage({
-            channel,
-            text: `:face_with_cowboy_hat: <@${invitation.host}> wants to a play a game with y'all`
-        });
-
-        /** 'Push' the second page of the modal */
-
-        ack({
+        return ack({
             response_action: 'push',
-            view: GAME_STARTED(inputs.host, channel, invitation)
+            view: RULES.privateMetaData(invitation.id).buildToObject()
         });
-
-        /** Post an ephemeral to each user */
-
-        for (const user of invitation.users) {
-            const result = await client.chat.postEphemeral({
-                channel,
-                user,
-                blocks: PLAY_DM(user, invitation),
-                text: `<@${inputs.host}> has invited you to play a game!`
-            });
-            debug('posted ephemeral', JSON.stringify(result));
-        }
     });
 
     debug('Connecting...');
     await app.start();
     debug('Connected');
+}
+
+async function startInvitation(
+    ack: AckFn<ViewResponseAction> | AckFn<void>,
+    invitation: Invitation,
+    rules: Rules)
+{
+    const host = invitation.host;
+
+    /**
+     * If it is just this user that wants to play with bots, we're going to
+     * update the view and be done.
+     */
+
+    if (invitation.users.length === 1) {
+        return ack({
+            response_action: 'push',
+            view: GAME_STARTED(host, '', invitation)
+        });
+    }
+
+    /**
+     * Otherwise, there is at least one other human involved so we're
+     * going to open up a direct message conversation between everyone
+     */
+
+    const conversation = await app.client.conversations.open({
+        users: invitation.users.join(',')
+    });
+
+    debug('conversation started: %j', conversation);
+
+    const channel = conversation.channel?.id;
+
+    assert(channel, 'conversation missing channel.id');
+
+    /** Post an opening message to the channel */
+
+    await app.client.chat.postMessage({
+        channel,
+        text: `:face_with_cowboy_hat: <@${host}> wants to a play a game with y'all`
+    });
+
+    /** 'Push' the second page of the modal */
+
+    ack({
+        response_action: 'push',
+        view: GAME_STARTED(host, channel, invitation)
+    });
+
+    /** Post an ephemeral to each user */
+
+    for (const user of invitation.users) {
+        const result = await app.client.chat.postEphemeral({
+            channel,
+            user,
+            blocks: PLAY_DM(user, invitation),
+            text: `<@${host}> has invited you to play a game!`
+        });
+        debug('posted ephemeral', JSON.stringify(result));
+    }
 }

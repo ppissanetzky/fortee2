@@ -1,7 +1,8 @@
 import type { KnownBlock } from '@slack/bolt';
 import _ from 'lodash';
 import { Invitation } from './invitations';
-import { Button, Modal, Section, setIfTruthy } from 'slack-block-builder';
+import { Button, Modal, Option, Section, setIfTruthy,
+	StaticMultiSelect, StaticSelect } from 'slack-block-builder';
 
 export function GAME_STARTED(host: string, channel: string, invitation: Invitation) {
     const others = invitation.users.filter((user) => user !== host);
@@ -26,6 +27,176 @@ export function GAME_STARTED(host: string, channel: string, invitation: Invitati
                 )
         ).buildToObject();
 }
+
+export const RULES =
+	Modal()
+	.callbackId('set-rules')
+	.submit('Submit')
+	.title('Set the rules')
+	.blocks(
+		// Section()
+		// 	.blockId('reset')
+		// 	.text('Reset to default values')
+		// 	.accessory(
+		// 		Button()
+		// 			.actionId('reset-rules')
+		// 			.text('Reset')
+		// 	),
+		Section()
+			.blockId('min_bid')
+			.text('What is the minimum bid?')
+			.accessory(
+				StaticSelect({actionId: 'min_bid'})
+					.initialOption(
+						Option({value: '30', text: '30'}))
+					.options(
+						Option({value: '30', text: '30'}),
+						Option({value: '31', text: '31'}),
+						Option({value: '32', text: '32'}),
+						Option({value: '33', text: '33'}),
+						Option({value: '34', text: '34'}),
+						Option({value: '35', text: '35'}),
+						Option({value: '36', text: '36'}),
+						Option({value: '37', text: '37'}),
+						Option({value: '38', text: '38'}),
+						Option({value: '39', text: '39'}),
+						Option({value: '40', text: '40'}),
+						Option({value: '41', text: '41'}),
+						Option({value: '1-mark', text: '1-mark'}),
+					)
+			),
+		Section()
+			.blockId('all_pass')
+			.text('When everyone passes?')
+			.accessory(
+				StaticSelect({actionId: 'all_pass'})
+				.initialOption(
+					Option({value: 'FORCE', text: 'Force a bid' }))
+				.options(
+					Option({value: 'FORCE', text: 'Force a bid'}),
+					Option({value: 'SHUFFLE', text: 'Reshuffle'})
+				)
+			),
+		Section()
+			.blockId('forced_min_bid')
+			.text('What is the bid when stuck?')
+			.accessory(
+				StaticSelect({actionId: 'forced_min_bid'})
+					.initialOption(
+						Option({value: '30', text: '30'}))
+					.options(
+						Option({value: '30', text: '30'}),
+						Option({value: '31', text: '31'}),
+						Option({value: '32', text: '32'}),
+						Option({value: '33', text: '33'}),
+						Option({value: '34', text: '34'}),
+						Option({value: '35', text: '35'}),
+						Option({value: '36', text: '36'}),
+						Option({value: '37', text: '37'}),
+						Option({value: '38', text: '38'}),
+						Option({value: '39', text: '39'}),
+						Option({value: '40', text: '40'}),
+						Option({value: '41', text: '41'}),
+						Option({value: '1-mark', text: '1-mark'}),
+					)
+			),
+		Section()
+			.blockId('follow_me_doubles')
+			.text('When playing follow-me, what are doubles?')
+			.accessory(
+				StaticMultiSelect({actionId: 'follow_me_doubles'})
+					.initialOptions(
+						Option({value: 'HIGH', text: 'High'}))
+					.options(
+						Option({value: 'HIGH_SUIT', text: 'High in their own suit'}),
+						Option({value: 'LOW_SUIT', text: 'Low in their own suit' }),
+						Option({value: 'HIGH', text: 'High' }),
+						Option({value: 'LOW', text: 'Low'})
+					)
+			),
+		Section()
+			.blockId('plunge_allowed')
+			.text('Allow Plunge?')
+			.accessory(
+				StaticSelect({actionId: 'plunge_allowed'})
+					.initialOption(
+						Option({value: 'NO', text: 'No'}))
+					.options(
+						Option({value: 'YES', text: 'Yes'}),
+						Option({value: 'NO', text: 'No'})
+					)
+			),
+		Section()
+			.blockId('plunge_min_marks')
+			.text('How many marks to Plunge')
+			.accessory(
+				StaticSelect({actionId: 'plunge_min_marks'})
+					.initialOption(
+						Option({value: '2', text: '2'}))
+					.options(
+						Option({value: '1', text: '1'}),
+						Option({value: '2', text: '2'}),
+						Option({value: '3', text: '3'}),
+						Option({value: '4', text: '4'}),
+						Option({value: '5', text: '5'}),
+					)
+		),
+		Section()
+			.blockId('plunge_max_marks')
+			.text('Most marks on Plunge')
+			.accessory(
+				StaticSelect({actionId: 'plunge_max_marks'})
+					.initialOption(
+						Option({value: '2', text: '2'}))
+					.options(
+						Option({value: '1', text: '1'}),
+						Option({value: '2', text: '2'}),
+						Option({value: '3', text: '3'}),
+						Option({value: '4', text: '4'}),
+						Option({value: '5', text: '5'}),
+					)
+		),
+		Section()
+			.blockId('sevens_allowed')
+			.text('Allow Sevens?')
+			.accessory(
+				StaticSelect({actionId: 'sevens_allowed'})
+					.initialOption(
+						Option({value: 'NO', text: 'No'}))
+					.options(
+						Option({value: 'YES', text: 'Yes'}),
+						Option({value: 'NO', text: 'No'})
+					)
+			),
+		Section()
+			.blockId('nello_allowed')
+			.text('Allow Nello?')
+			.accessory(
+				StaticSelect({actionId: 'nello_allowed'})
+					.initialOption(
+						Option({value: 'NEVER', text: 'Never'}))
+					.options(
+						Option({value: 'NEVER', text: 'Never'}),
+						Option({value: 'FORCE', text: 'Only when you are stuck'}),
+						Option({value: 'ALWAYS', text: 'Any time'})
+					)
+			),
+		Section()
+			.blockId('nello_doubles')
+			.text('When playing Nello, what are doubles?')
+			.accessory(
+				StaticMultiSelect({actionId: 'nello_doubles'})
+					.initialOptions(
+						Option({value: 'HIGH_SUIT', text: 'High in their own suit'}))
+					.options(
+						Option({value: 'HIGH_SUIT', text: 'High in their own suit'}),
+						Option({value: 'LOW_SUIT', text: 'Low in their own suit'}),
+						Option({value: 'HIGH', text: 'High'}),
+						Option({value: 'LOW', text: 'Low'})
+					)
+			)
+	);
+
 
 export const START_GAME = {
     type: 'modal',
@@ -135,3 +306,5 @@ export function PLAY_DM(userId: string, invitation: Invitation): KnownBlock[] {
 		}
 	]
 }
+
+//console.log(RULES.printPreviewUrl());
