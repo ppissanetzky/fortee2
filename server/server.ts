@@ -13,6 +13,7 @@ import setupAuthentication from './authentication';
 import connectToSlack from './slack';
 import { setupSlackAuthentication } from './slack-authentication';
 import GameRoom from './game-room';
+import { Rules } from './core';
 
 const debug = makeDebug('server');
 
@@ -61,7 +62,7 @@ if (!config.PRODUCTION) {
             req.login({id: 'test/pablo', name},
                 (error) => error ? reject(error) : resolve());
         });
-        const room = new GameRoom(name);
+        const room = new GameRoom(new Rules(), name);
         res.redirect(`${config.FT2_SITE_BASE_URL}/play?t=${room.token}`);
     });
 }

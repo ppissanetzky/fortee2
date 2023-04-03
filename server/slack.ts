@@ -1,5 +1,5 @@
 import assert  from 'node:assert';
-import { App, ModalView, AckFn, ViewResponseAction } from '@slack/bolt';
+import { App, ModalView, AckFn, ViewResponseAction, ViewOutput } from '@slack/bolt';
 import { makeDebug } from './utility';
 import { START_GAME, PLAY_DM, GAME_STARTED, RULES } from './slack-views';
 import config, {off} from './config';
@@ -21,65 +21,47 @@ export default async function connectToSlack() {
         return;
     }
 
-    app.command('/play', async ({ command, ack, respond }) => {
+    app.command('/play', async ({ command, ack }) => {
         debug('/play', command);
         await ack();
+        /** Gather up all the user IDs entered after "/play" */
+        const users = [...command.text.matchAll(/<@([^|>]+)[|>]/g)]
+            .map(([,item]) => item);
         await app.client.views.open({
             trigger_id: command.trigger_id,
-            view: START_GAME as ModalView,
+            view: START_GAME(users) as ModalView,
         });
     });
 
-    app.command('/rules', async ({ command, ack, respond }) => {
-        debug('/rules', command);
-        await ack();
-        const view = RULES;
-        await app.client.views.open({
-            trigger_id: command.trigger_id,
-            view: view.buildToObject(),
-        });
-    });
-
-    app.action({callback_id: 'set-rules', }, async ({ack, body, client, respond}) => {
+    app.action({callback_id: 'set-rules', }, async ({ack}) => {
         ack();
-        // This is for the 'reset' button, which doesn't seem to work
-        // if (body.type === 'block_actions') {
-        //     if (body.actions.find(({action_id}) => action_id === 'reset-rules')) {
-        //         debug('pushing update');
-        //         await client.views.update({
-        //             view_id: body.view?.id,
-        //             hash: body.view?.hash,
-        //             view: RULES.buildToObject(),
-        //         });
-        //     }
-        // }
     });
 
     /** When the rules view is submitted */
 
     app.view({type: 'view_submission', callback_id: 'set-rules'},
-        async ({ ack, body, view, client, logger, respond }) => {
-            const iid = body.view.private_metadata;
-            debug('body %j', body);
-            const invitation = Invitation.all.get(iid);
-            assert(invitation);
-            // TODO: Get the rules
-            startInvitation(ack, invitation, new Rules());
+        async ({ ack, view }) => {
+            debug('state %j', view.state);
+            const inputs = JSON.parse(view.private_metadata) as InvitationInputs;
+            assert(inputs);
+            debug('inputs %j', inputs);
+            createInvitation(ack, inputs, loadRulesFrom(view));
         }
-    )
+    );
 
     /** A user clicked 'Play' on an invitation ephemeral */
 
-    app.action('play-action', async ({ack, body}) => {
-        debug('play-action %j', body);
-        await ack();
-    });
+    app.action('play-action',
+        async ({ack, body}) => {
+            debug('play-action %j', body);
+            await ack();
+        }
+    );
 
     /** When the 'Start Game' form is submitted */
 
     app.view({type: 'view_submission', callback_id: 'start-game'},
         async ({ ack, body, view, client }) => {
-
         debug('view state : %j', view.state);
 
         const partners = view.state.values['partner-block']['partner'].selected_users;
@@ -89,7 +71,7 @@ export default async function connectToSlack() {
             host: body.user.id,
             partner: '',
             team: [] as string[],
-            names: new Map<string, string>()
+            names: {} as Record<string, string>
         };
 
         /** Add the host to the set so they don't invite themselves */
@@ -163,19 +145,15 @@ export default async function connectToSlack() {
             const name = info.user?.profile?.display_name
                 || info.user?.profile?.real_name;
             if (id && name) {
-                inputs.names.set(id, name);
+                inputs.names[id] = name;
             }
         }
 
-        /** Create the invitation and send the initial messages */
-
-        const invitation = new Invitation(inputs);
-
-        /** Set the invitation ID in the rules view and push it */
+        /** Set the inputs in private metadata and open the rules view */
 
         return ack({
             response_action: 'push',
-            view: RULES.privateMetaData(invitation.id).buildToObject()
+            view: RULES(inputs)
         });
     });
 
@@ -184,11 +162,43 @@ export default async function connectToSlack() {
     debug('Connected');
 }
 
-async function startInvitation(
+function loadRulesFrom(view: ViewOutput): Rules {
+    const {state: {values}} = view;
+    function value(name: keyof Rules) {
+        let result;
+        const v = values[name][name];
+        if (v.selected_options) {
+            result = v.selected_options.map(({value}) => value)
+        }
+        else if (v.selected_option) {
+            result = v.selected_option?.value
+        }
+        assert(result, `No value for "${name}"`);
+        return {
+            [name]: result
+        }
+    }
+    return Rules.fromJson(JSON.stringify({
+        ...value('min_bid'),
+        ...value('all_pass'),
+        ...value('forced_min_bid'),
+        ...value('follow_me_doubles'),
+        ...value('plunge_allowed'),
+        ...value('plunge_min_marks'),
+        ...value('plunge_max_marks'),
+        ...value('sevens_allowed'),
+        ...value('nello_allowed'),
+        ...value('nello_doubles')
+    }));
+}
+
+async function createInvitation(
     ack: AckFn<ViewResponseAction> | AckFn<void>,
-    invitation: Invitation,
+    inputs: InvitationInputs,
     rules: Rules)
 {
+    const invitation = new Invitation(inputs, rules);
+
     const host = invitation.host;
 
     /**

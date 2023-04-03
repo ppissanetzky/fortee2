@@ -3,6 +3,11 @@ import ms from 'ms';
 import { makeDebug, makeToken } from './utility';
 import config from './config';
 import GameRoom from './game-room';
+import { Rules } from './core';
+
+/**
+ * This needs to be JSON.stringifyable
+ */
 
 export interface InvitationInputs {
     /** The Slack user IDs of the host that initiated it all */
@@ -12,7 +17,7 @@ export interface InvitationInputs {
     /** Zero, one or two user IDs */
     team: string[];
     /** A map from each user ID to their display name */
-    names: Map<string, string>;
+    names: Record<string, string>;
 }
 
 export interface MessageInfo {
@@ -46,10 +51,6 @@ export class Invitation {
     public readonly users: string[];
     public readonly names: string[];
 
-    /** The game room token */
-
-    public readonly gameRoomToken: string;
-
     /** The token/ID for this invitation */
 
     public readonly id: string;
@@ -58,22 +59,26 @@ export class Invitation {
 
     public readonly tokens = new Map<string, string>();
 
-    /** A promise that is resolved once the invitation expires */
-
-    public readonly onceExpired: Promise<void>;
-
     /** A map of user ID to URL given out */
 
     public readonly urls = new Map<string, string>();
+
+    /** The game room token */
+
+    public readonly gameRoomToken: string;
+
+    /** A promise that is resolved once the invitation expires */
+
+    public readonly onceExpired: Promise<void>;
 
     /** Debugger */
 
     private readonly debug = makeDebug('invitation').extend(`${Invitation.N++}`);
 
-    constructor(inputs: InvitationInputs) {
+    constructor(inputs: InvitationInputs, rules: Rules) {
         this.inputs = inputs;
-        this.users = Array.from(inputs.names.keys());
-        this.names = Array.from(inputs.names.values());
+        this.users = Object.keys(inputs.names);
+        this.names = Object.values(inputs.names);
 
         let id;
         while (!id || Invitation.all.has(id)) {
@@ -85,7 +90,7 @@ export class Invitation {
             'from ', inputs.host,
             'partner', inputs.partner,
             'team', JSON.stringify(inputs.team),
-            'names', JSON.stringify(Array.from(inputs.names.entries())));
+            'names', JSON.stringify(this.names));
 
         /**
          * Generate a token for each user, add it to the tokens
@@ -104,21 +109,21 @@ export class Invitation {
 
         this.debug('%j', Array.from(this.urls.entries()));
 
-        /** Create the game room */
-
-        const host = this.inputs.names.get(this.host);
-        assert(host, 'How can we not have a host?');
-
-        const room = new GameRoom(
-            host,
-            this.inputs.names.get(this.inputs.partner) || '',
-            this.inputs.team.map((id) => this.inputs.names.get(id) || ''));
-
-        this.gameRoomToken = room.token;
-
         /** Add it to the global map */
 
         Invitation.all.set(this.id, this);
+
+        const host = inputs.names[inputs.host];
+
+        assert(host, 'How can we not have a host?');
+
+        const room = new GameRoom(
+            rules,
+            host,
+            inputs.names[inputs.partner] || '',
+            inputs.team.map((id) => inputs.names[id] || ''));
+
+        this.gameRoomToken = room.token;
 
         /** Set up the expiration */
 
@@ -137,11 +142,13 @@ export class Invitation {
         });
     }
 
+    /** The ID of the host */
+
     get host(): string {
         return this.inputs.host;
     }
 
-    /** An array of users other than this one */
+    /** An array of user IDs other than this one */
 
     public others(than: string) {
         return this.users.filter((user) => user !== than);

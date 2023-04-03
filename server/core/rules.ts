@@ -75,10 +75,20 @@ function reviver(key: string, value: any): any {
                 return new Set(value);
             case 'plunge_allowed':
             case 'sevens_allowed':
+                if (_.isString(value)) {
+                    assert(['YES', 'NO'].includes(value));
+                    return value === 'YES' ? true : false;
+                }
                 assert(_.isBoolean(value));
                 return value;
             case 'plunge_min_marks':
             case 'plunge_max_marks':
+                if (_.isString(value)) {
+                    const n = parseInt(value, 10);
+                    assert(!isNaN(n) && _.isSafeInteger(n));
+                    assert(n > 0);
+                    return n;
+                }
                 assert(_.isNumber(value));
                 assert(value >= 0);
                 return value;
@@ -103,15 +113,15 @@ function reviver(key: string, value: any): any {
 export default class Rules {
 
     public readonly all_pass: AllPass = 'FORCE';
-    public readonly nello_allowed: NelloAllowed = 'NEVER';
-    public readonly nello_doubles: Set<DoublesSuit> = new Set(['HIGH_SUIT']);
-    public readonly plunge_allowed: boolean = false;
-    public readonly sevens_allowed: boolean = false;
-    public readonly follow_me_doubles: Set<DoublesSuit> = new Set(['HIGH']);
-    public readonly plunge_min_marks: number = 2;
-    public readonly plunge_max_marks: number = 2;
     public readonly min_bid: string = '30';
     public readonly forced_min_bid: string = '30';
+    public readonly follow_me_doubles: Set<DoublesSuit> = new Set(['HIGH']);
+    public readonly plunge_allowed: boolean = false;
+    public readonly plunge_min_marks: number = 2;
+    public readonly plunge_max_marks: number = 2;
+    public readonly sevens_allowed: boolean = false;
+    public readonly nello_allowed: NelloAllowed = 'NEVER';
+    public readonly nello_doubles: Set<DoublesSuit> = new Set(['HIGH_SUIT']);
     /** For testing, we fix the bones that are pulled */
     public readonly bones?: Bone[];
 

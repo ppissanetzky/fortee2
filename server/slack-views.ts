@@ -1,6 +1,6 @@
 import type { KnownBlock } from '@slack/bolt';
 import _ from 'lodash';
-import { Invitation } from './invitations';
+import { Invitation, InvitationInputs } from './invitations';
 import { Button, Modal, Option, Section, setIfTruthy,
 	StaticMultiSelect, StaticSelect } from 'slack-block-builder';
 
@@ -28,11 +28,14 @@ export function GAME_STARTED(host: string, channel: string, invitation: Invitati
         ).buildToObject();
 }
 
-export const RULES =
-	Modal()
+export function RULES(inputs: InvitationInputs) {
+	return Modal()
 	.callbackId('set-rules')
 	.submit('Submit')
+	.close('Back')
 	.title('Set the rules')
+	.clearOnClose(false)
+	.privateMetaData(JSON.stringify(inputs))
 	.blocks(
 		// Section()
 		// 	.blockId('reset')
@@ -195,70 +198,78 @@ export const RULES =
 						Option({value: 'LOW', text: 'Low'})
 					)
 			)
-	);
+	)
+	.buildToObject();
+}
 
-
-export const START_GAME = {
-    type: 'modal',
-    callback_id: 'start-game',
-    submit: {
-        type: 'plain_text',
-        text: 'Invite'
-    },
-    title: {
-        type: 'plain_text',
-        text: `Let's get a game going`
-    },
-    blocks: [
-		{
-			"type": "input",
-            "block_id": "partner-block",
-            "optional": true,
-			"element": {
-				"type": "multi_users_select",
-				"placeholder": {
-					"type": "plain_text",
-					"text": "Choose your partner",
-					"emoji": true
-				},
-				"action_id": "partner",
-				"max_selected_items": 1,
-			},
-			"label": {
-				"type": "plain_text",
-				"text": "Who will be your partner?",
-				"emoji": true
-			}
+export function START_GAME(users: string[]) {
+	const [partner, second, third] = users;
+	const team = third ? [second, third] :
+		(second ? [second] : undefined);
+	return {
+		type: 'modal',
+		callback_id: 'start-game',
+		submit: {
+			type: 'plain_text',
+			text: 'Invite'
 		},
-		{
-			"type": "input",
-            "block_id": "team-block",
-            "optional": true,
-			"element": {
-				"type": "multi_users_select",
-				"placeholder": {
-					"type": "plain_text",
-					"text": "Choose the other team",
-					"emoji": true
-				},
-				"action_id": "team",
-				"max_selected_items": 2,
-			},
-			"label": {
-				"type": "plain_text",
-				"text": "Who will be on the other team?",
-				"emoji": true
-			}
+		title: {
+			type: 'plain_text',
+			text: `Let's get a game going`
 		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "_If you want to play with bots, you can leave all the users blank._"
+		blocks: [
+			{
+				"type": "input",
+				"block_id": "partner-block",
+				"optional": true,
+				"element": {
+					"type": "multi_users_select",
+					"placeholder": {
+						"type": "plain_text",
+						"text": "Choose your partner",
+						"emoji": true
+					},
+					"action_id": "partner",
+					"max_selected_items": 1,
+					"initial_users": partner ? [partner] : undefined,
+				},
+				"label": {
+					"type": "plain_text",
+					"text": "Who will be your partner?",
+					"emoji": true
+				}
+			},
+			{
+				"type": "input",
+				"block_id": "team-block",
+				"optional": true,
+				"element": {
+					"type": "multi_users_select",
+					"placeholder": {
+						"type": "plain_text",
+						"text": "Choose the other team",
+						"emoji": true
+					},
+					"action_id": "team",
+					"max_selected_items": 2,
+					"initial_users": team
+				},
+				"label": {
+					"type": "plain_text",
+					"text": "Who will be on the other team?",
+					"emoji": true
+				}
+			},
+			{
+				"type": "section",
+				"text": {
+					"type": "mrkdwn",
+					"text": "_If you want to play with bots, you can leave all the users blank._"
+				}
 			}
-		}
-	]
-};
+		]
+	};
+}
 
 export function PLAY_DM(userId: string, invitation: Invitation): KnownBlock[] {
     /**

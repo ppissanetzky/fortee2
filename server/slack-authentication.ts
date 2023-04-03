@@ -48,7 +48,7 @@ export function setupSlackAuthentication(app: Express) {
         assert(invitation, `Invitation "${iid}" not found`);
         const user = invitation.tokens.get(userToken);
         assert(user, `User token "${userToken}" not found`);
-        const name = invitation.inputs.names.get(user);
+        const name = invitation.inputs.names[user];
         assert(name, `No name for user ${user}`);
         const userId = `slack/${user}`;
         return {

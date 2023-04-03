@@ -66,6 +66,8 @@ export default class GameRoom {
 
     public readonly id = GameRoom.ID++;
 
+    public readonly rules: Rules;
+
     public readonly host: string;
 
     private readonly positions: string[] = [];
@@ -86,11 +88,13 @@ export default class GameRoom {
      */
     public readonly invited = new Set<string>();
 
-    constructor(host: string, partner = '', others: string[] = []) {
+    constructor(rules: Rules, host: string, partner = '', others: string[] = []) {
         assert(host, 'Host cannot be blank');
         GameRoom.rooms.set(this.token, this);
+        this.rules = rules;
         this.debug = this.debug.extend(String(this.id));
         this.debug('created for', host, partner, others, this.token);
+        this.debug('rules %o', rules);
         this.host = host;
 
         const nameOrBot = (index: number, name: string) => {
@@ -205,7 +209,7 @@ export default class GameRoom {
                         return bot;
                     });
                     // Start'er up
-                    await GameDriver.start(new Rules(), this.players);
+                    await GameDriver.start(this.rules, this.players);
                 }
                 catch (error) {
                     // TODO: what should we do?
