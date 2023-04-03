@@ -1,5 +1,5 @@
-
 import crypto from 'node:crypto';
+import assert from 'node:assert';
 import debug from 'debug';
 
 type Debugger = debug.Debugger;
@@ -19,4 +19,9 @@ export function hashString(data: string, hash = 'md5'): string {
         .createHash(hash)
         .update(Buffer.from(data, 'utf-8'))
         .digest('hex');
+}
+
+export function expected<T>(value: T): NonNullable<T> {
+    assert(value);
+    return value;
 }
