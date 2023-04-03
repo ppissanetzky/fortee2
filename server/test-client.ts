@@ -17,14 +17,7 @@ const PORT = 4004;
 
 const name = process.argv[2] || 'pablo';
 
-fetch(`http://localhost:${PORT}/api/local-login`, {
-    method: 'POST',
-    headers: {'content-type': 'application/json'},
-    body: JSON.stringify({
-        username: name,
-        password: config.FT2_LOCAL_PASSWORD
-    })
-})
+fetch(`http://localhost:${PORT}/api/join/${name}`)
     .then(async (response) => {
         debug(response.status, response.statusText);
         if (!response.ok) {
@@ -35,6 +28,11 @@ fetch(`http://localhost:${PORT}/api/local-login`, {
         const cookie = headers.get('set-cookie');
         if (!cookie) {
             debug('no set-cookie');
+            return;
+        }
+        const { token } = await response.json();
+        if (!token) {
+            debug('no token');
             return;
         }
         const client = new WebSocket(`ws://localhost:${PORT}/ws`, {
@@ -53,6 +51,7 @@ fetch(`http://localhost:${PORT}/api/local-login`, {
 
         client.on('open', () => {
             debug('open');
+            send('joinGame', {token});
             /*
             client.on('ping', (data) => debug('ping', data.toString()));
             client.on('pong', (data) => debug('pong', data.toString()));

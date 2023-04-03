@@ -60,20 +60,25 @@
           flat
           width="280"
         >
-          <p v-if="choiceTitle">
+          <p v-if="paused">
+            Waiting for players to join
+          </p>
+          <p v-else-if="choiceTitle">
             {{ choiceTitle }}
           </p>
-          <v-chip
-            v-for="choice in choices"
-            :key="choice"
-            small
-            label
-            color="primary"
-            class="mr-1 mb-1"
-            @click="choose(choice)"
-          >
-            {{ choice }}
-          </v-chip>
+          <div v-if="!paused">
+            <v-chip
+              v-for="choice in choices"
+              :key="choice"
+              small
+              label
+              color="primary"
+              class="mr-1 mb-1"
+              @click="choose(choice)"
+            >
+              {{ choice }}
+            </v-chip>
+          </div>
         </v-card>
       </v-col>
     </v-row>
@@ -144,6 +149,7 @@ export default {
       },
       table: [],
       connected: [],
+      paused: true,
       waitingForBid: undefined,
       bids: {},
       bidWinner: undefined,
@@ -213,8 +219,10 @@ export default {
           break
         case 'youEnteredGameRoom':
         case 'enteredGameRoom':
+        case 'leftGameRoom':
           {
             this.table = []
+            this.paused = message.paused
             let index = message.players.indexOf(this.youAre)
             for (let i = 0; i < 4; i++) {
               this.table.push({ name: message.players[index++] })

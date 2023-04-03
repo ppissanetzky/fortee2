@@ -56,14 +56,29 @@ setupSlackAuthentication(app);
  */
 
 if (!config.PRODUCTION) {
-    app.get('/api/test-game', async (req, res) => {
-        const name = 'Pablo Test';
+    app.get('/api/test-game/:players', async (req, res) => {
+        const players = req.params.players.split(',');
+        const [name, partner, left, right] = players;
         await new Promise<void>((resolve, reject) => {
-            req.login({id: 'test/pablo', name},
+            req.login({id: `test/${name}`, name},
                 (error) => error ? reject(error) : resolve());
         });
-        const room = new GameRoom(new Rules(), name);
+        const room = new GameRoom(new Rules(), name, partner, [left, right]);
         res.redirect(`${config.FT2_SITE_BASE_URL}/play?t=${room.token}`);
+    });
+    app.get('/api/join/:name', async (req, res) => {
+        const name = req.params.name;
+        const room = Array.from(GameRoom.rooms.values())
+            .find((room) => room.invited.has(name));
+        if (!room) {
+            debug('No room for', name);
+            return res.sendStatus(401);
+        }
+        await new Promise<void>((resolve, reject) => {
+            req.login({id: `test/${name}`, name},
+                (error) => error ? reject(error) : resolve());
+        });
+        res.json({token: room.token});
     });
 }
 

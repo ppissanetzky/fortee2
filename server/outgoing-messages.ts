@@ -31,6 +31,7 @@ export interface OutgoingGlobalMessages {
 export interface RoomUpdate {
     full: boolean;
     started: boolean;
+    paused: boolean;
     players: string[];
     /** The list of user names that have a socket - are connected */
     connected: string[];

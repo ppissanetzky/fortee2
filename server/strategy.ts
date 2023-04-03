@@ -3,14 +3,9 @@ import _ from 'lodash';
 
 import type { BasePlayer } from './base-player';
 import { Bid, Trump, Bone } from './core';
-import { makeDebug, Debugger } from './utility';
+import { expected, makeDebug, Debugger } from './utility';
 import TableHelper from './table-helper';
 import type { BidSubmitted, PlaySubmitted } from './outgoing-messages';
-
-function expected<T>(value: T): NonNullable<T> {
-    assert(value);
-    return value;
-}
 
 function random<T>(from: T[]): T {
     assert(from.length > 0);

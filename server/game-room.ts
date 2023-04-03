@@ -158,6 +158,7 @@ export default class GameRoom {
         return {
             full: this.full,
             started: this.started,
+            paused: this.state === State.PAUSED,
             players: [...this.positions],
             connected: [
                 ...Array.from(this.sockets.keys()),
@@ -177,70 +178,82 @@ export default class GameRoom {
         socket.gone.then(() => {
             this.sockets.delete(name);
             this.debug('removed', name, 'have', this.size);
+            if (this.state === State.PLAYING) {
+                this.state = State.PAUSED;
+            }
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
                     name,
                     ...this.roomUpdate(),
                 });
             });
-            if (this.state === State.PLAYING) {
-                this.state = State.PAUSED;
-            }
         });
-        // Tell everyone else that this user is here
-        this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate()));
-        // Tell the user about the room
-        socket.send('youEnteredGameRoom', this.roomUpdate());
-        // Is it full?
-        if (this.full) {
-            // Everyone is here and the game is ready to start
-            if (this.state === State.WAITING) {
-                // Update state
-                this.state = State.PLAYING;
-                try {
-                    // Create the players
-                    this.players = this.positions.map((name) => {
-                        const socket = this.sockets.get(name);
-                        if (socket) {
-                            return new RemotePlayer(socket);
-                        }
-                        const bot = this.bots.get(name);
-                        assert(bot, `"${name}" is missing`);
-                        return bot;
-                    });
-                    // Start'er up
-                    await GameDriver.start(this.rules, this.players);
-                }
-                catch (error) {
-                    // TODO: what should we do?
-                    this.debug('game error', error);
-                }
-                finally {
-                    // TODO: We have to delete the invitation
-                    this.state = State.OVER;
-                    this.players = [];
-                    this.debug('game over');
-                }
-            }
+        // Notify everyone
+        const notify = () => {
+            // Tell everyone else that this user is here
+            this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate()));
+            // Tell the user about the room
+            socket.send('youEnteredGameRoom', this.roomUpdate());
+        };
 
-            // The game is paused, but everyone just came back, so we can
-            // automatically resume it
-
-            else if (this.state === State.PAUSED) {
-                this.sockets.forEach((socket) => {
-                    // Find the player with the same name
-                    const player = this.players.find(({name}) =>
-                        name === socket.name);
-                    assert(player, `Player ${socket.name} not found in players list`);
-                    assert(player instanceof RemotePlayer, `Player ${socket.name} is not remote`);
-                    // Reset this player's socket - it'll do nothing if it's the
-                    // same as before
-                    player.reset(socket);
-                });
-            }
-
-            // TODO: rejoin after the game is over?
+        // If it's not full, just notify everyone
+        if (!this.full) {
+            return notify();
         }
+
+        // Everyone is here and the game is ready to start
+        if (this.state === State.WAITING) {
+            // Update state
+            this.state = State.PLAYING;
+            try {
+                // Notify everyone
+                notify();
+                // Create the players
+                this.players = this.positions.map((name) => {
+                    const socket = this.sockets.get(name);
+                    if (socket) {
+                        return new RemotePlayer(socket);
+                    }
+                    const bot = this.bots.get(name);
+                    assert(bot, `"${name}" is missing`);
+                    return bot;
+                });
+                // Start'er up
+                await GameDriver.start(this.rules, this.players);
+            }
+            catch (error) {
+                // TODO: what should we do?
+                this.debug('game error', error);
+            }
+            finally {
+                // TODO: We have to delete the invitation
+                this.state = State.OVER;
+                this.players = [];
+                this.debug('game over');
+            }
+        }
+
+        // The game is paused, but everyone just came back, so we can
+        // automatically resume it
+
+        else if (this.state === State.PAUSED) {
+            this.state = State.PLAYING;
+            // Tell everyone of the state change
+            notify();
+            // Now, reset the socket
+            this.sockets.forEach((socket) => {
+                // Find the player with the same name
+                const player = this.players.find(({name}) =>
+                    name === socket.name);
+                assert(player, `Player ${socket.name} not found in players list`);
+                assert(player instanceof RemotePlayer, `Player ${socket.name} is not remote`);
+                // Reset this player's socket - it'll do nothing if it's the
+                // same as before
+                player.reset(socket);
+            });
+        }
+
+        // TODO: rejoin after the game is over?
     }
 }
 

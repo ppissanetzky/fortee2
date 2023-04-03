@@ -23,29 +23,31 @@
           Waiting to join
         </h3>
       </div>
-      <div v-if="value.waitingForBid">
-        <h3 class="text-center">
-          Waiting for bid
-        </h3>
-      </div>
       <div v-else>
-        <div class="text-center">
-          <div v-if="value.bid">
-            <span class="text-h5">{{ value.bid }}</span>
-            <span v-if="value.trump">on</span>
-            <span v-if="value.trump" class="text-h5">{{ value.trump }}</span>
+        <div v-if="value.waitingForBid">
+          <h3 class="text-center">
+            Waiting for bid
+          </h3>
+        </div>
+        <div v-else>
+          <div class="text-center">
+            <div v-if="value.bid">
+              <span class="text-h5">{{ value.bid }}</span>
+              <span v-if="value.trump">on</span>
+              <span v-if="value.trump" class="text-h5">{{ value.trump }}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div v-if="value.waitingForTrump">
-        <h3 class="text-center">
-          Waiting for trump
-        </h3>
-      </div>
-      <div v-if="value.waitingForPlay">
-        <h3 class="text-center">
-          Thinking
-        </h3>
+        <div v-if="value.waitingForTrump">
+          <h3 class="text-center">
+            Waiting for trump
+          </h3>
+        </div>
+        <div v-if="value.waitingForPlay">
+          <h3 class="text-center">
+            Thinking
+          </h3>
+        </div>
       </div>
       <v-card-actions v-if="value.play">
         <!-- <v-badge
