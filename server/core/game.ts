@@ -397,36 +397,36 @@ export default class Game {
 
         // now add the rest
 
-        if (this.rules.follow_me_doubles.has('HIGH')) {
+        if (this.rules.follow_me_doubles.includes('HIGH')) {
             possible_trumps.push(Trump.find('follow-me-hi'));
         }
 
-        if (this.rules.follow_me_doubles.has('LOW')) {
+        if (this.rules.follow_me_doubles.includes('LOW')) {
             possible_trumps.push( Trump.find( 'follow-me-lo' ) );
         }
 
-        if (this.rules.follow_me_doubles.has('HIGH_SUIT')) {
+        if (this.rules.follow_me_doubles.includes('HIGH_SUIT')) {
             possible_trumps.push( Trump.find( 'follow-me-os-hi' ) );
         }
 
-        if (this.rules.follow_me_doubles.has('LOW_SUIT')) {
+        if (this.rules.follow_me_doubles.includes('LOW_SUIT')) {
             possible_trumps.push( Trump.find( 'follow-me-os-lo' ) );
         }
 
         if (can_nello) {
-            if (this.rules.nello_doubles.has('HIGH')) {
+            if (this.rules.nello_doubles.includes('HIGH')) {
                 possible_trumps.push( Trump.find( 'nello-hi' ) );
             }
 
-            if (this.rules.nello_doubles.has('LOW')) {
+            if (this.rules.nello_doubles.includes('LOW')) {
                 possible_trumps.push( Trump.find( 'nello-lo' ) );
             }
 
-            if (this.rules.nello_doubles.has('HIGH_SUIT')) {
+            if (this.rules.nello_doubles.includes('HIGH_SUIT')) {
                 possible_trumps.push( Trump.find( 'nello-os-hi' ) );
             }
 
-            if (this.rules.nello_doubles.has('LOW_SUIT')) {
+            if (this.rules.nello_doubles.includes('LOW_SUIT')) {
                 possible_trumps.push( Trump.find( 'nello-os-lo' ) );
             }
         }
@@ -758,6 +758,64 @@ export default class Game {
     new_trick(): void {
         this.this_hand.tricks.push( new Trick() );
         this.this_hand.trick_count += 1;
+    }
+
+    static possibleBones(
+        player_index: number,
+        bones_left: Bone[],
+        trump: Trump,
+        lead?: Bone): Bone[]
+    {
+        let add_all = false;
+        let possible_bones = [];
+        // Get all the valid bones the player has left
+        const bones = bones_left.filter((bone) => bone);
+
+        if (trump.name === 'sevens') {
+
+            // in sevens, player must play closest to seven regardless of whether he
+            // is leading or not
+
+            let closest = 9;
+
+            for(const bone of bones) {
+                closest = Math.min(closest, Math.abs(bone.sum - 7));
+            }
+
+            for(const bone of bones) {
+                if (Math.abs(bone.sum - 7) === closest) {
+                    possible_bones.push(bone);
+                }
+            }
+        }
+        else if (!lead) {
+
+            // player is leading, so can play anything
+
+            add_all = true;
+        }
+        else {
+            // player is following, so must follow suit
+
+            for(const bone of bones) {
+                if (bone.is_same_suit(lead, trump)) {
+                    possible_bones.push(bone);
+                }
+            }
+
+            // If no bones in the same suit were found, the player can
+            // play anything
+
+            if (possible_bones.length === 0) {
+                add_all = true;
+            }
+        }
+
+        if (add_all) {
+            possible_bones = [...bones];
+        }
+
+        return possible_bones;
     }
 
     // returns the target player name, the prompt and a list of choices

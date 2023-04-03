@@ -46,16 +46,6 @@ type AllPass = 'FORCE' | 'SHUFFLE';
 type NelloAllowed = 'NEVER' | 'ALWAYS' | 'FORCE';
 type DoublesSuit = 'HIGH_SUIT' | 'LOW_SUIT' | 'HIGH' | 'LOW';
 
-function replacer(key: any, value: any): any {
-    if (key === 'nello_doubles' || key === 'follow_me_doubles') {
-        return Array.from(value.values());
-    }
-    if (key === 'bones' && value) {
-        return Bone.toList(value);
-    }
-    return value;
-}
-
 function reviver(key: string, value: any): any {
     try {
         switch (key) {
@@ -72,7 +62,7 @@ function reviver(key: string, value: any): any {
                 assert(_.isArray(value));
                 assert(value.every((item) =>
                     _.isString(item) && ['HIGH_SUIT', 'LOW_SUIT', 'HIGH', 'LOW'].includes(item)));
-                return new Set(value);
+                return value;
             case 'plunge_allowed':
             case 'sevens_allowed':
                 if (_.isString(value)) {
@@ -115,13 +105,13 @@ export default class Rules {
     public readonly all_pass: AllPass = 'FORCE';
     public readonly min_bid: string = '30';
     public readonly forced_min_bid: string = '30';
-    public readonly follow_me_doubles: Set<DoublesSuit> = new Set(['HIGH']);
+    public readonly follow_me_doubles: DoublesSuit[] = ['HIGH'];
     public readonly plunge_allowed: boolean = false;
     public readonly plunge_min_marks: number = 2;
     public readonly plunge_max_marks: number = 2;
     public readonly sevens_allowed: boolean = false;
     public readonly nello_allowed: NelloAllowed = 'NEVER';
-    public readonly nello_doubles: Set<DoublesSuit> = new Set(['HIGH_SUIT']);
+    public readonly nello_doubles: DoublesSuit[] = ['HIGH_SUIT'];
     /** For testing, we fix the bones that are pulled */
     public readonly bones?: Bone[];
 
@@ -132,8 +122,11 @@ export default class Rules {
         this.bones = bones;
     }
 
-    toJson() {
-        return JSON.stringify(this, replacer, '  ');
+    toJSON() {
+        return {
+            ...this,
+            bones: this.bones ? Bone.toList(this.bones) : undefined
+        };
     }
 
     static fromJson(json: string): Rules {

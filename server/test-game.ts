@@ -8,6 +8,9 @@ import { Fallback, MoneyForPartner, NoMoneyOnUncertainLead,
     Pass, PlayFirst, TakeTheLead, Trash, KeepPartnerTrumps,
     UnbeatableLead, WinWithMoney } from './strategies';
 import Strategy from './strategy';
+import { BasePlayer } from './base-player';
+import ProductionBot from './production-bot';
+import { printSave } from './core/save-game';
 
 const auto = process.argv[2] === 'auto';
 let count = parseInt(process.argv[3] || '1', 10);
@@ -30,7 +33,7 @@ async function play(): Promise<void> {
         Fallback
     ];
 
-    const me = new PromptPlayer(pad('me'));
+    const me = new Bot(pad('me'), true).with(...strategies);
 
     const partnerDebug = new Strategy('debug', {
         play({name, debug, remaining, table, lead, has, possible}) {
@@ -51,7 +54,7 @@ async function play(): Promise<void> {
         ...strategies
     );
 
-    const players = [
+    let players = [
         me,
         new Bot(pad('left'), true).with(...strategies),
         partner,
@@ -65,14 +68,24 @@ async function play(): Promise<void> {
 
     const rules = new Rules(bones);
 
-    // const j = rules.toJson();
+    // const j = JSON.stringify(rules);
     // console.log(j);
     // console.log(Rules.fromJson(j));
-    // assert(Rules.fromJson(j).toJson() === j);
+    // assert(JSON.stringify(Rules.fromJson(j)) === j);
 
-    return GameDriver.start(rules, players).then(() => {
+    // return;
+
+    players = [
+        new Bot(undefined, true).with(Pass),
+        new Bot(undefined, true).with(Pass),
+        new Bot(undefined, true).with(Pass),
+        new Bot(undefined, true).with(Pass),
+    ];
+
+    return GameDriver.start(rules, players).then((save) => {
         if (!auto) {
-            console.log('\nDONE');
+            console.log('\n', JSON.stringify(save, null, undefined));
+//            printSave(save);
         }
         else if (count--) {
             console.log(count);

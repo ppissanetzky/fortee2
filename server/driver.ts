@@ -2,6 +2,7 @@ import assert from 'node:assert';
 
 import { Bid, Bone, Trump, Rules, Game, STEP, Team } from './core';
 import type Player from './player';
+import saveGame, { type Save } from './core/save-game';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -58,7 +59,7 @@ export default class GameDriver {
      *
      */
 
-    static async start(rules: Rules, players: Player[]): Promise<void> {
+    static async start(rules: Rules, players: Player[]): Promise<Save> {
         const driver = new GameDriver(rules, players);
         return driver.next();
     }
@@ -100,7 +101,7 @@ export default class GameDriver {
         return this.game.this_hand.bones_left[this.index(name)];
     }
 
-    private async next(): Promise<void> {
+    private async next(): Promise<Save> {
         switch (this.game.next_step) {
             case STEP.START_HAND: {
                     await Promise.all(this.players.map((player) =>
@@ -173,7 +174,7 @@ export default class GameDriver {
                     const status = new Status(this.game);
                     this.all((player) => player.gameOver({status}));
                     // TODO: What else can we do here?
-                    return;
+                    return saveGame(this.game);
                 }
             default:
                 assert(false, 'Invalid step');
