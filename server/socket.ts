@@ -65,7 +65,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         this.gone = new Promise((resolve) => {
             ws.once('close', (code, reason) => {
                 this.debug('close', code, reason.toString(),
-                    'outstanding', this.outstanding.length);
+                    'outstanding', this.outstanding.map(({mid, type}) => ([mid, type])).join(','));
                 resolve();
             });
         });
@@ -137,7 +137,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                     // of outstanding messages
                     return;
                 }
-                this.debug('->', ack || '', type, message);
+                this.debug('-> %s %s %j', ack || '', type, message);
                 // If there is no reply, we're not waiting for a response
                 // and we just sent it, so we take it out of the array
                 // and resolve the promise since it was sent
