@@ -1,6 +1,7 @@
 import assert from 'node:assert';
+import ms from 'ms';
 
-import { makeDebug, makeToken } from './utility';
+import { expected, makeDebug, makeToken } from './utility';
 import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
@@ -9,6 +10,8 @@ import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
+import { TableBuilder } from './table-helper';
+import config from './config';
 
 const enum State {
     /**
@@ -52,7 +55,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     private static ID = 1000;
 
     /**
-     * A map of all the game rooms that are "active"
+     * A map of all the game rooms that are "active" by token
      */
 
     public static readonly rooms = new Map<string, GameRoom>();
@@ -65,7 +68,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     /**
      * Returns an array of all active game rooms that this user
-     * has an invitation for
+     * name has been invited to
      */
 
     static roomsForUser(name: string): GameRoom[] {
@@ -75,11 +78,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly id = GameRoom.ID++;
 
+    public readonly url: string;
+
     public readonly rules: Rules;
+
+    public readonly table: TableBuilder;
 
     public readonly host: string;
 
-    private readonly positions: string[] = [];
+    private readonly positions: string[];
 
     public readonly sockets = new Map<string, Socket>();
 
@@ -97,35 +104,37 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
      */
     public readonly invited = new Set<string>();
 
-    constructor(rules: Rules, host: string, partner = '', others: string[] = []) {
+    constructor(rules: Rules, table: TableBuilder) {
         super();
-        assert(host, 'Host cannot be blank');
+        this.url = `${config.FT2_SERVER_BASE_URL}/slack-auth/${this.token}`;
+        this.table = table;
+        this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);
         this.rules = rules;
         this.debug = this.debug.extend(String(this.id));
-        this.debug('created for', host, partner, others, this.token);
+        this.debug('created %s for %j', this.token, table.table);
         this.debug('rules %o', rules);
-        this.host = host;
 
-        const nameOrBot = (index: number, name: string) => {
-            if (name) {
-                this.positions[index] = name;
+        this.positions = table.table.map((user) => {
+            if (user) {
+                const name = expected(user.name);
                 this.invited.add(name);
+                return name;
             }
-            else {
-                const bot = new ProductionBot();
-                this.positions[index] = bot.name;
-                this.bots.set(bot.name, bot);
-            }
-        }
-
-        nameOrBot(0, host);
-        nameOrBot(1, others[0]);
-        nameOrBot(2, partner);
-        nameOrBot(3, others[1]);
+            const bot = new ProductionBot();
+            this.bots.set(bot.name, bot);
+            return bot.name;
+        });
 
         assert(this.positions.every((name) => name), 'Positions are wrong');
         this.debug('positions %j', this.positions);
+
+        setTimeout(() => {
+            if (!this.started) {
+                this.debug('expired for %j', this.table);
+                GameRoom.rooms.delete(this.token);
+            }
+        }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
     }
 
     get size(): number {
@@ -202,10 +211,18 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.debug('game error', error);
         }
         finally {
-            // TODO: We have to delete the invitation
             this.state = State.OVER;
             this.players = [];
-            this.debug('game over');
+
+            /**
+             * Remove the room. Players can play again, but the link to it
+             * won't work anymore since it won't be in the map
+             */
+
+            if (GameRoom.rooms.has(this.token)) {
+                this.debug('game over, removing %s for %j', this.token, this.table);
+                GameRoom.rooms.delete(this.token);
+            }
         }
     }
 

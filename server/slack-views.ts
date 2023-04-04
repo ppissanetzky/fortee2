@@ -1,18 +1,14 @@
-import type { KnownBlock } from '@slack/bolt';
-import _ from 'lodash';
-import { Invitation, InvitationInputs } from './invitations';
+import type GameRoom from './game-room';
 import { Button, Modal, Option, Section, setIfTruthy,
 	StaticMultiSelect, StaticSelect } from 'slack-block-builder';
 
-export function GAME_STARTED(host: string, channel: string, invitation: Invitation) {
-    const others = invitation.users.filter((user) => user !== host);
-
+export function GAME_STARTED(room: GameRoom, channel?: string) {
     return Modal()
         .title('Your game is ready!')
         .notifyOnClose(false)
         .clearOnClose(true)
         .blocks(
-            setIfTruthy(others.length > 0,
+            setIfTruthy(channel,
                 Section()
                     .text(`I started a new chat with <#${channel}>`),
             ),
@@ -23,19 +19,19 @@ export function GAME_STARTED(host: string, channel: string, invitation: Invitati
                         .text('Play')
                         .primary(true)
                         .actionId('play-action')
-                        .url(invitation.urls.get(host))
+                        .url(room.url)
                 )
         ).buildToObject();
 }
 
-export function RULES(inputs: InvitationInputs) {
+export function RULES(metadata: string) {
 	return Modal()
 	.callbackId('set-rules')
 	.submit('Submit')
 	.close('Back')
 	.title('Set the rules')
 	.clearOnClose(false)
-	.privateMetaData(JSON.stringify(inputs))
+	.privateMetaData(metadata)
 	.blocks(
 		// Section()
 		// 	.blockId('reset')
@@ -270,52 +266,3 @@ export function START_GAME(users: string[]) {
 		]
 	};
 }
-
-export function PLAY_DM(userId: string, invitation: Invitation): KnownBlock[] {
-    /**
-     * Get a list of users exluding this one and the host (which could be )
-     * the same one
-     */
-    const { host } = invitation;
-    const remove = new Set([userId, host]);
-    const others = invitation.users.filter((user) => !remove.has(user));
-    let text = '';
-    // We're sending this message to the host
-    // The host wants to play with just bots
-    if (userId === host && others.length === 0) {
-        text = `Your game is ready to start!`;
-    }
-    // We're sending this message to someone that was invited
-    else {
-        text = `Click 'Play' when you're ready to start the game`;
-    }
-
-    return [
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": text
-			}
-		},
-		{
-			"type": "actions",
-			"elements": [
-				{
-					"type": "button",
-					"style": "primary",
-					"text": {
-						"type": "plain_text",
-						"text": "Play",
-						"emoji": true
-					},
-                    "url": `${invitation.urls.get(userId)}`,
-                    "value": `${invitation.id}`,
-					"action_id": "play-action"
-				},
-			]
-		}
-	]
-}
-
-//console.log(RULES.printPreviewUrl());

@@ -1,10 +1,12 @@
 import assert  from 'node:assert';
 import { App, ModalView, AckFn, ViewResponseAction, ViewOutput } from '@slack/bolt';
 import { makeDebug } from './utility';
-import { START_GAME, PLAY_DM, GAME_STARTED, RULES } from './slack-views';
+import { START_GAME, GAME_STARTED, RULES } from './slack-views';
 import config, {off} from './config';
-import { InvitationInputs, Invitation } from './invitations';
 import { Rules } from './core';
+import { TableBuilder } from './table-helper';
+import GameRoom from './game-room';
+import { Actions, Button, Message, Section } from 'slack-block-builder';
 
 const debug = makeDebug('slack');
 
@@ -42,10 +44,9 @@ export default async function connectToSlack() {
     app.view({type: 'view_submission', callback_id: 'set-rules'},
         async ({ ack, view }) => {
             debug('state %j', view.state);
-            const inputs = JSON.parse(view.private_metadata) as InvitationInputs;
-            assert(inputs);
-            debug('inputs %j', inputs);
-            createInvitation(ack, inputs, loadRulesFrom(view));
+            debug('table', view.private_metadata);
+            const table = TableBuilder.parse(view.private_metadata);
+            createInvitation(ack, table, loadRulesFrom(view));
         }
     );
 
@@ -67,16 +68,11 @@ export default async function connectToSlack() {
         const partners = view.state.values['partner-block']['partner'].selected_users;
         const team = view.state.values['team-block']['team'].selected_users;
 
-        const inputs: InvitationInputs = {
-            host: body.user.id,
-            partner: '',
-            team: [] as string[],
-            names: {} as Record<string, string>
-        };
+        const table = new TableBuilder();
+
+        table.host = {id: body.user.id};
 
         /** Add the host to the set so they don't invite themselves */
-
-        const set = new Set<string>([inputs.host]);
 
         if (partners) {
             if (partners.length > 1) {
@@ -87,8 +83,8 @@ export default async function connectToSlack() {
                     }
                 });
             }
-            for (const user of partners) {
-                if (set.has(user)) {
+            for (const id of partners) {
+                if (table.has(id)) {
                     return ack({
                         response_action: 'errors',
                         errors: {
@@ -96,8 +92,7 @@ export default async function connectToSlack() {
                         }
                     });
                 }
-                inputs.partner = user;
-                set.add(user);
+                table.partner = {id};
             }
         }
         if (team) {
@@ -109,8 +104,8 @@ export default async function connectToSlack() {
                     }
                 });
             }
-            for (const user of team) {
-                if (set.has(user)) {
+            for (const id of team) {
+                if (table.has(id)) {
                     return ack({
                         response_action: 'errors',
                         errors: {
@@ -118,12 +113,11 @@ export default async function connectToSlack() {
                         }
                     });
                 }
-                inputs.team.push(user);
-                set.add(user);
+                table.addOther({id});
             }
         }
 
-        if (set.has('USLACKBOT')) {
+        if (table.has('USLACKBOT')) {
             return ack({
                 response_action: 'errors',
                 errors: {
@@ -134,18 +128,23 @@ export default async function connectToSlack() {
 
         /** Get user info for everyone in the set */
 
-        const infos = await Promise.all(Array.from(set.values())
-            .map((user) => client.users.info({user})));
+        const infos = await Promise.all(table.ids
+            .map((id) => client.users.info({user: id})));
 
         for (const info of infos) {
-            /** TODO, will check later once we have more real humans */
-            // if (info.user?.is_bot) {
-            // }
+            if (info.user?.is_bot) {
+                return ack({
+                    response_action: 'errors',
+                    errors: {
+                        ['team-block']: `You can't invite a Slack bot`
+                    }
+                });
+            }
             const id = info.user?.id;
             const name = info.user?.profile?.display_name
                 || info.user?.profile?.real_name;
             if (id && name) {
-                inputs.names[id] = name;
+                table.setName(id, name);
             }
         }
 
@@ -153,7 +152,7 @@ export default async function connectToSlack() {
 
         return ack({
             response_action: 'push',
-            view: RULES(inputs)
+            view: RULES(JSON.stringify(table))
         });
     });
 
@@ -194,22 +193,26 @@ function loadRulesFrom(view: ViewOutput): Rules {
 
 async function createInvitation(
     ack: AckFn<ViewResponseAction> | AckFn<void>,
-    inputs: InvitationInputs,
+    table: TableBuilder,
     rules: Rules)
 {
-    const invitation = new Invitation(inputs, rules);
+    const host = table.host;
+    const ids = table.ids;
 
-    const host = invitation.host;
+    assert(host, 'How can we not have a host');
+    assert(ids.length > 0, 'No ids?');
+
+    const room = new GameRoom(rules, table);
 
     /**
      * If it is just this user that wants to play with bots, we're going to
      * update the view and be done.
      */
 
-    if (invitation.users.length === 1) {
+    if (ids.length === 1) {
         return ack({
             response_action: 'push',
-            view: GAME_STARTED(host, '', invitation)
+            view: GAME_STARTED(room)
         });
     }
 
@@ -219,7 +222,7 @@ async function createInvitation(
      */
 
     const conversation = await app.client.conversations.open({
-        users: invitation.users.join(',')
+        users: table.ids.join(',')
     });
 
     debug('conversation started: %j', conversation);
@@ -230,42 +233,48 @@ async function createInvitation(
 
     /** Post an opening message to the channel */
 
-    await app.client.chat.postMessage({
-        channel,
-        text: `:face_with_cowboy_hat: <@${host}> wants to a play a game with y'all`
-    });
+    const text = `:face_with_cowboy_hat: <@${host.id}> wants to a play a game with y'all`;
 
-    /** 'Push' the second page of the modal */
+    const playMessage = await app.client.chat.postMessage(
+        Message({channel})
+            .text(text)
+            .blocks(
+                Section().text(text),
+                Actions().elements(
+                    Button()
+                        .primary(true)
+                        .actionId('play-action')
+                        .text('Play')
+                        .url(room.url)
+                )
+
+            ).buildToObject()
+    );
+
+    /** 'Push' the next page of the modal - this is just visible to the host */
 
     ack({
         response_action: 'push',
-        view: GAME_STARTED(host, channel, invitation)
+        view: GAME_STARTED(room, channel)
     });
 
-    /** Post an ephemeral to each user */
+    /** Listen to events from the room */
 
-    for (const user of invitation.users) {
-        const result = await app.client.chat.postEphemeral({
-            channel,
-            user,
-            blocks: PLAY_DM(user, invitation),
-            text: `<@${host}> has invited you to play a game!`
-        });
-        debug('posted ephemeral', JSON.stringify(result));
-    }
-
-    /** Listen to events from the invitation */
-
-    invitation.on('gameOver', ({bots, save}) => {
-        if (bots > 0) {
-            return;
-        }
+    room.once('gameOver', ({save}) => {
         const score = save.score.join('-');
-        const winners = save.winners.map((name) =>
-            `<@${invitation.userIdForName(name)}>`).join(' and ');
-        app.client.chat.postMessage({
-            channel,
-            text: `Congrats to ${winners} on a ${score} victory! :trophy:`
-        });
+        const winners = save.winners.map((name) => {
+            const id = room.table.idFor(name);
+            return id ? `<@${id}>` : name;
+        }).join(' and ');
+        app.client.chat.postMessage(
+            Message({channel})
+                .text(`Congrats to ${winners} on a ${score} victory! :trophy:`)
+                .buildToObject()
+        );
+        /** Delete the 'play' message */
+        const { ts } = playMessage;
+        if (ts) {
+            app.client.chat.delete({channel, ts});
+        }
     });
 }

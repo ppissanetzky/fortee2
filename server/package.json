@@ -2,7 +2,7 @@
   "scripts": {
     "test": "eslint .",
     "server": "DEBUG=42:* nodemon server.ts",
-    "play": "DEBUG=42* ts-node test-client.ts",
+    "play": "DEBUG=42:* ts-node test-client.ts",
     "build": "tsc",
     "preversion": "nope"
   },

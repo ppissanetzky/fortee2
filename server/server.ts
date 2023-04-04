@@ -8,12 +8,13 @@ import express from 'express';
 import config from './config';
 
 import WsServer from './ws-server';
-import { makeDebug } from './utility';
+import { expected, makeDebug } from './utility';
 import setupAuthentication from './authentication';
 import connectToSlack from './slack';
 import { setupSlackAuthentication } from './slack-authentication';
 import GameRoom from './game-room';
 import { Rules } from './core';
+import { TableBuilder } from './table-helper';
 
 const debug = makeDebug('server');
 
@@ -33,6 +34,9 @@ app.use(express.json({limit: '20kb'}));
 app.use((req, res, next) => {
     debug(req.method, req.url, req.get('content-length') || '');
     debug('%o', req.headers);
+    res.once('finish', () => {
+        debug(req.method, req.url, res.statusCode);
+    });
     next();
 });
 
@@ -57,13 +61,15 @@ setupSlackAuthentication(app);
 
 if (!config.PRODUCTION) {
     app.get('/api/test-game/:players', async (req, res) => {
-        const players = req.params.players.split(',');
-        const [name, partner, left, right] = players;
+        const table = new TableBuilder(req.params.players.split(',')
+            .map((name) => ({id:`test/${name}` , name})));
         await new Promise<void>((resolve, reject) => {
-            req.login({id: `test/${name}`, name},
-                (error) => error ? reject(error) : resolve());
+            const host = expected(table.host);
+            const id = expected(host.id);
+            const name = expected(host.name);
+            req.login({id, name}, (error) => error ? reject(error) : resolve());
         });
-        const room = new GameRoom(new Rules(), name, partner, [left, right]);
+        const room = new GameRoom(new Rules(), table);
         res.redirect(`${config.FT2_SITE_BASE_URL}/play?t=${room.token}`);
     });
     app.get('/api/join/:name', async (req, res) => {
@@ -72,7 +78,7 @@ if (!config.PRODUCTION) {
             .find((room) => room.invited.has(name));
         if (!room) {
             debug('No room for', name);
-            return res.sendStatus(401);
+            return res.sendStatus(404);
         }
         await new Promise<void>((resolve, reject) => {
             req.login({id: `test/${name}`, name},
@@ -88,6 +94,7 @@ if (!config.PRODUCTION) {
 
 app.use((req, res, next) => {
     if (req.isUnauthenticated()) {
+        debug('unauthenticated', req.url);
         return res.sendStatus(401);
     }
     next();
