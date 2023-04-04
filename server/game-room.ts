@@ -43,7 +43,8 @@ export interface GameRoomEvents {
     gameOver: {
         bots: number;
         save: SaveHelper;
-    }
+    },
+    expired: void;
 }
 
 /**
@@ -65,16 +66,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
      */
 
     public readonly token = makeToken(32, 'base64url');
-
-    /**
-     * Returns an array of all active game rooms that this user
-     * name has been invited to
-     */
-
-    static roomsForUser(name: string): GameRoom[] {
-        return Array.from(this.rooms.values())
-            .filter((room) => room.invited.has(name));
-    }
 
     public readonly id = GameRoom.ID++;
 
@@ -133,6 +124,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             if (!this.started) {
                 this.debug('expired for %j', this.table);
                 GameRoom.rooms.delete(this.token);
+                this.emit('expired', undefined);
             }
         }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
     }
@@ -173,8 +165,9 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         });
     }
 
-    private roomUpdate(): RoomUpdate {
+    private roomUpdate(socket: Socket): RoomUpdate {
         return {
+            hosting: this.host === socket.name,
             full: this.full,
             started: this.started,
             paused: this.state === State.PAUSED,
@@ -243,7 +236,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
                     name,
-                    ...this.roomUpdate(),
+                    ...this.roomUpdate(other),
                 });
             });
         });
@@ -258,9 +251,9 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         // Notify everyone
         const notify = () => {
             // Tell everyone else that this user is here
-            this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate()));
+            this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate(other)));
             // Tell the user about the room
-            socket.send('youEnteredGameRoom', this.roomUpdate());
+            socket.send('youEnteredGameRoom', this.roomUpdate(socket));
         };
 
         // If it's not full, just notify everyone

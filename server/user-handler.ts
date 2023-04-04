@@ -1,5 +1,3 @@
-import assert from 'node:assert';
-
 import type Socket from './socket';
 import { makeDebug } from './utility';
 import GameRoom from './game-room';
@@ -22,16 +20,16 @@ export default class UserHandler {
 
         this.socket.gone.then(() => this.gameRoom = undefined);
 
-        // socket.on('createGame', () => {
-        //     assert(!this.gameRoom, `${this.name} already has a game room`);
-        //     this.gameRoom = new GameRoom(this.name);
-        //     this.gameRoom.join(this.socket);
-        // });
-
         socket.on('joinGame', ({token}) => {
-            assert(!this.gameRoom, `${this.name} already has a game room`);
+            if (this.gameRoom) {
+                this.debug('already has a game room');
+                return this.socket.send('badRoom', undefined);
+            }
             const room = GameRoom.rooms.get(token);
-            assert(room, `Room ${token} not found`);
+            if (!room) {
+                this.debug(`room ${token} not found`);
+                return this.socket.send('badRoom', undefined);
+            }
             room.join(this.socket);
             this.gameRoom = room;
         });

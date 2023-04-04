@@ -164,6 +164,7 @@ export default {
       ws: undefined,
       joining: false,
       youAre: undefined,
+      hosting: false,
       US: {
         marks: 0,
         points: undefined
@@ -244,10 +245,15 @@ export default {
           this.send('joinGame', { token: this.$route.query.t })
           break
 
+        case 'badRoom':
+          window.location.replace('/200.html')
+          break
+
         case 'youEnteredGameRoom':
         case 'enteredGameRoom':
         case 'leftGameRoom':
           {
+            this.hosting = message.hosting
             this.table = []
             this.paused = message.paused
             let index = message.players.indexOf(this.youAre)
@@ -365,24 +371,27 @@ export default {
           break
 
         case 'gameOver':
-          {
+          if (this.hosting) {
             const title = 'The game is over, would you like to play again?'
             const response = await this.prompt(title, ['Play again', 'Close'])
             if (response === 'Close') {
               this.ws.close()
               window.close()
               window.location.replace('https://fortee2.slack.com/')
+              return
             }
-            this.US.marks = 0
-            this.US.points = undefined
-            this.THEM.marks = 0
-            this.THEM.points = undefined
-            this.bids = {}
-            this.trump = {}
-            this.bidWinner = undefined
-            this.pile = []
             this.send('playAgain', null)
+          } else {
+            await this.prompt('Game over', ['OK'])
           }
+          this.US.marks = 0
+          this.US.points = undefined
+          this.THEM.marks = 0
+          this.THEM.points = undefined
+          this.bids = {}
+          this.trump = {}
+          this.bidWinner = undefined
+          this.pile = []
           break
       }
     },

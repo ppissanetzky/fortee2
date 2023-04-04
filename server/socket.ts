@@ -7,7 +7,6 @@ import type { IncomingMessages } from './incoming-messages';
 import Dispatcher from './dispatcher';
 import UserHandler from './user-handler';
 import { stringify, parse } from './json';
-import GameRoom from './game-room';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -102,10 +101,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         });
 
         // Send the welcome message
-        const rooms = GameRoom.roomsForUser(name);
-        const hosting = rooms.find((room) => room.host === name)?.id;
-        const invited = rooms.map(({id}) => id);
-        this.send('welcome', {youAre: name, hosting, invited});
+        this.send('welcome', {youAre: name});
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(

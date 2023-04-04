@@ -13,22 +13,11 @@ export interface OutgoingGlobalMessages {
          */
 
         youAre: string;
-
-        /**
-         * If the user is hosting a game room, this will be the ID
-         */
-
-        hosting?: number;
-
-        /**
-         * The IDs of all the game rooms this user has been invited to
-         */
-
-        invited: number[];
     };
 }
 
 export interface RoomUpdate {
+    hosting: boolean;
     full: boolean;
     started: boolean;
     paused: boolean;
@@ -38,6 +27,8 @@ export interface RoomUpdate {
 }
 
 export interface OutgoingGameRoomMessages {
+
+    badRoom: undefined,
 
     /**
      * Tell the user that just entered a game room, and give them

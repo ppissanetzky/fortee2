@@ -251,6 +251,14 @@ async function createInvitation(
             ).buildToObject()
     );
 
+    const deleteMessage = () => {
+        const { ts } = playMessage;
+        if (ts) {
+            app.client.chat.delete({channel, ts});
+            debug('deleted play message for %j', table.table);
+        }
+    };
+
     /** 'Push' the next page of the modal - this is just visible to the host */
 
     ack({
@@ -272,9 +280,8 @@ async function createInvitation(
                 .buildToObject()
         );
         /** Delete the 'play' message */
-        const { ts } = playMessage;
-        if (ts) {
-            app.client.chat.delete({channel, ts});
-        }
+        deleteMessage();
     });
+
+    room.once('expired', deleteMessage);
 }
