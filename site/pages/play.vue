@@ -1,8 +1,8 @@
 <template>
-  <v-container>
+  <v-container fluid>
     <v-row>
-      <v-col cols="4">
-        <v-card flat width="260">
+      <v-col cols="3" class="pr-1 pl-1">
+        <v-card flat>
           <v-container>
             <v-row>
               <v-col cols="8">
@@ -33,101 +33,126 @@
                 <span v-if="bidForTeam('THEM')" class="caption">/ {{ bidForTeam('THEM') }}</span>
               </v-col>
             </v-row>
+            <v-row
+              v-for="(trick, index) in pile"
+              :key="index"
+              class="ma-0 mb-2 mt-4 pa-0"
+            >
+              <v-container>
+                <v-row>
+                  <v-col
+                    v-for="bone in trick"
+                    :key="bone"
+                    cols="3"
+                    class="ma-0 pa-0 pb-1"
+                  >
+                    <v-img
+                      contain
+                      max-width="40"
+                      :src="`/${bone}v.png`"
+                    />
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-row>
           </v-container>
         </v-card>
       </v-col>
-      <v-col cols="4">
-        <Status v-model="top" color="secondary" />
-      </v-col>
-      <v-col cols="4" />
-    </v-row>
-    <v-row>
-      <v-col cols="4">
-        <Status v-model="left" color="red darken-4" />
-      </v-col>
-      <v-col cols="4" />
-      <v-col cols="4">
-        <Status v-model="right" color="red darken-4" />
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="4" />
-      <v-col cols="4">
-        <Status v-model="me" color="secondary" />
-      </v-col>
-      <v-col cols="4">
-        <v-card
-          flat
-          width="280"
-        >
-          <p v-if="paused">
-            Waiting for players to join
-          </p>
-          <p v-else-if="choiceTitle">
-            {{ choiceTitle }}
-          </p>
-          <div v-if="!paused">
-            <v-chip
-              v-for="choice in choices"
-              :key="choice"
-              small
-              label
-              color="primary"
-              class="mr-1 mb-1"
-              @click="choose(choice)"
-            >
-              {{ choice }}
-            </v-chip>
-          </div>
-        </v-card>
+      <v-col cols="9">
+        <v-container class="pa-0">
+          <v-row>
+            <v-col cols="4" />
+            <v-col cols="4">
+              <Status v-model="top" color="secondary" />
+            </v-col>
+            <v-col cols="4" />
+          </v-row>
+          <v-row>
+            <v-col cols="4">
+              <Status v-model="left" color="red darken-4" />
+            </v-col>
+            <v-col cols="4" />
+            <v-col cols="4">
+              <Status v-model="right" color="red darken-4" />
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="4" />
+            <v-col cols="4">
+              <Status v-model="me" color="secondary" />
+            </v-col>
+            <v-col cols="4">
+              <v-card
+                flat
+                width="280"
+              >
+                <p v-if="paused">
+                  Waiting for players to join
+                </p>
+                <p v-else-if="choiceTitle">
+                  {{ choiceTitle }}
+                </p>
+                <div v-if="!paused">
+                  <v-chip
+                    v-for="choice in choices"
+                    :key="choice"
+                    small
+                    label
+                    color="primary"
+                    class="mr-1 mb-1"
+                    @click="choose(choice)"
+                  >
+                    {{ choice }}
+                  </v-chip>
+                </div>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12">
+              <v-item-group>
+                <v-container>
+                  <v-row>
+                    <v-col
+                      v-for="n in 4"
+                      :key="n"
+                      cols="3"
+                    >
+                      <v-item v-slot="{ /* active,*/ toggle }">
+                        <v-img
+                          :src="`/${bones[n - 1]}.png`"
+                          contain
+                          max-height="80"
+                          @click="toggle"
+                        />
+                      </v-item>
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col cols="1" />
+                    <v-col
+                      v-for="n in 3"
+                      :key="n"
+                      cols="3"
+                    >
+                      <v-item v-slot="{ /* active, */ toggle }">
+                        <v-img
+                          :src="`/${bones[n + 3]}.png`"
+                          contain
+                          max-height="80"
+                          @click="toggle"
+                        />
+                      </v-item>
+                    </v-col>
+                  </v-row>
+                </v-container>
+              </v-item-group>
+            </v-col>
+          </v-row>
+        </v-container>
       </v-col>
     </v-row>
     <!-- My stuff -->
-    <v-row>
-      <v-col cols="12">
-        <v-item-group>
-          <v-container>
-            <v-row>
-              <v-col
-                v-for="n in 4"
-                :key="n"
-                cols="3"
-              >
-                <v-item v-slot="{ /* active,*/ toggle }">
-                  <v-img
-                    :src="`/${bones[n - 1]}.png`"
-                    contain
-                    max-height="80"
-                    @click="toggle"
-                  >
-                  <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
-                  </v-img>
-                </v-item>
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="1" />
-              <v-col
-                v-for="n in 3"
-                :key="n"
-                cols="3"
-              >
-                <v-item v-slot="{ /* active, */ toggle }">
-                  <v-img
-                    :src="`/${bones[n + 3]}.png`"
-                    contain
-                    max-height="80"
-                    @click="toggle"
-                  >
-                  <!-- <div v-if="active" ext-h2 flex-grow-1 text-center></div> -->
-                  </v-img>
-                </v-item>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-item-group>
-      </v-col>
-    </v-row>
   </v-container>
 </template>
 <script>
@@ -159,6 +184,7 @@ export default {
       plays: {},
       trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
+      pile: [],
 
       choiceTitle: undefined,
       choices: [],
@@ -234,10 +260,11 @@ export default {
           }
           break
         case 'startingHand':
+          await this.prompt('Ready to start the next hand?', ['Yes'])
           this.bids = {}
           this.trump = {}
           this.bidWinner = undefined
-          await this.prompt('Ready to start the next hand?', ['Yes'])
+          this.pile = []
           this.send('readyToStartHand', null, ack)
           break
         case 'draw':
@@ -304,6 +331,7 @@ export default {
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)
+          this.pile = message.status.US.pile
           break
         case 'endOfHand':
           {
