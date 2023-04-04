@@ -66,27 +66,7 @@ fetch(`http://localhost:${PORT}/api/join/${name}`)
                 const { ack, type, message }
                 : { ack?: number, type: keyof OutgoingMessages, message: any}
                     = parse(data.toString());
-                // if (type === 'welcome') {
-                //     if (message.hosting) {
-                //         return send('joinGame', {id: message.hosting});
-                //     }
-                //     return send('createGame', {});
-                // }
-                if (type === 'youEnteredGameRoom') {
-                    if (message.full) {
-                        return;
-                    }
-                    return send('inviteBot', {
-                        fillRoom: true,
-                        fastAF: true
-                    });
-                }
-                if (type === 'enteredGameRoom') {
-                    if (message.started) {
-                        return;
-                    }
-                    return send('startGame', null)
-                }
+
                 if (type === 'startingHand') {
                     return send('readyToStartHand', null, ack);
                 }
