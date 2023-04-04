@@ -167,6 +167,33 @@ export default class GameRoom {
         };
     }
 
+    private async run() {
+        try {
+            // Create the players
+            this.players = this.positions.map((name) => {
+                const socket = this.sockets.get(name);
+                if (socket) {
+                    return new RemotePlayer(socket);
+                }
+                const bot = this.bots.get(name);
+                assert(bot, `"${name}" is missing`);
+                return bot;
+            });
+            // Start'er up
+            await GameDriver.start(this.rules, this.players);
+        }
+        catch (error) {
+            // TODO: what should we do?
+            this.debug('game error', error);
+        }
+        finally {
+            // TODO: We have to delete the invitation
+            this.state = State.OVER;
+            this.players = [];
+            this.debug('game over');
+        }
+    }
+
     public async join(socket: Socket) {
         const { name } = socket;
         assert(!this.names.has(name), `User "${name}" exists`);
@@ -188,6 +215,14 @@ export default class GameRoom {
                 });
             });
         });
+        // Look for playAgain from the host
+        if (name === this.host) {
+            socket.on('playAgain', () => {
+                assert(this.state === State.OVER);
+                this.state = State.PLAYING;
+                this.run();
+            });
+        }
         // Notify everyone
         const notify = () => {
             // Tell everyone else that this user is here
@@ -205,32 +240,10 @@ export default class GameRoom {
         if (this.state === State.WAITING) {
             // Update state
             this.state = State.PLAYING;
-            try {
-                // Notify everyone
-                notify();
-                // Create the players
-                this.players = this.positions.map((name) => {
-                    const socket = this.sockets.get(name);
-                    if (socket) {
-                        return new RemotePlayer(socket);
-                    }
-                    const bot = this.bots.get(name);
-                    assert(bot, `"${name}" is missing`);
-                    return bot;
-                });
-                // Start'er up
-                await GameDriver.start(this.rules, this.players);
-            }
-            catch (error) {
-                // TODO: what should we do?
-                this.debug('game error', error);
-            }
-            finally {
-                // TODO: We have to delete the invitation
-                this.state = State.OVER;
-                this.players = [];
-                this.debug('game over');
-            }
+            // Notify everyone
+            notify();
+            // Run the game
+            this.run();
         }
 
         // The game is paused, but everyone just came back, so we can

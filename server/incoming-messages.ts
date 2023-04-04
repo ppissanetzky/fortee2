@@ -16,20 +16,9 @@ export interface UserMessages {
 
 export interface GameRoomMessages {
 
-    /**
-     * The host invites bot(s) to the game room
-     */
+    /** Start a new game once this one is over */
 
-    inviteBot: {
-        fillRoom: boolean;
-        fastAF?: boolean;
-    }
-
-    /**
-     * The host starts the game
-     */
-
-    startGame: null
+    playAgain: null,
 
     /**
      * A user is ready to start the hand

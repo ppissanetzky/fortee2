@@ -243,6 +243,7 @@ export default {
           this.youAre = message.youAre
           this.send('joinGame', { token: this.$route.query.t })
           break
+
         case 'youEnteredGameRoom':
         case 'enteredGameRoom':
         case 'leftGameRoom':
@@ -259,6 +260,10 @@ export default {
             this.connected = message.connected
           }
           break
+
+        case 'startingGame':
+          break
+
         case 'startingHand':
           await this.prompt('Ready to start the next hand?', ['Yes'])
           this.bids = {}
@@ -267,12 +272,15 @@ export default {
           this.pile = []
           this.send('readyToStartHand', null, ack)
           break
+
         case 'draw':
           this.bones = message.bones
           break
+
         case 'waitingForBid':
           this.waitingForBid = message.from
           break
+
         case 'bid':
           this.waitingForBid = this.youAre
           this.prompt('Your bid', message.possible).then((bid) => {
@@ -281,22 +289,27 @@ export default {
             this.send('submitBid', { bid: `#bid:${bid}` }, ack)
           })
           break
+
         case 'bidSubmitted':
           this.waitingForBid = undefined
           this.bids[message.from] = message.bid
           break
+
         case 'reshuffle':
           this.bids = {}
           break
+
         case 'bidWon':
           this.bids = { [message.from]: message.bid }
           this.bidWinner = message.from
           this.US.points = 0
           this.THEM.points = 0
           break
+
         case 'waitingForTrump':
           this.waitingForTrump = message.from
           break
+
         case 'call':
           this.waitingForTrump = this.youAre
           this.prompt('Call trumps', message.possible).then((trump) => {
@@ -304,13 +317,16 @@ export default {
             this.send('callTrump', { trump: `#trump:${trump}` }, ack)
           })
           break
+
         case 'trumpSubmitted':
           this.waitingForTrump = undefined
           this.trump = { [message.from]: message.trump }
           break
+
         case 'waitingForPlay':
           this.waitingForPlay = message.from
           break
+
         case 'play':
           this.waitingForPlay = this.youAre
           this.prompt('What will it be?', message.possible).then((bone) => {
@@ -319,10 +335,12 @@ export default {
             this.send('play', { bone: `#bone:${bone}` }, ack)
           })
           break
+
         case 'playSubmitted':
           this.waitingForPlay = undefined
           this.plays[message.from] = message.bone
           break
+
         case 'endOfTrick':
           this.trickWinner = message.winner
           this.US = message.status.US
@@ -333,6 +351,7 @@ export default {
           this.send('readyToContinue', null, ack)
           this.pile = message.status.US.pile
           break
+
         case 'endOfHand':
           {
             const title = `${message.winner} won the hand`
@@ -344,7 +363,26 @@ export default {
             this.THEM.points = undefined
           }
           break
+
         case 'gameOver':
+          {
+            const title = 'The game is over, would you like to play again?'
+            const response = await this.prompt(title, ['Play again', 'Close'])
+            if (response === 'Close') {
+              this.ws.close()
+              window.close()
+              window.location.replace('https://fortee2.slack.com/')
+            }
+            this.US.marks = 0
+            this.US.points = undefined
+            this.THEM.marks = 0
+            this.THEM.points = undefined
+            this.bids = {}
+            this.trump = {}
+            this.bidWinner = undefined
+            this.pile = []
+            this.send('playAgain', null)
+          }
           break
       }
     },
