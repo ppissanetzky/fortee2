@@ -46,18 +46,19 @@ export interface Save {
 
 export default function saveGame(game: Game): Save {
     const hands: Hand[] = game.hands.map((hand) => ({
-        bones: hand.pulled_bones.map((bones, index) => ([
+        bones: hand.pulled_bones.map((bones, index) => [
             index, _.sortBy(Bone.toList(bones)).reverse(),
-        ])),
-        bids: array(hand.first_bidder).map((index) => ([
+        ]),
+        bids: array(hand.first_bidder).map((index) => [
             index, hand.bids[index].toString(),
-        ])),
+        ]),
         high: [hand.high_bidder, hand.high_bid.toString()],
         trump: expected(hand.trump).toString(),
         tricks: hand.tricks.map((trick) => ({
-            bones: array(trick.trick_leader).map((index) => ([
-                index, trick.trick_bones[index].toString(),
-            ])),
+            bones: array(trick.trick_leader)
+                /** In Nello, there will be a hole in the trick */
+                .filter((index) => trick.trick_bones[index])
+                .map((index) => [index, trick.trick_bones[index].toString()]),
             winner: trick.trick_winner,
             points: trick.trick_points
         }))
@@ -69,6 +70,31 @@ export default function saveGame(game: Game): Save {
         hands,
         marks: game.marks
     };
+}
+
+export class SaveHelper {
+
+    public readonly save: Save;
+
+    constructor(save: Save) {
+        this.save = save;
+    }
+
+    get winners(): string[] {
+        const indices = this.save.marks.US > this.save.marks.THEM
+            ? [0, 2] : [1, 3];
+        return indices.map((index) => this.save.players[index]);
+    }
+
+    get losers(): string[] {
+        const indices = this.save.marks.US < this.save.marks.THEM
+            ? [0, 2] : [1, 3];
+        return indices.map((index) => this.save.players[index]);
+    }
+
+    get score(): number[] {
+        return [this.save.marks.US, this.save.marks.THEM].sort().reverse();
+    }
 }
 
 export function printSave(save: Save) {

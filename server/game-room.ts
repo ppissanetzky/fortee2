@@ -7,6 +7,8 @@ import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
 import GameDriver, { Rules } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
+import { SaveHelper } from './core/save-game';
+import Dispatcher from './dispatcher';
 
 const enum State {
     /**
@@ -34,11 +36,18 @@ const enum State {
     OVER,
 }
 
+export interface GameRoomEvents {
+    gameOver: {
+        bots: number;
+        save: SaveHelper;
+    }
+}
+
 /**
  * This one handles the messages for all users in a game room
  */
 
-export default class GameRoom {
+export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private static ID = 1000;
 
@@ -89,6 +98,7 @@ export default class GameRoom {
     public readonly invited = new Set<string>();
 
     constructor(rules: Rules, host: string, partner = '', others: string[] = []) {
+        super();
         assert(host, 'Host cannot be blank');
         GameRoom.rooms.set(this.token, this);
         this.rules = rules;
@@ -180,7 +190,12 @@ export default class GameRoom {
                 return bot;
             });
             // Start'er up
-            await GameDriver.start(this.rules, this.players);
+            const save = await GameDriver.start(this.rules, this.players);
+
+            this.emit('gameOver', {
+                bots: this.bots.size,
+                save: new SaveHelper(save),
+            });
         }
         catch (error) {
             // TODO: what should we do?

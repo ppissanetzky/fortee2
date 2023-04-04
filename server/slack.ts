@@ -253,4 +253,19 @@ async function createInvitation(
         });
         debug('posted ephemeral', JSON.stringify(result));
     }
+
+    /** Listen to events from the invitation */
+
+    invitation.on('gameOver', ({bots, save}) => {
+        if (bots > 0) {
+            return;
+        }
+        const score = save.score.join('-');
+        const winners = save.winners.map((name) =>
+            `<@${invitation.userIdForName(name)}>`).join(' and ');
+        app.client.chat.postMessage({
+            channel,
+            text: `Congrats to ${winners} on a ${score} victory! :trophy:`
+        });
+    });
 }

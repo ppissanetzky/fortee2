@@ -2,8 +2,10 @@ import assert from 'node:assert';
 import ms from 'ms';
 import { makeDebug, makeToken } from './utility';
 import config from './config';
-import GameRoom from './game-room';
+import GameRoom, { GameRoomEvents } from './game-room';
 import { Rules } from './core';
+import { SaveHelper } from './core/save-game';
+import Dispatcher from './dispatcher';
 
 /**
  * This needs to be JSON.stringifyable
@@ -34,7 +36,7 @@ export interface MessageInfo {
     ts: string;
 }
 
-export class Invitation {
+export class Invitation extends Dispatcher<GameRoomEvents> {
 
     private static N = 1;
 
@@ -76,6 +78,7 @@ export class Invitation {
     private readonly debug = makeDebug('invitation').extend(`${Invitation.N++}`);
 
     constructor(inputs: InvitationInputs, rules: Rules) {
+        super();
         this.inputs = inputs;
         this.users = Object.keys(inputs.names);
         this.names = Object.values(inputs.names);
@@ -140,12 +143,25 @@ export class Invitation {
                 }
             }, ms(config.FT2_SLACK_INVITATION_EXPIRY));
         });
+
+        /** Forward events from the room */
+
+        room.on('gameOver', (event) => this.emit('gameOver', event));
     }
 
     /** The ID of the host */
 
     get host(): string {
         return this.inputs.host;
+    }
+
+    /** The user ID for a given user name */
+
+    userIdForName(name: string): string | undefined {
+        const index = this.names.indexOf(name);
+        if (index >= 0) {
+            return this.users[index];
+        }
     }
 
     /** An array of user IDs other than this one */
