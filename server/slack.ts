@@ -6,7 +6,7 @@ import config, {off} from './config';
 import { Rules } from './core';
 import { TableBuilder } from './table-helper';
 import GameRoom from './game-room';
-import { Actions, Button, Message, Section } from 'slack-block-builder';
+import { Actions, Button, Message, Section, HomeTab, Header } from 'slack-block-builder';
 
 const debug = makeDebug('slack');
 
@@ -23,6 +23,45 @@ export default async function connectToSlack() {
         return;
     }
 
+    app.event('app_home_opened', async ({event, client}) => {
+        debug('app home opened %j', event);
+        if (event.tab === 'home') {
+            client.views.publish({
+                user_id: event.user,
+                view:
+                    HomeTab()
+                        .callbackId('home-tab')
+                        .blocks(
+                            Header().text('Start a game'),
+                            Actions()
+                                .elements(
+                                    Button()
+                                        .actionId('home-start-game')
+                                        .text('Click me!')
+                                        .primary(true)
+                                )
+                        )
+                        .buildToObject()
+            })
+        }
+    });
+
+    app.action({callback_id: 'home-tab'}, async ({body, ack}) => {
+        debug('home-tab callback %j', body);
+        ack();
+    });
+
+    app.action('home-start-game', async ({body, ack}) => {
+        debug('home-start-game action %j', body);
+        ack();
+        if (body.type === 'block_actions') {
+            app.client.views.open({
+                trigger_id: body.trigger_id,
+                view: START_GAME([]) as ModalView
+            });
+        }
+    });
+
     app.command('/play', async ({ command, ack }) => {
         debug('/play', command);
         await ack();
@@ -32,6 +71,15 @@ export default async function connectToSlack() {
         await app.client.views.open({
             trigger_id: command.trigger_id,
             view: START_GAME(users) as ModalView,
+        });
+    });
+
+    app.shortcut('play-shortcut', async ({ shortcut, ack }) => {
+        debug('play-shortcut');
+        await ack();
+        await app.client.views.open({
+            trigger_id: shortcut.trigger_id,
+            view: START_GAME([]) as ModalView
         });
     });
 
