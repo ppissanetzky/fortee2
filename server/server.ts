@@ -6,7 +6,6 @@ import https from 'node:https';
 import express from 'express';
 
 import config from './config';
-
 import WsServer from './ws-server';
 import { expected, makeDebug } from './utility';
 import setupAuthentication from './authentication';
@@ -14,7 +13,7 @@ import connectToSlack from './slack';
 import { setupSlackAuthentication } from './slack-authentication';
 import GameRoom from './game-room';
 import { Rules } from './core';
-import { TableBuilder } from './table-helper';
+import { TableBuilder, User } from './table-helper';
 
 const debug = makeDebug('server');
 
@@ -61,8 +60,12 @@ setupSlackAuthentication(app);
 
 if (!config.PRODUCTION) {
     app.get('/api/test-game/:players', async (req, res) => {
-        const table = new TableBuilder(req.params.players.split(',')
-            .map((name) => ({id:`test/${name}` , name})));
+        const names: (User | null)[] = req.params.players.split(',')
+            .map((name) => ({id:`test/${name}` , name}));
+        while (names.length < 4) {
+            names.push(null);
+        }
+        const table = new TableBuilder(names);
         await new Promise<void>((resolve, reject) => {
             const host = expected(table.host);
             const id = expected(host.id);
@@ -93,6 +96,7 @@ if (!config.PRODUCTION) {
  */
 
 app.use((req, res, next) => {
+    debug('%o', req.user);
     if (req.isUnauthenticated()) {
         debug('unauthenticated', req.url);
         return res.sendStatus(401);

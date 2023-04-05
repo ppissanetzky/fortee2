@@ -1,9 +1,15 @@
+import path from 'node:path';
 
 import type { Express } from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as LocalStrategy } from 'passport-local';
+import sqlite from 'better-sqlite3';
+import ms from 'ms';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Store = require('better-sqlite3-session-store')(session);
 
 import { makeDebug, hashString } from './utility';
 import config from './config';
@@ -148,7 +154,14 @@ export default function setupAuthentication(app: Express): void {
             path: '/',
             /** Using 'strict' breaks sign-in-with-slack */
             sameSite: 'lax'
-        }
+        },
+        store: new Store({
+            client: new sqlite(path.join(config.FT2_DB_PATH, 'sessions.db')),
+            expired: {
+              clear: true,
+              intervalMs: ms('15m')
+            }
+        })
     }));
 
     /**

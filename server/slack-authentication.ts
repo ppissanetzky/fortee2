@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import type { Express, Request } from 'express';
+import type { Express } from 'express';
 import { Issuer, generators, BaseClient } from 'openid-client';
 
 import GameRoom from './game-room';
@@ -100,7 +100,11 @@ export function setupSlackAuthentication(app: Express) {
                 scope: 'openid email profile',
                 code_challenge: generators.codeChallenge(codeVerifier),
                 code_challenge_method: 'S256',
+                team: 'T050GLABCFN'
             });
+
+
+            debug('redirecting to', url);
 
             /** Go there */
 

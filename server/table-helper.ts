@@ -111,6 +111,7 @@ export class TableBuilder {
     public readonly table: Table;
 
     constructor(table: Table = [null, null, null, null]) {
+        assert(table.length === 4);
         this.table = table;
     }
 
