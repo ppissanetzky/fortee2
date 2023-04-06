@@ -5,8 +5,8 @@ import { makeDebug } from './utility';
 import { OutgoingMessages } from './outgoing-messages';
 import type { IncomingMessages } from './incoming-messages';
 import Dispatcher from './dispatcher';
-import UserHandler from './user-handler';
 import { stringify, parse } from './json';
+import GameRoom from './game-room';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -15,7 +15,6 @@ interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessage
     readonly reply?: R;
     readonly resolve: (value?: IncomingMessages[R]) => void;
 }
-
 
 /**
  * This is a connected WebSocket with a user name. It emits all the
@@ -53,8 +52,6 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     private readonly debug = makeDebug('socket');
     private readonly ws: WebSocket;
 
-    private readonly handler: UserHandler;
-
     private constructor(name: string, ws: WebSocket, gameRoomToken: string) {
         super();
         this.name = name;
@@ -68,7 +65,14 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 resolve();
             });
         });
-        this.handler = new UserHandler(this, gameRoomToken);
+
+        const room = GameRoom.rooms.get(gameRoomToken);
+
+        if (!room) {
+            this.debug(`room ${gameRoomToken} not found`);
+            this.ws.close(undefined, 'badRoom');
+            return;
+        }
 
         ws.on('error', (error) => this.debug('error', error));
 
@@ -101,12 +105,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         });
 
         // Send the welcome message
-        this.send('welcome', {youAre: name});
-    }
-
-    close() {
-        this.debug('closing socket');
-        this.ws.close();
+        this.send('welcome', {youAre: name}).then(() => room.join(this));
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(

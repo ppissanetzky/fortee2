@@ -200,7 +200,9 @@ export default {
     }
     const ws = new WebSocket(url)
     ws.onclose = (event) => {
+      console.log('close', event)
       this.ws = undefined
+      window.location.replace('/200.html')
     }
     ws.onerror = (event) => {
       console.log('error', event)
@@ -242,10 +244,6 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
-          break
-
-        case 'badRoom':
-          window.location.replace('/200.html')
           break
 
         case 'youEnteredGameRoom':
