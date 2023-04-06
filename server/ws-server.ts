@@ -61,6 +61,13 @@ export default class WsServer {
             return res.sendStatus(401);
         }
 
+        const { gameRoomToken } = req.session;
+
+        if (!gameRoomToken) {
+            this.debug('missing grt');
+            return res.sendStatus(401);
+        }
+
         this.debug('upgrade', id, name);
 
         if (this.connected.has(id)) {
@@ -72,7 +79,7 @@ export default class WsServer {
         try {
             const ws = await new Promise<WebSocket>((resolve, reject) => {
                 const head = Buffer.alloc(0);
-                this.wss.on('wsClientError', reject);
+                this.wss.once('wsClientError', reject);
                 this.wss.handleUpgrade(req, req.socket, head, (ws) => {
                     this.wss.off('wsClientError', reject);
                     resolve(ws);
@@ -84,7 +91,7 @@ export default class WsServer {
             this.setupPings(name, ws);
             this.connected.add(id);
             // Create a socket for it
-            Socket.connected(name, ws)
+            Socket.connected(name, ws, gameRoomToken)
                 .gone.then(() => this.connected.delete(id));
         }
         catch (error) {

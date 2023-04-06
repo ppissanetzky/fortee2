@@ -242,7 +242,6 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
-          this.send('joinGame', { token: this.$route.query.t })
           break
 
         case 'badRoom':

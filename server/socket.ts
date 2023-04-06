@@ -24,8 +24,8 @@ interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessage
 
 export default class Socket extends Dispatcher<IncomingMessages> {
 
-    static connected(name: string, ws: WebSocket): Socket {
-        return new Socket(name, ws);
+    static connected(name: string, ws: WebSocket, gameRoomToken: string): Socket {
+        return new Socket(name, ws, gameRoomToken);
     }
 
     public readonly name: string;
@@ -55,7 +55,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
     private readonly handler: UserHandler;
 
-    private constructor(name: string, ws: WebSocket) {
+    private constructor(name: string, ws: WebSocket, gameRoomToken: string) {
         super();
         this.name = name;
         this.debug = this.debug.extend(name);
@@ -68,7 +68,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 resolve();
             });
         });
-        this.handler = new UserHandler(this);
+        this.handler = new UserHandler(this, gameRoomToken);
 
         ws.on('error', (error) => this.debug('error', error));
 
@@ -102,6 +102,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
         // Send the welcome message
         this.send('welcome', {youAre: name});
+    }
+
+    close() {
+        this.debug('closing socket');
+        this.ws.close();
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(

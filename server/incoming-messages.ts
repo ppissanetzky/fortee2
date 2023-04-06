@@ -1,19 +1,6 @@
 
 import type { Bid, Trump, Bone } from './core';
 
-export interface UserMessages {
-
-    /**
-     * When a user wants to join a game room.
-     * 'token' is the game room token
-     */
-
-    joinGame: {
-        token: string;
-    }
-
-}
-
 export interface GameRoomMessages {
 
     /** Start a new game once this one is over */
@@ -57,4 +44,4 @@ export interface GameRoomMessages {
     readyToContinue: null
 }
 
-export type IncomingMessages = UserMessages & GameRoomMessages;
+export type IncomingMessages = GameRoomMessages;

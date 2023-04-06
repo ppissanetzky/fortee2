@@ -97,7 +97,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     constructor(rules: Rules, table: TableBuilder) {
         super();
-        this.url = `${config.FT2_SERVER_BASE_URL}/slack-auth/${this.token}`;
+        this.url = `${config.FT2_SERVER_BASE_URL}/game/${this.token}`;
         this.table = table;
         this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);

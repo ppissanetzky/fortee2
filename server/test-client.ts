@@ -38,11 +38,6 @@ let name = process.argv[2];
         debug('no set-cookie');
         return;
     }
-    const { token } = await response.json();
-    if (!token) {
-        debug('no token');
-        return;
-    }
     const client = new WebSocket(`ws://localhost:${PORT}/ws`, {
         headers: {cookie}
     });
@@ -59,7 +54,6 @@ let name = process.argv[2];
 
     client.on('open', () => {
         debug('open');
-        send('joinGame', {token});
         /*
         client.on('ping', (data) => debug('ping', data.toString()));
         client.on('pong', (data) => debug('pong', data.toString()));
