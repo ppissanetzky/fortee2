@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { Express, Request, Response } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import ms from 'ms';
 
@@ -9,6 +9,10 @@ import config from './config';
 //------------------------------------------------------------------------------
 
 export default class WsServer {
+
+    static create(app: Express) {
+        new WsServer(app);
+    }
 
     private readonly debug = makeDebug('wss');
 
@@ -21,12 +25,73 @@ export default class WsServer {
 
     private readonly connected = new Set<string>();
 
-    constructor() {
+    private constructor(app: Express) {
         // From https://github.com/websockets/ws/blob/master/examples/express-session-parse/index.js
         this.wss = new WebSocketServer({
             clientTracking: false,
             noServer: true
         });
+
+        /**
+         * This is where the WebSocket upgrade starts
+         */
+
+        app.get('/ws', (req, res) => this.upgrade(req, res));
+    }
+
+    private async upgrade(req: Request, res: Response) {
+
+        /** Make sure it is an upgrade */
+
+        const headers = ['connection', 'upgrade'].map((name) =>
+            req.get(name)?.toLowerCase()).join();
+
+        if (headers !== 'upgrade,websocket') {
+            return res.sendStatus(400);
+        }
+
+        const user = req.user;
+
+        if (!user) {
+            return res.sendStatus(401);
+        }
+
+        const { id, name } = user;
+        if (!(id && name)) {
+            return res.sendStatus(401);
+        }
+
+        this.debug('upgrade', id, name);
+
+        if (this.connected.has(id)) {
+            this.debug(`user ${id} "${name}" already connected`);
+            return res.sendStatus(403);
+        }
+
+        // Upgrade to a ws
+        try {
+            const ws = await new Promise<WebSocket>((resolve, reject) => {
+                const head = Buffer.alloc(0);
+                this.wss.on('wsClientError', reject);
+                this.wss.handleUpgrade(req, req.socket, head, (ws) => {
+                    this.wss.off('wsClientError', reject);
+                    resolve(ws);
+                });
+            });
+
+            // All good
+            this.debug('accepted', id, name);
+            this.setupPings(name, ws);
+            this.connected.add(id);
+            // Create a socket for it
+            Socket.connected(name, ws)
+                .gone.then(() => this.connected.delete(id));
+        }
+        catch (error) {
+            this.debug('upgrade failed :', error instanceof Error
+                ? error.message : error);
+            res.sendStatus(400);
+        }
     }
 
     private setupPings(name: string, ws: WebSocket) {
@@ -54,43 +119,5 @@ export default class WsServer {
                 }));
             }
         });
-    }
-
-    async upgrade(req: Request) {
-        try {
-            const { user } = req;
-            if (!user) {
-                throw new Error('missing user');
-            }
-            const { id, name } = user;
-            if (!(name && id)) {
-                throw new Error('missing session name and userId');
-            }
-            this.debug('upgrade', id, name);
-            if (this.connected.has(id)) {
-                throw new Error(`user ${id} already connected`);
-            }
-            // Upgrade to a ws
-            const ws = await new Promise<WebSocket>((resolve) => {
-                const head = Buffer.alloc(0);
-                this.wss.handleUpgrade(req, req.socket, head, resolve);
-            });
-            // Check again now, just in case
-            if (this.connected.has(id)) {
-                throw new Error(`user ${id} already connected`);
-            }
-            // All good
-            this.debug('accepted', id, name);
-            this.setupPings(name, ws);
-            this.connected.add(id);
-            // Create a socket for it
-            Socket.connected(name, ws)
-                .gone.then(() => this.connected.delete(id));
-        }
-        catch (error) {
-            this.debug(error instanceof Error ? error.message : error);
-            req.socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            req.socket.destroy();
-        }
     }
 }
