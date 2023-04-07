@@ -2,16 +2,16 @@
   <v-card
     v-if="value"
     flat
-    width="200"
+    width="180"
+    class="pa-0 ma-0"
   >
     <div v-if="name" class="text-center" style="color: #6f6f6f;">
-      <h2>{{ value.name }}</h2>
       <v-icon v-if="value.bot">
         mdi-robot
       </v-icon>
     </div>
-    <v-card flat color="#dedede" height="80">
-      <v-container fill-height>
+    <v-card flat color="#e2e2e2" height="90" width="180" class="rounded-lg">
+      <v-container fill-height class="pa-0 ma-0">
         <v-row align-center>
           <v-col cols="12" class="text-center">
             <v-progress-circular
@@ -29,13 +29,16 @@
               <v-img
                 :src="`/${value.play}.png`"
                 contain
-                max-height="60"
+                max-height="90"
               />
             </div>
           </v-col>
         </v-row>
       </v-container>
     </v-card>
+    <div v-if="name" class="text-center mt-4" style="color: #6f6f6f;">
+      <h2>{{ value.name }}</h2>
+    </div>
   </v-card>
 </template>
 <script>

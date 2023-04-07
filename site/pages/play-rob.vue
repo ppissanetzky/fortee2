@@ -5,13 +5,13 @@
         <v-col cols="3">
           <v-container class="pa-0">
             <v-row>
-              <v-col class="ma-0 pa-0 pl-3 pr-3">
+              <v-col class="ma-0 pa-3 pl-3 pr-3 ">
                 <v-img contain min-width="300" max-width="400" src="/logo.png" />
               </v-col>
             </v-row>
             <v-row>
-              <v-col cols="12">
-                <v-card flat color="#818181" rounded="1" min-width="300" max-width="400">
+              <v-col cols="12" class="pt-0">
+                <v-card flat tile color="#8fa5b7" min-width="300" max-width="400">
                   <v-container class="pa-2">
                     <v-row>
                       <v-col cols="6">
@@ -53,7 +53,7 @@
             </v-row>
             <v-row>
               <v-col cols="12" class="pa-0 pl-3 pr-3">
-                <v-card flat color="#dedede" rounded="1" min-width="300" max-width="400">
+                <v-card flat tile color="#c0d4e5" min-width="300" max-width="400">
                   <v-card-text>
                     <div v-if="bidWinner" class="text-center" style="color: #6f6f6f;">
                       <span class="text-h6">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
@@ -78,12 +78,12 @@
                     <v-row class="text-center" style="color: #676767;">
                       <v-col cols="6" class="pa-0 pl-1">
                         <h1 v-if="bidWinner && trump[bidWinner]">{{ US.points }}</h1>
-                        <v-card flat min-height="300" color="#dedede">
+                        <v-card flat min-height="350" color="#c0d4e5">
                           <v-card
                             v-for="(trick, index) in pile.US"
                             :key="`US-${index}`"
                             flat
-                            color="#dedede"
+                            color="#c0d4e5"
                           >
                             <v-card-actions>
                               <v-img
@@ -100,11 +100,11 @@
                       </v-col>
                       <v-col cols="6" class="pa-0 pl-1 pr-1">
                         <h1 v-if="bidWinner && trump[bidWinner]">{{ THEM.points }}</h1>
-                        <v-card flat min-height="300" color="#dedede">
+                        <v-card flat min-height="350" color="#c0d4e5">
                           <v-card
                             v-for="(trick, index) in pile.THEM"
                             :key="`THEM-${index}`"
-                            color="#dedede"
+                            color="#c0d4e5"
                             flat
                           >
                             <v-card-actions>
@@ -161,12 +161,13 @@
             </v-row>
             <!-- THE CHOICE BAR -->
             <v-row>
-              <v-col cols="12">
-                <v-toolbar tile>
+              <v-col cols="12" class="pa-0 mt-6">
+                <v-toolbar tile color="#0049bd" class="white--text">
+                  <v-spacer />
                   <v-toolbar-title v-if="paused">
                     Waiting for players to join
                   </v-toolbar-title>
-                  <v-toolbar-title v-else-if="choiceTitle" align-center>
+                  <v-toolbar-title v-else-if="choiceTitle">
                     {{ choiceTitle }}
                   </v-toolbar-title>
                   <v-toolbar-title v-else-if="waitingForBid">
@@ -183,56 +184,59 @@
                       v-for="choice in choices"
                       :key="choice"
                       label
-                      color="#0049bd"
+                      color="#ff3600"
                       class="mr-1 white--text"
                       @click="choose(choice)"
                     >
-                      {{ choice }}
+                      <strong>{{ choice }}</strong>
                     </v-chip>
                   </div>
+                  <v-spacer />
                 </v-toolbar>
               </v-col>
             </v-row>
             <!-- MY BONES -->
             <v-row>
-              <v-col cols="12">
-                <v-item-group>
-                  <v-container>
-                    <v-row>
-                      <v-col
-                        v-for="n in 4"
-                        :key="n"
-                        cols="3"
-                      >
-                        <v-item v-slot="{ /* active,*/ toggle }">
-                          <v-img
-                            :src="`/${bones[n - 1]}.png`"
-                            contain
-                            max-height="80"
-                            @click="toggle"
-                          />
-                        </v-item>
-                      </v-col>
-                    </v-row>
-                    <v-row>
-                      <v-col cols="1" />
-                      <v-col
-                        v-for="n in 3"
-                        :key="n"
-                        cols="3"
-                      >
-                        <v-item v-slot="{ /* active, */ toggle }">
-                          <v-img
-                            :src="`/${bones[n + 3]}.png`"
-                            contain
-                            max-height="80"
-                            @click="toggle"
-                          />
-                        </v-item>
-                      </v-col>
-                    </v-row>
-                  </v-container>
-                </v-item-group>
+              <v-col cols="12" class="pa-0 mt-3">
+                <v-card tile color="#8fa5b7">
+                  <v-item-group>
+                    <v-container>
+                      <v-row>
+                        <v-col
+                          v-for="n in 4"
+                          :key="n"
+                          cols="3"
+                        >
+                          <v-item v-slot="{ /* active,*/ toggle }">
+                            <v-img
+                              :src="`/${bones[n - 1]}.png`"
+                              contain
+                              max-height="80"
+                              @click="toggle"
+                            />
+                          </v-item>
+                        </v-col>
+                      </v-row>
+                      <v-row>
+                        <v-col cols="1" />
+                        <v-col
+                          v-for="n in 3"
+                          :key="n"
+                          cols="3"
+                        >
+                          <v-item v-slot="{ /* active, */ toggle }">
+                            <v-img
+                              :src="`/${bones[n + 3]}.png`"
+                              contain
+                              max-height="80"
+                              @click="toggle"
+                            />
+                          </v-item>
+                        </v-col>
+                      </v-row>
+                    </v-container>
+                  </v-item-group>
+                </v-card>
               </v-col>
             </v-row>
           </v-container>
