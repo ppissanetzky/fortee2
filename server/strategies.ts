@@ -292,12 +292,11 @@ export const Fallback = new Strategy('fallback', {
  */
 
 export const MoneyForPartner = new Strategy('give my partner money', {
-    play({debug, trump, lead, table, possible, remaining}) {
+    play({debug, trump, lead, table, possible, trickBones, remaining}) {
         /** If my partner lead */
         if (lead && table.isPartner(lead.from)) {
             debug('my partner lead', lead.bone.toString());
-            /** TODO: I think we could do better with a deepRemaining for the lead */
-            if (lead.bone.beatsAll(trump, remaining)) {
+            if (lead.bone.beatsAll(trump, _.union(trickBones, remaining))) {
                 debug('my partner will win');
                 /** Get the best money bone and, if we have one, play it */
                 const mostMoney = Bone.mostMoney(possible);
@@ -315,11 +314,11 @@ export const MoneyForPartner = new Strategy('give my partner money', {
  */
 
 export const TakeTheLead = new Strategy('try to take the lead', {
-    play({debug, leading, possible, unbeatable, remaining}) {
+    play({debug, leading, possible, unbeatable, trickBones, remaining}) {
         if (leading) {
             return;
         }
-        const winners = unbeatable(remaining, possible);
+        const winners = unbeatable(_.union(trickBones, remaining), possible);
         if (winners.length === 0) {
             return;
         }

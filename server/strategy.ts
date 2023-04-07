@@ -15,7 +15,7 @@ export class State {
 
     constructor(player: BasePlayer) {
         this.player = player;
-        this.debug = makeDebug(player.name);
+        this.debug = makeDebug('strategy').extend(player.name);
     }
 
     for(name: string): this {
