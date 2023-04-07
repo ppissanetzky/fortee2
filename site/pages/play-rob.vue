@@ -1,24 +1,17 @@
 <template>
   <div>
-    <v-app-bar
-      flat
-      color="#00256a"
-      class="ma-0"
-    >
-      <div>
-        <v-img max-width="253" src="/logo.png" />
-      </div>
-      <v-spacer />
-      <v-icon color="white">mdi-dots-vertical</v-icon>
-    </v-app-bar>
-
     <v-container fluid>
       <v-row>
         <v-col cols="3">
           <v-container class="pa-0">
             <v-row>
+              <v-col class="ma-0 pa-0 pl-3 pr-3">
+                <v-img contain min-width="300" max-width="400" src="/logo.png" />
+              </v-col>
+            </v-row>
+            <v-row>
               <v-col cols="12">
-                <v-card flat color="#818181" rounded="0" min-width="300" max-width="400">
+                <v-card flat color="#818181" rounded="1" min-width="300" max-width="400">
                   <v-container class="pa-2">
                     <v-row>
                       <v-col cols="6">
@@ -27,9 +20,6 @@
                             US
                           </h1>
                           <span class="subtitle-1">{{ me.name }} & {{ top.name }}</span>
-                          <h1 style="font-size: 300%">
-                            {{ US.marks }}
-                          </h1>
                         </div>
                       </v-col>
                       <v-col cols="6">
@@ -38,6 +28,19 @@
                             THEM
                           </h1>
                           <span class="subtitle-1">{{ left.name }} & {{ right.name }}</span>
+                        </div>
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="6">
+                        <div class="text-center white--text">
+                          <h1 style="font-size: 300%">
+                            {{ US.marks }}
+                          </h1>
+                        </div>
+                      </v-col>
+                      <v-col cols="6">
+                        <div class="text-center white--text">
                           <h1 style="font-size: 300%">
                             {{ THEM.marks }}
                           </h1>
@@ -50,32 +53,71 @@
             </v-row>
             <v-row>
               <v-col cols="12" class="pa-0 pl-3 pr-3">
-                <v-card flat color="#dedede" rounded="0" min-width="300" max-width="400">
+                <v-card flat color="#dedede" rounded="1" min-width="300" max-width="400">
                   <v-card-text>
-                    <div class="text-center" style="color: #6f6f6f;">
-                      <h2>{{ bidWinner }} bid {{ bids[bidWinner] }} on {{ trump[bidWinner] }}</h2>
+                    <div v-if="bidWinner" class="text-center" style="color: #6f6f6f;">
+                      <span class="text-h6">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
+                      <span v-if="trump[bidWinner]" class="text-h6"> on <strong>{{ trump[bidWinner] }}</strong></span>
                     </div>
                   </v-card-text>
-                  <v-card-text>
+                  <v-card-text v-if="bidWinner && trump[bidWinner]">
                     <v-progress-linear
-                      value="24"
+                      :value="bidPercentage"
+                      :reverse="teamFor(bidWinner) === 'THEM'"
                       rounded
                       height="25"
                       color="#8dc73f"
                       background-color="#e8e8e8"
-                    />
+                    >
+                      <template #default>
+                        <!-- {{ US.points }} -->
+                      </template>
+                    </v-progress-linear>
                   </v-card-text>
                   <v-container>
                     <v-row class="text-center" style="color: #676767;">
                       <v-col cols="6" class="pa-0 pl-1">
-                        <h1>{{ US.points }}</h1>
-                        <v-card flat min-height="500">
-
+                        <h1 v-if="bidWinner && trump[bidWinner]">{{ US.points }}</h1>
+                        <v-card flat min-height="300" color="#dedede">
+                          <v-card
+                            v-for="(trick, index) in pile.US"
+                            :key="`US-${index}`"
+                            flat
+                            color="#dedede"
+                          >
+                            <v-card-actions>
+                              <v-img
+                                v-for="bone in trick"
+                                :key="bone"
+                                class="mr-1"
+                                contain
+                                max-width="30"
+                                :src="`/${bone}v.png`"
+                              />
+                            </v-card-actions>
+                          </v-card>
                         </v-card>
                       </v-col>
                       <v-col cols="6" class="pa-0 pl-1 pr-1">
-                        <h1>{{ THEM.points }}</h1>
-                        <v-card flat min-height="500">
+                        <h1 v-if="bidWinner && trump[bidWinner]">{{ THEM.points }}</h1>
+                        <v-card flat min-height="300" color="#dedede">
+                          <v-card
+                            v-for="(trick, index) in pile.THEM"
+                            :key="`THEM-${index}`"
+                            color="#dedede"
+                            flat
+                          >
+                            <v-card-actions>
+                              <v-img
+                                v-for="bone in trick"
+                                :key="bone"
+                                class="mr-1"
+                                contain
+                                max-width="30"
+                                :src="`/${bone}v.png`"
+                              />
+                            </v-card-actions>
+                          </v-card>
                         </v-card>
                       </v-col>
                     </v-row>
@@ -86,6 +128,114 @@
           </v-container>
         </v-col>
         <v-col cols="9">
+          <!-- THE PLAYING AREA -->
+          <v-container>
+            <v-row>
+              <v-col cols="4" />
+              <v-col cols="4">
+                <!-- TOP PLAYER STATUS -->
+                <StatusNew v-model="top" />
+              </v-col>
+              <v-col cols="4" />
+            </v-row>
+            <v-row>
+              <v-col cols="4">
+                <!-- LEFT PLAYER STATUS -->
+                <StatusNew v-model="left" />
+              </v-col>
+              <v-col cols="4">
+                <!-- CENTER AREA -->
+              </v-col>
+              <v-col cols="4">
+                <!-- RIGHT PLAYER STATUS -->
+                <StatusNew v-model="right" />
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="4" />
+              <v-col cols="4">
+                <!-- MY STATUS -->
+                <StatusNew v-model="me" :name="false" />
+              </v-col>
+              <v-col cols="4" />
+            </v-row>
+            <!-- THE CHOICE BAR -->
+            <v-row>
+              <v-col cols="12">
+                <v-toolbar tile>
+                  <v-toolbar-title v-if="paused">
+                    Waiting for players to join
+                  </v-toolbar-title>
+                  <v-toolbar-title v-else-if="choiceTitle" align-center>
+                    {{ choiceTitle }}
+                  </v-toolbar-title>
+                  <v-toolbar-title v-else-if="waitingForBid">
+                    Waiting for {{ waitingForBid }} to bid...
+                  </v-toolbar-title>
+                  <v-toolbar-title v-else-if="waitingForTrump">
+                    Waiting for {{ waitingForTrump }} to call trumps...
+                  </v-toolbar-title>
+                  <v-toolbar-title v-else-if="waitingForPlay">
+                    Waiting for {{ waitingForPlay }} to play...
+                  </v-toolbar-title>
+                  <div v-if="!paused" class="pl-6">
+                    <v-chip
+                      v-for="choice in choices"
+                      :key="choice"
+                      label
+                      color="#0049bd"
+                      class="mr-1 white--text"
+                      @click="choose(choice)"
+                    >
+                      {{ choice }}
+                    </v-chip>
+                  </div>
+                </v-toolbar>
+              </v-col>
+            </v-row>
+            <!-- MY BONES -->
+            <v-row>
+              <v-col cols="12">
+                <v-item-group>
+                  <v-container>
+                    <v-row>
+                      <v-col
+                        v-for="n in 4"
+                        :key="n"
+                        cols="3"
+                      >
+                        <v-item v-slot="{ /* active,*/ toggle }">
+                          <v-img
+                            :src="`/${bones[n - 1]}.png`"
+                            contain
+                            max-height="80"
+                            @click="toggle"
+                          />
+                        </v-item>
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="1" />
+                      <v-col
+                        v-for="n in 3"
+                        :key="n"
+                        cols="3"
+                      >
+                        <v-item v-slot="{ /* active, */ toggle }">
+                          <v-img
+                            :src="`/${bones[n + 3]}.png`"
+                            contain
+                            max-height="80"
+                            @click="toggle"
+                          />
+                        </v-item>
+                      </v-col>
+                    </v-row>
+                  </v-container>
+                </v-item-group>
+              </v-col>
+            </v-row>
+          </v-container>
         </v-col>
       </v-row>
     </v-container>
@@ -93,36 +243,44 @@
 </template>
 
 <script>
-// import Status from '~/components/status.vue'
+import StatusNew from '~/components/status-new.vue'
 export default {
-  //  components: { Status },
+  components: { StatusNew },
   data () {
     return {
       ws: undefined,
       joining: false,
-      youAre: 'Rob',
-      hosting: true,
+      youAre: undefined,
+      hosting: undefined,
+      teams: {
+        US: [],
+        THEM: []
+      },
+      pile: {
+        US: [],
+        THEM: []
+      },
       US: {
-        marks: 4,
-        points: 24
+        marks: 0,
+        points: 0
       },
       THEM: {
-        marks: 2,
-        points: 1
+        marks: 0,
+        points: 0
       },
-      table: [{ name: 'Rob' }, { name: 'Jeff' }, { name: 'Pablo' }, { name: 'Scott' }],
+      table: [],
+      bots: [],
       connected: [],
       paused: false,
       waitingForBid: undefined,
-      bids: { Rob: '32' },
-      bidWinner: 'Rob',
+      bids: {},
+      bidWinner: undefined,
       waitingForTrump: undefined,
-      trump: { Rob: 'sixes' },
+      trump: {},
       waitingForPlay: undefined,
       plays: {},
       trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
-      pile: [],
 
       choiceTitle: undefined,
       choices: [],
@@ -160,7 +318,18 @@ export default {
     left () { return this.status(1) },
     top () { return this.status(2) },
     right () { return this.status(3) },
-    me () { return this.status(0) }
+    me () { return this.status(0) },
+    bidPercentage () {
+      const bid = this.bids[this.bidWinner]
+      if (!bid) {
+        return 0
+      }
+      const max = bid.length === 2 ? parseInt(bid, 10) : 42
+      const value = this.teamFor(this.bidWinner) === 'US'
+        ? this.US.points
+        : this.THEM.points
+      return Math.min(100, 100 * (value / max))
+    }
   },
   watch: {},
   mounted () {},
@@ -179,11 +348,9 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
-          // this.send('joinGame', { token: this.$route.query.t })
           break
 
-        case 'badRoom':
-          window.location.replace('/200.html')
+        case 'startingGame':
           break
 
         case 'youEnteredGameRoom':
@@ -192,9 +359,16 @@ export default {
           {
             this.hosting = message.hosting
             this.table = []
+            this.bots = message.bots
             this.paused = message.paused
+            this.teams = { US: [], THEM: [] }
             let index = message.players.indexOf(this.youAre)
             for (let i = 0; i < 4; i++) {
+              if (i === 0 || i === 2) {
+                this.teams.US.push(message.players[i])
+              } else {
+                this.teams.THEM.push(message.players[i])
+              }
               this.table.push({ name: message.players[index++] })
               if (index === message.players.length) {
                 index = 0
@@ -204,15 +378,12 @@ export default {
           }
           break
 
-        case 'startingGame':
-          break
-
         case 'startingHand':
           await this.prompt('Ready to start the next hand?', ['Yes'])
           this.bids = {}
           this.trump = {}
           this.bidWinner = undefined
-          this.pile = []
+          this.pile = { US: [], THEM: [] }
           this.send('readyToStartHand', null, ack)
           break
 
@@ -292,12 +463,18 @@ export default {
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)
-          this.pile = message.status.US.pile
+          this.pile.US = message.status.US.pile
+          this.pile.THEM = message.status.THEM.pile
           break
 
         case 'endOfHand':
           {
-            const title = `${message.winner} won the hand`
+            const team = message.winner
+            const players = this.table
+              .filter(({ name }) => this.teamFor(name) === team)
+              .map(({ name }) => name)
+              .join(' and ')
+            const title = `${players} won the hand`
             this.US = message.status.US
             this.THEM = message.status.THEM
             await this.prompt(title, ['Continue'])
@@ -328,7 +505,7 @@ export default {
           this.bids = {}
           this.trump = {}
           this.bidWinner = undefined
-          this.pile = []
+          this.pile = { US: [], THEM: [] }
           break
       }
     },
@@ -338,7 +515,7 @@ export default {
       }
     },
     teamFor (name) {
-      if (name === this.me.name || name === this.top.name) {
+      if (this.teams.US.includes(name)) {
         return 'US'
       }
       return 'THEM'
@@ -351,6 +528,7 @@ export default {
       return {
         name,
         connected: this.connected.includes(name),
+        bot: this.bots.includes(name),
         waitingForBid: this.waitingForBid === name,
         bid: this.bids[name],
         waitingForTrump: this.waitingForTrump === name,

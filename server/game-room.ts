@@ -172,6 +172,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             started: this.started,
             paused: this.state === State.PAUSED,
             players: [...this.positions],
+            bots: [...this.bots.keys()],
             connected: [
                 ...Array.from(this.sockets.keys()),
                 ...Array.from(this.bots.keys())

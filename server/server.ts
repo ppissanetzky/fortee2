@@ -80,7 +80,7 @@ if (!config.PRODUCTION) {
         const room = new GameRoom(new Rules(), table);
         req.session.gameRoomToken = room.token;
         await saveSession(req);
-        res.redirect(`/play`);
+        res.redirect(`/play-rob`);
     });
     app.get('/api/join/:name', async (req, res) => {
         const name = req.params.name;

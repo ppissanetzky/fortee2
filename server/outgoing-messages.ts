@@ -22,6 +22,7 @@ export interface RoomUpdate {
     started: boolean;
     paused: boolean;
     players: string[];
+    bots: string[];
     /** The list of user names that have a socket - are connected */
     connected: string[];
 }

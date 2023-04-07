@@ -79,7 +79,7 @@ const names = _.shuffle(Array.from(new Set([
 let index = 0;
 
 export default function nextBotName(): string {
-    const result = `~${names[index++]}~`;
+    const result = names[index++];
     if (index >= names.length) {
         index = 0;
     }

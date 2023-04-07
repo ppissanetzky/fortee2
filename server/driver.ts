@@ -12,7 +12,6 @@ class TeamStatus {
      * Points and pile for the current hand
      */
     readonly points: number = 0;
-    // TODO
     readonly pile: Bone[][] = [];
     /**
      * Marks won so far
@@ -27,7 +26,9 @@ class TeamStatus {
         }
         const hand = game.this_hand;
         this.points = hand.points[team];
-        this.pile = hand.pile;
+        this.pile = hand.tricks.filter((trick) =>
+            Game.team_for_player(trick.trick_winner) == team
+        ).map(({trick_bones}) => trick_bones);
         this.marks = game.marks[team];
     }
 }
