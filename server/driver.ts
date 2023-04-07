@@ -72,7 +72,7 @@ export default class GameDriver {
         assert(players.length === 4, 'Too few players');
         this.players = players;
         const table = players.map(({name}) => name);
-        this.all((player) => player.startingGame({table}));
+        this.all((player) => player.startingGame({table, rules}));
         this.game = new Game(table, rules);
     }
 

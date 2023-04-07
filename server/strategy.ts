@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import _ from 'lodash';
 
 import type { BasePlayer } from './base-player';
-import { Bid, Trump, Bone } from './core';
+import { Bid, Trump, Bone, Rules } from './core';
 import { expected, makeDebug, Debugger } from './utility';
 import TableHelper from './table-helper';
 import type { BidSubmitted, PlaySubmitted } from './outgoing-messages';
@@ -30,6 +30,10 @@ class State {
 
     get name(): string {
         return this.player.name;
+    }
+
+    get rules(): Rules {
+        return expected(this.player.rules);
     }
 
     get table(): TableHelper {
@@ -80,7 +84,7 @@ class PlayState extends State {
      * Also, excludes any bones we know following players don't have
      */
 
-    readonly remaining;
+    readonly remaining: Bone[];
 
     constructor(player: BasePlayer, possible: Bone[]) {
         super(player);
@@ -159,7 +163,6 @@ class PlayState extends State {
              * If their play was not in the same suit as the lead,
              * we can remove all bones in the same suit */
             if (!played.bone.is_same_suit(lead.bone, trump)) {
-                this.debug(name, 'did not follow', lead.bone.toString());
                 has = has.filter((bone) =>
                     !bone.is_same_suit(lead.bone, trump));
             }

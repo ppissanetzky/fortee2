@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 
 import type Player from './player';
-import type { Bid , Bone, Team, Trump } from './core';
+import type { Bid , Bone, Team, Trump, Rules } from './core';
 import type { Status } from './driver';
 import Socket from './socket';
 
@@ -47,7 +47,7 @@ export default class RemotePlayer implements Player {
         return msg;
     }
 
-    startingGame(msg: { table: string[]}): void {
+    startingGame(msg: { table: string[], rules: Rules }): void {
         this.socket.send('startingGame', msg);
     }
 

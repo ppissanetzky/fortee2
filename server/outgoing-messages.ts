@@ -1,4 +1,4 @@
-import type { Bone, Trump, Bid } from './core';
+import type { Bone, Trump, Bid, Rules } from './core';
 import type { Team, Status } from './driver';
 
 export interface OutgoingGlobalMessages {
@@ -55,6 +55,7 @@ export interface OutgoingGameRoomMessages {
 
 export interface StartingGame {
     table: string[];
+    rules: Rules;
 }
 
 export interface Draw {

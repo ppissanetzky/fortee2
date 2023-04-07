@@ -1,5 +1,5 @@
 import type Player from './player';
-import type { Bid , Bone, Trump } from './core';
+import type { Bid , Bone, Trump, Rules } from './core';
 import type {
     BidSubmitted, Draw, EndOfHand, EndOfTrick, GameOver,
     PlaySubmitted, StartingGame, TrumpSubmitted,
@@ -14,6 +14,7 @@ export class BasePlayer implements Player {
 
     public readonly name: string;
 
+    public rules?: Rules;
     public table?: TableHelper;
     public bones: Bone[] = [];
     public bids: BidSubmitted[] = [];
@@ -35,7 +36,8 @@ export class BasePlayer implements Player {
 
     // #region Player protocol
 
-    startingGame({ table } : StartingGame ): void {
+    startingGame({ table, rules } : StartingGame ): void {
+        this.rules = rules;
         this.table = new TableHelper(this.name, table);
     }
 
