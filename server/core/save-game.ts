@@ -35,6 +35,8 @@ interface Hand {
     high: Bid;
     trump: string;
     tricks: Trick[];
+    stuck: boolean;
+    made: boolean;
 }
 
 export interface Save {
@@ -61,7 +63,9 @@ export default function saveGame(game: Game): Save {
                 .map((index) => [index, trick.trick_bones[index].toString()]),
             winner: trick.trick_winner,
             points: trick.trick_points
-        }))
+        })),
+        stuck: hand.bid_forced,
+        made: hand.bid_made
     }));
     return {
         /** Not realy JSON, just has the bones (if any) as strings */

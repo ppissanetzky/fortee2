@@ -6,7 +6,7 @@ import Bot from './bot';
 import PromptPlayer from './prompt-player';
 import { Fallback, MoneyForPartner, NoMoneyOnUncertainLead,
     Pass, PlayFirst, TakeTheLead, Trash, KeepPartnerTrumps,
-    UnbeatableLead, WinWithMoney } from './strategies';
+    UnbeatableLead, WinWithMoney, Bid1 } from './strategies';
 import Strategy from './strategy';
 import { BasePlayer } from './base-player';
 import ProductionBot from './production-bot';
@@ -22,6 +22,7 @@ async function play(): Promise<void> {
     }
 
     const strategies = [
+        Bid1,
         Pass,
         MoneyForPartner,
         TakeTheLead,
@@ -54,7 +55,7 @@ async function play(): Promise<void> {
         ...strategies
     );
 
-    let players = [
+    const players = [
         me,
         new Bot(pad('left'), true).with(...strategies),
         partner,
@@ -66,7 +67,7 @@ async function play(): Promise<void> {
     const remaining = _.difference(Bone.ALL, mine, p);
     const bones = _.concat(mine, remaining.slice(0, 7), p, remaining.slice(7));
 
-    const rules = new Rules(bones);
+    const rules = new Rules();
 
     // const j = JSON.stringify(rules);
     // console.log(j);
@@ -75,16 +76,34 @@ async function play(): Promise<void> {
 
     // return;
 
-    players = [
-        new Bot(undefined, true).with(Pass),
-        new Bot(undefined, true).with(Pass),
-        new Bot(undefined, true).with(Pass),
-        new Bot(undefined, true).with(Pass),
-    ];
+    // players = [
+    //     new Bot(undefined, true).with(Pass),
+    //     new Bot(undefined, true).with(Pass),
+    //     new Bot(undefined, true).with(Pass),
+    //     new Bot(undefined, true).with(Pass),
+    // ];
 
     return GameDriver.start(rules, players).then((save) => {
+        let made = 0;
+        let total = 0;
+        let stuck = 0;
+        save.hands.forEach((hand, index) => {
+            console.log(index, hand.made);
+            if (!hand.stuck) {
+                total += 1;
+                if (hand.made) {
+                    made += 1;
+                }
+            }
+            else {
+                stuck += 1;
+            }
+        });
+        console.log('hands', save.hands.length, 'stuck', stuck,
+            'made', made, '/', total, '=', 100 * (made / total));
+
         if (!auto) {
-            console.log('\n', JSON.stringify(save, null, undefined));
+//            console.log('\n', JSON.stringify(save, null, undefined));
 //            printSave(save);
         }
         else if (count--) {

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import assert from 'node:assert';
+import _ from 'lodash';
 import debug from 'debug';
 
 type Debugger = debug.Debugger;
@@ -24,4 +25,16 @@ export function hashString(data: string, hash = 'md5'): string {
 export function expected<T>(value: T): NonNullable<T> {
     assert(value);
     return value;
+}
+
+export function last<T>(array: T[]): T | void {
+    const length = array.length;
+    if (length > 0) {
+        return array[length - 1];
+    }
+}
+
+export function random<T>(from: T[]): T {
+    assert(from.length > 0);
+    return expected(_.sample(from));
 }

@@ -1,8 +1,9 @@
 import _ from 'lodash';
 
-import Strategy from './strategy';
-import { Bone } from './core';
+import Strategy, { State, BidState, CallState } from './strategy';
+import { Bid, Bone, Trump } from './core';
 import { TrumpStats } from './bidder';
+import { last, random } from './utility';
 
 /**
  * Lowest possible bid - used to force test bots to pass
@@ -126,7 +127,7 @@ export const WinWithMoney = new Strategy('win with money', {
         /** I am playing last */
         if (trick.length === 3) {
             /** My bones that can beat everything else in the trick */
-            const bones = unbeatable(trickBones, possible);
+            const bones: Bone[] = unbeatable(trickBones, possible);
             /** I don't have any, move on */
             if (bones.length === 0) {
                 return;
@@ -157,6 +158,104 @@ export const Trash = new Strategy('trash', {
         }
     }
 });
+
+/**
+ * Bid based on trump stats
+ */
+
+class BidWithStats {
+
+    decide(state: Readonly<State>, possible: Trump[] = Trump.ALL): TrumpStats | void {
+        /** When we bid, we only know about the trumps in the rules */
+        const allowed = TrumpStats.trumpsForRules(state.rules);
+        const stats = TrumpStats.all(state.bones,
+            _.intersection(allowed, possible))
+            .filter(({trump, total, points}) => {
+                /**
+                 * Judgment call, drop everything below 70% and with 15
+                 * or more points
+                 */
+                if (total < 70 || points >= 15) {
+                    return false;
+                }
+                state.debug('looking at', trump.toString(), total, points);
+                return true;
+            });
+        const [best] = stats;
+        if (best) {
+            state.debug('best is', best.trump.toString(), best.total, best.points);
+            return best;
+        }
+        state.debug('no good trumps');
+    }
+
+    didMyPartnerBid(state: Readonly<State>): boolean {
+        const partner = state.table.partner;
+        state.debug(partner, state.bids);
+        return state.bids.some(({bid, from}) =>
+            !bid.is_pass && from === partner);
+    }
+
+    bid(state: Readonly<BidState>): Bid | void {
+        const stats = this.decide(state);
+        if (!stats) {
+            return;
+        }
+        const { debug, possible } = state;
+        /** A really good hand, bid the highest possible */
+        if (stats.total === 100) {
+            debug('i got a good hand!');
+            return last(possible);
+        }
+        /** A middle of the road hand */
+        if (stats.total >= 85) {
+            let max = 30;
+            switch (stats.points) {
+                case 0:
+                    max = 41;
+                    break;
+                case 5:
+                    max = 36;
+                    break;
+                case 10:
+                    max = 31;
+                    break;
+            }
+            const bids = possible.filter(({points}) =>
+                points >= 30 && points <= max);
+            /** None of the possible bids are in my range */
+            if (bids.length === 0) {
+                debug(`i won't bid higher than`, max);
+                return;
+            }
+            /** If I'm bidding last, might as well go low */
+            if (state.bids.length === 3) {
+                debug('bidding last, going low');
+                return bids[0];
+            }
+            /** I don't know what to do next, so we'll pick a random one */
+            debug('choosing random up to', max);
+            return random(bids);
+        }
+        /** Something possibly worth bidding on */
+        const [lowest] = possible;
+        if (this.didMyPartnerBid(state)) {
+            debug('my partner bid');
+            /** This won't be a pass if we're stuck */
+            return lowest;
+        }
+        /** Choose something random between lowest and 31 */
+        debug('going low, or passing');
+        return random(possible.filter(({points}) => points <= 31));
+    }
+
+    call(state: Readonly<CallState>): Trump | void {
+        const stats = this.decide(state);
+        return stats?.trump;
+    }
+}
+
+export const Bid1 = new Strategy('bid 1', new BidWithStats());
 
 /**
  * A somewhat sensible fallback

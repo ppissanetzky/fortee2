@@ -1,5 +1,5 @@
 import Bot from './bot';
-import { Fallback, MoneyForPartner,
+import { Bid1, Fallback, MoneyForPartner,
     NoMoneyOnUncertainLead, Pass,
     TakeTheLead, Trash, KeepPartnerTrumps,
     UnbeatableLead,
@@ -9,6 +9,7 @@ export default class ProductionBot extends Bot {
     constructor() {
         super();
         this.with(
+            Bid1,
             Pass,
             MoneyForPartner,
             TakeTheLead,

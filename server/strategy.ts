@@ -3,16 +3,11 @@ import _ from 'lodash';
 
 import type { BasePlayer } from './base-player';
 import { Bid, Trump, Bone, Rules } from './core';
-import { expected, makeDebug, Debugger } from './utility';
+import { expected, makeDebug, Debugger, random } from './utility';
 import TableHelper from './table-helper';
 import type { BidSubmitted, PlaySubmitted } from './outgoing-messages';
 
-function random<T>(from: T[]): T {
-    assert(from.length > 0);
-    return expected(_.sample(from));
-}
-
-class State {
+export class State {
 
     protected readonly player: BasePlayer;
 
@@ -49,7 +44,7 @@ class State {
     }
 }
 
-class BidState extends State {
+export class BidState extends State {
     readonly possible: Bid[];
 
     constructor(player: BasePlayer, possible: Bid[]) {
@@ -58,7 +53,7 @@ class BidState extends State {
     }
 }
 
-class CallState extends State {
+export class CallState extends State {
     readonly possible: Trump[];
 
     constructor(player: BasePlayer, possible: Trump[]) {
@@ -71,7 +66,7 @@ class CallState extends State {
     }
 }
 
-class PlayState extends State {
+export class PlayState extends State {
 
     readonly possible: Bone[];
 
