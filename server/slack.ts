@@ -331,5 +331,11 @@ async function createInvitation(
         deleteMessage();
     });
 
-    room.once('expired', deleteMessage);
+    room.once('expired', () => {
+        deleteMessage();
+        app.client.chat.postMessage(
+            Message({channel})
+                .text('The game took too long to get started and expired :hourglass:')
+                .buildToObject());
+    });
 }
