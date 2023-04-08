@@ -31,10 +31,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
     /**
      * A promise that is resolved when the ws is disconnected. It resolves
-     * with the outstanding messages. An array of 'Sent'
+     * with the close reason.
      */
 
-    public readonly gone: Promise<void>;
+    public readonly gone: Promise<string>;
 
     /**
      * The next ack ID
@@ -58,11 +58,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         this.debug = this.debug.extend(name);
         this.ws = ws;
         this.debug('created');
-        this.gone = new Promise((resolve) => {
+        this.gone = new Promise<string>((resolve) => {
             ws.once('close', (code, reason) => {
                 this.debug('close', code, reason.toString(),
                     'outstanding', this.outstanding.map(({mid, type}) => ([mid, type])).join(','));
-                resolve();
+                resolve(reason.toString());
             });
         });
 
@@ -160,5 +160,9 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         const response = await target.send(type, message, reply);
         next.resolve(response);
         return this.replay(target);
+    }
+
+    close(reason: string) {
+        this.ws.close(1000, reason);
     }
 }

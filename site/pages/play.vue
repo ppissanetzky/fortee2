@@ -177,9 +177,9 @@
             <!-- THE CHOICE BAR -->
             <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
               <v-spacer />
-              <h3 v-if="paused">
+              <!-- <h3 v-if="paused">
                 Waiting for players to join
-              </h3>
+              </h3> -->
               <!-- <h3 v-else-if="choiceTitle">
                 {{ choiceTitle }}
               </h3>
@@ -341,6 +341,10 @@ export default {
     const ws = new WebSocket(url)
     ws.onclose = (event) => {
       this.ws = undefined
+      if (event.reason === 'host-close') {
+        this.choiceTitle = 'The host has closed the game'
+        this.paused = true
+      }
     }
     ws.onerror = (event) => {
       console.log('error', event)
@@ -577,14 +581,14 @@ export default {
           break
 
         case 'gameOver':
-          this.pointTo = []
+          this.pointTo = [this.youAre]
           if (this.hosting) {
             const title = 'The game is over, would you like to play again?'
             const response = await this.prompt(title, ['Play again', 'Close'])
             if (response === 'Close') {
-              this.ws.close()
-              window.close()
-              window.location.replace('https://fortee2.slack.com/')
+              this.ws.close(1000, 'host-close')
+              setTimeout(() =>
+                window.location.replace('https://fortee2.slack.com/'), 1000)
               return
             }
             this.send('playAgain', null)

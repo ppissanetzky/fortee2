@@ -234,11 +234,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.debug('joined', name);
         this.sockets.set(name, socket);
         // If and when the user leaves
-        socket.gone.then(() => {
+        socket.gone.then((reason) => {
             this.sockets.delete(name);
             this.debug('removed', name, 'have', this.size);
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;
+            }
+            if (name === this.host && reason === 'host-close' && this.state === State.OVER) {
+                this.not(name, (other) => other.close('host-close'));
+
             }
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
