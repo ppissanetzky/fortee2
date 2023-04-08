@@ -202,7 +202,7 @@ class BidWithStats {
         }
         const { debug, possible } = state;
         /** A really good hand, bid the highest possible */
-        if (stats.total === 100) {
+        if (stats.best) {
             debug('i got a good hand!');
             return last(possible);
         }

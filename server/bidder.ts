@@ -45,6 +45,8 @@ export class TrumpStats {
     readonly money: Bone[] = [];
     /** How good it is where 0 is the worst and 100 is the best */
     readonly total: number = 0;
+    /** If it is the best */
+    readonly best: boolean;
 
     constructor(trump: Trump, bones: Bone[]) {
         assert(bones.length === 7, 'Bad hand');
@@ -65,6 +67,9 @@ export class TrumpStats {
          * 7, the total is 21. So, we calculate a 0-100 out of that.
          */
         this.total = Math.round(((total - 21) / (168 - 21)) * 100);
+
+        /** This should be pretty close to a lay down */
+        this.best = total === 100 && this.points === 0;
 
         /** Now, we boost up or down based on the points we lose */
         const boost = new Map<number, number>([
