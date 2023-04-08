@@ -129,117 +129,155 @@
         </v-col>
         <v-col cols="9">
           <!-- THE PLAYING AREA -->
-          <v-container>
-            <v-row>
-              <v-col cols="4" />
-              <v-col cols="4">
-                <!-- TOP PLAYER STATUS -->
-                <StatusNew v-model="top" />
-              </v-col>
-              <v-col cols="4" />
-            </v-row>
-            <v-row>
-              <v-col cols="4">
+          <div>
+            <div class="d-flex justify-space-around">
+              <div class="d-flex align-center justify-space-around mb-6">
                 <!-- LEFT PLAYER STATUS -->
-                <StatusNew v-model="left" />
-              </v-col>
-              <v-col cols="4">
-                <!-- CENTER AREA -->
-              </v-col>
-              <v-col cols="4">
-                <!-- RIGHT PLAYER STATUS -->
-                <StatusNew v-model="right" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="4" />
-              <v-col cols="4">
-                <!-- MY STATUS -->
-                <StatusNew v-model="me" :name="false" />
-              </v-col>
-              <v-col cols="4" />
-            </v-row>
-            <!-- THE CHOICE BAR -->
-            <v-row>
-              <v-col cols="12" class="pa-0 mt-6">
-                <v-toolbar tile color="#0049bd" class="white--text">
-                  <v-spacer />
-                  <v-toolbar-title v-if="paused">
-                    Waiting for players to join
-                  </v-toolbar-title>
-                  <v-toolbar-title v-else-if="choiceTitle">
-                    {{ choiceTitle }}
-                  </v-toolbar-title>
-                  <v-toolbar-title v-else-if="waitingForBid">
-                    Waiting for {{ waitingForBid }} to bid...
-                  </v-toolbar-title>
-                  <v-toolbar-title v-else-if="waitingForTrump">
-                    Waiting for {{ waitingForTrump }} to call trumps...
-                  </v-toolbar-title>
-                  <v-toolbar-title v-else-if="waitingForPlay">
-                    Waiting for {{ waitingForPlay }} to play...
-                  </v-toolbar-title>
-                  <div v-if="!paused" class="pl-6">
-                    <v-chip
-                      v-for="choice in choices"
-                      :key="choice"
-                      label
-                      color="#ff3600"
-                      class="mr-1 white--text"
-                      @click="choose(choice)"
-                    >
-                      <strong>{{ choice }}</strong>
-                    </v-chip>
+                <StatusNew v-model="left" class="ma-6 mb-12" />
+              </div>
+
+              <div class="d-flex flex-column align-center justify-space-around">
+                <!-- TOP PLAYER STATUS -->
+                <StatusNew v-model="top" class="ma-3 align-self-center" />
+
+                <div class="d-flex justify-space-around align-self-center">
+                  <div class="d-flex align-center justify-space-around mr-3">
+                    <v-icon :color="pointLeft">
+                      mdi-chevron-left
+                    </v-icon>
                   </div>
-                  <v-spacer />
-                </v-toolbar>
-              </v-col>
-            </v-row>
-            <!-- MY BONES -->
-            <v-row>
-              <v-col cols="12" class="pa-0 mt-3">
-                <v-card tile color="#8fa5b7">
-                  <v-item-group>
-                    <v-container>
-                      <v-row>
-                        <v-col
-                          v-for="n in 4"
-                          :key="n"
-                          cols="3"
-                        >
-                          <v-item v-slot="{ /* active,*/ toggle }">
-                            <v-img
-                              :src="`/${bones[n - 1]}.png`"
-                              contain
-                              max-height="80"
-                              @click="toggle"
-                            />
-                          </v-item>
-                        </v-col>
-                      </v-row>
-                      <v-row>
-                        <v-col cols="1" />
-                        <v-col
-                          v-for="n in 3"
-                          :key="n"
-                          cols="3"
-                        >
-                          <v-item v-slot="{ /* active, */ toggle }">
-                            <v-img
-                              :src="`/${bones[n + 3]}.png`"
-                              contain
-                              max-height="80"
-                              @click="toggle"
-                            />
-                          </v-item>
-                        </v-col>
-                      </v-row>
-                    </v-container>
-                  </v-item-group>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-container>
+                  <v-sheet height="140" width="180" class="d-flex flex-column align-self-center text-center justify-space-around">
+                    <v-icon :color="pointUp">
+                      mdi-chevron-up
+                    </v-icon>
+                    <h3 style="color: #6f6f6f;">
+                      {{ choiceTitle }}
+                    </h3>
+                    <v-icon :color="pointDown">
+                      mdi-chevron-down
+                    </v-icon>
+                  </v-sheet>
+                  <div class="d-flex align-center justify-space-around ml-3">
+                    <v-icon :color="pointRight">
+                      mdi-chevron-right
+                    </v-icon>
+                  </div>
+                </div>
+                <!-- MY STATUS -->
+                <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
+              </div>
+
+              <div class="d-flex align-center justify-space-around mb-6">
+                <!-- RIGHT PLAYER STATUS -->
+                <StatusNew v-model="right" class="ma-6 mb-12" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <!-- THE CHOICE BAR -->
+            <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
+              <v-spacer />
+              <h3 v-if="paused">
+                Waiting for players to join
+              </h3>
+              <!-- <h3 v-else-if="choiceTitle">
+                {{ choiceTitle }}
+              </h3>
+              <h3 v-else-if="waitingForBid">
+                Waiting for {{ waitingForBid }} to bid...
+              </h3>
+              <h3 v-else-if="waitingForTrump">
+                Waiting for {{ waitingForTrump }} to call trumps...
+              </h3>
+              <h3 v-else-if="waitingForPlay">
+                Waiting for {{ waitingForPlay }} to play...
+              </h3> -->
+              <div v-if="!paused" class="pl-6">
+                <v-chip
+                  v-for="choice in choices"
+                  :key="choice"
+                  label
+                  color="#ff3600"
+                  class="mr-1 white--text"
+                  @click="choose(choice)"
+                >
+                  <strong>{{ choice }}</strong>
+                  <v-progress-circular
+                    v-if="timed"
+                    v-model="timed"
+                    class="ml-2"
+                    size="18"
+                    width="5"
+                    color="white"
+                  />
+                </v-chip>
+              </div>
+              <v-spacer />
+            </v-sheet>
+          </div>
+          <!-- MY BONES -->
+          <div class="mt-3">
+            <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-9">
+              <v-img
+                v-for="n in 4"
+                :key="`t${n}`"
+                :src="`/${bones[n - 1]}.png`"
+                contain
+                width="180"
+                height="90"
+                @click="playBone(bones[n - 1])"
+              >
+                <template #default>
+                  <v-row
+                    class="fill-height ma-0"
+                    align="center"
+                    justify="center"
+                  >
+                    <v-sheet
+                      v-if="possible && bones[n - 1] &&!possible.includes(bones[n - 1])"
+                      color="#ffffffcc"
+                      width="160"
+                      height="80"
+                    />
+                  </v-row>
+                </template>
+              </v-img>
+            </v-sheet>
+            <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-9 pl-16 pr-16">
+              <v-img
+                v-for="n in 3"
+                :key="`b${n}`"
+                :src="`/${bones[n + 3]}.png`"
+                contain
+                width="180"
+                height="90"
+                @click="playBone(bones[n + 3])"
+              >
+                <template #default>
+                  <v-row
+                    class="fill-height ma-0"
+                    align="center"
+                    justify="center"
+                  >
+                    <v-sheet
+                      v-if="possible && bones[n + 3] && !possible.includes(bones[n + 3])"
+                      color="#ffffffcc"
+                      width="160"
+                      height="80"
+                    />
+                  </v-row>
+                </template>
+              </v-img>
+            </v-sheet>
+          </div>
+          <div class="text-right">
+            <span class="caption">
+              designed by
+              <a href="https://www.nitecreative.com/" target="_blank">
+                nite creative
+              </a>
+            </span>
+          </div>
         </v-col>
       </v-row>
     </v-container>
@@ -286,9 +324,12 @@ export default {
       trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
 
+      pointTo: [],
       choiceTitle: undefined,
       choices: [],
-      choose: () => undefined
+      timed: 0,
+      choose: () => undefined,
+      possible: undefined
     }
   },
   fetch () {
@@ -333,7 +374,32 @@ export default {
         ? this.US.points
         : this.THEM.points
       return Math.min(100, 100 * (value / max))
+    },
+    pointUp () {
+      if (this.pointTo.includes(this.top.name)) {
+        return '#6f6f6f'
+      }
+      return '#00000000'
+    },
+    pointRight () {
+      if (this.pointTo.includes(this.right.name)) {
+        return '#6f6f6f'
+      }
+      return '#00000000'
+    },
+    pointDown () {
+      if (this.pointTo.includes(this.me.name)) {
+        return '#6f6f6f'
+      }
+      return '#00000000'
+    },
+    pointLeft () {
+      if (this.pointTo.includes(this.left.name)) {
+        return '#6f6f6f'
+      }
+      return '#00000000'
     }
+
   },
   watch: {},
   mounted () {},
@@ -383,7 +449,8 @@ export default {
           break
 
         case 'startingHand':
-          await this.prompt('Ready to start the next hand?', ['Yes'])
+          this.pointTo = [this.youAre]
+          await this.prompt('Ready to start the next hand?', ['Yes'], true)
           this.bids = {}
           this.trump = {}
           this.bidWinner = undefined
@@ -397,10 +464,12 @@ export default {
 
         case 'waitingForBid':
           this.waitingForBid = message.from
+          this.pointTo = [message.from]
           break
 
         case 'bid':
           this.waitingForBid = this.youAre
+          this.pointTo = [this.youAre]
           this.prompt('Your bid', message.possible).then((bid) => {
             this.waitingForBid = undefined
             this.bids[this.youAre] = bid
@@ -411,9 +480,11 @@ export default {
         case 'bidSubmitted':
           this.waitingForBid = undefined
           this.bids[message.from] = message.bid
+          this.pointTo = [message.from]
           break
 
         case 'reshuffle':
+          this.pointTo = []
           this.bids = {}
           break
 
@@ -422,14 +493,18 @@ export default {
           this.bidWinner = message.from
           this.US.points = 0
           this.THEM.points = 0
+          this.choiceTitle = `${message.from} bid ${message.bid}`
+          this.pointTo = [this.bidWinner]
           break
 
         case 'waitingForTrump':
           this.waitingForTrump = message.from
+          this.pointTo = [message.from]
           break
 
         case 'call':
           this.waitingForTrump = this.youAre
+          this.pointTo = [this.youAre]
           this.prompt('Call trumps', message.possible).then((trump) => {
             this.trump = { [this.youAre]: trump }
             this.send('callTrump', { trump: `#trump:${trump}` }, ack)
@@ -439,17 +514,23 @@ export default {
         case 'trumpSubmitted':
           this.waitingForTrump = undefined
           this.trump = { [message.from]: message.trump }
+          this.choiceTitle = `Trumps are ${message.trump}`
+          this.pointTo = [message.from]
           break
 
         case 'waitingForPlay':
           this.waitingForPlay = message.from
+          this.pointTo = [message.from]
           break
 
         case 'play':
           this.waitingForPlay = this.youAre
+          this.pointTo = [this.youAre]
+          this.possible = message.possible
           this.prompt('What will it be?', message.possible).then((bone) => {
+            this.possible = undefined
             this.plays[this.youAre] = bone
-            this.bones[this.bones.indexOf(bone)] = 'null'
+            this.bones[this.bones.indexOf(bone)] = null
             this.send('play', { bone: `#bone:${bone}` }, ack)
           })
           break
@@ -457,13 +538,15 @@ export default {
         case 'playSubmitted':
           this.waitingForPlay = undefined
           this.plays[message.from] = message.bone
+          this.pointTo = [message.from]
           break
 
         case 'endOfTrick':
           this.trickWinner = message.winner
           this.US = message.status.US
           this.THEM = message.status.THEM
-          await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'])
+          this.pointTo = [message.winner]
+          await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], true)
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)
@@ -477,18 +560,24 @@ export default {
             const players = this.table
               .filter(({ name }) => this.teamFor(name) === team)
               .map(({ name }) => name)
-              .join(' and ')
-            const title = `${players} won the hand`
+            const title = `${players.join(' and ')} won the hand`
             this.US = message.status.US
             this.THEM = message.status.THEM
-            await this.prompt(title, ['Continue'])
-            this.send('readyToContinue', null, ack)
+            this.pointTo = players
+            await this.prompt(title, ['Continue'], true)
             this.US.points = undefined
             this.THEM.points = undefined
+            this.bids = {}
+            this.trump = {}
+            this.bidWinner = undefined
+            this.pile = { US: [], THEM: [] }
+            this.bones = []
+            this.send('readyToContinue', null, ack)
           }
           break
 
         case 'gameOver':
+          this.pointTo = []
           if (this.hosting) {
             const title = 'The game is over, would you like to play again?'
             const response = await this.prompt(title, ['Play again', 'Close'])
@@ -542,16 +631,37 @@ export default {
         trickWinner: this.trickWinner === name
       }
     },
-    prompt (title, choices) {
+    prompt (title, choices, timed) {
       this.choiceTitle = title
       this.choices = choices
       return new Promise((resolve) => {
+        let interval
+        let seconds = 10
+        if (timed) {
+          this.timed = 100
+          interval = setInterval(() => {
+            seconds--
+            this.timed = 100 * (seconds / 10)
+            if (seconds <= 0) {
+              this.choose(choices[0])
+            }
+          }, 1000)
+        }
         this.choose = (value) => {
           this.choiceTitle = undefined
           this.choices = []
+          this.timed = 0
+          if (interval) {
+            clearInterval(interval)
+          }
           resolve(value)
         }
       })
+    },
+    playBone (bone) {
+      if (this.choices.includes(bone)) {
+        this.choose(bone)
+      }
     }
   }
 }
