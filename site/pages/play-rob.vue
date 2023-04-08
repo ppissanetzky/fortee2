@@ -19,7 +19,7 @@
                           <h1>
                             US
                           </h1>
-                          <span class="subtitle-1">{{ me.name }} & {{ top.name }}</span>
+                          <span class="subtitle-1">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
                         </div>
                       </v-col>
                       <v-col cols="6">
@@ -27,7 +27,7 @@
                           <h1>
                             THEM
                           </h1>
-                          <span class="subtitle-1">{{ left.name }} & {{ right.name }}</span>
+                          <span class="subtitle-1">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
                         </div>
                       </v-col>
                     </v-row>
