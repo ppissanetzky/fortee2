@@ -24,6 +24,12 @@ const variables: Record<string, string> = {
     FT2_DB_PATH: '',
 
     /**
+     * The directory to save games
+     */
+
+    FT2_SAVE_PATH: '',
+
+    /**
      * How often to send a ping - a string that 'ms' can understand
      */
 

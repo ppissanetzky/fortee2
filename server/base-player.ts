@@ -10,6 +10,8 @@ import TableHelper from './table-helper';
 
 export class BasePlayer implements Player {
 
+    readonly human = false;
+
     protected readonly strategies: Strategies = new Strategies();
 
     public readonly name: string;

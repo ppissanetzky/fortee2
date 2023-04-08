@@ -53,6 +53,15 @@ export class Status {
 
 type Callback = (player: Player) => void;
 
+export interface SaveWithMetadata extends Save {
+    /* Which players were bots */
+    bots: string[];
+    /** The time that the game started */
+    started: number;
+    /** The time it ended */
+    ended: number;
+}
+
 export default class GameDriver {
 
     /**
@@ -60,9 +69,18 @@ export default class GameDriver {
      *
      */
 
-    static async start(rules: Rules, players: Player[]): Promise<Save> {
+    static async start(rules: Rules, players: Player[]): Promise<SaveWithMetadata> {
+        const started = Date.now();
         const driver = new GameDriver(rules, players);
-        return driver.next();
+        const save = await driver.next();
+        const ended = Date.now();
+        const bots = players.filter(({human}) => !human).map(({name}) => name);
+        return {
+            ...save,
+            started,
+            ended,
+            bots
+        };
     }
 
     private readonly players: Player[];

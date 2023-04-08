@@ -1,4 +1,7 @@
 import assert from 'node:assert';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
 import ms from 'ms';
 
 import { expected, makeDebug, makeToken } from './utility';
@@ -6,12 +9,13 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules } from './driver';
+import GameDriver, { Rules, SaveWithMetadata } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
 import config from './config';
+import sanitize from 'sanitize-filename';
 
 const enum State {
     /**
@@ -195,6 +199,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             // Start'er up
             const save = await GameDriver.start(this.rules, this.players);
 
+            this.saveGame(save);
+
             this.emit('gameOver', {
                 bots: this.bots.size,
                 save: new SaveHelper(save),
@@ -293,6 +299,20 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
 
         // TODO: rejoin after the game is over?
+    }
+
+    private async saveGame(save: SaveWithMetadata) {
+        try {
+            const name = sanitize(new Date(save.started).toISOString(), {
+                replacement: '-'
+            }).replace('.', '-') + '.json';
+            const contents = JSON.stringify(save);
+            await fs.writeFile(path.join(config.FT2_SAVE_PATH, name), contents);
+            this.debug('saved', name);
+        }
+        catch(error) {
+            this.debug('failed to save game', error);
+        }
     }
 }
 

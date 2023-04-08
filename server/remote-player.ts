@@ -12,6 +12,8 @@ interface ThingWithName {
 
 export default class RemotePlayer implements Player {
 
+    readonly human = true;
+
     private socket: Socket;
 
     constructor(socket: Socket) {

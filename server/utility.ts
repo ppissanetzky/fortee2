@@ -12,7 +12,7 @@ export function makeToken(length = 32, encoding: BufferEncoding = 'base64'): str
 }
 
 export function makeDebug(area: string): Debugger {
-    return debug(`42:${area}`);
+    return debug('42').extend(area);
 }
 
 export function hashString(data: string, hash = 'md5'): string {

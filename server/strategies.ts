@@ -191,7 +191,6 @@ class BidWithStats {
 
     didMyPartnerBid(state: Readonly<State>): boolean {
         const partner = state.table.partner;
-        state.debug(partner, state.bids);
         return state.bids.some(({bid, from}) =>
             !bid.is_pass && from === partner);
     }
@@ -292,11 +291,11 @@ export const Fallback = new Strategy('fallback', {
  */
 
 export const MoneyForPartner = new Strategy('give my partner money', {
-    play({debug, trump, lead, table, possible, trickBones, remaining}) {
+    play({debug, trump, lead, table, possible, remaining}) {
         /** If my partner lead */
         if (lead && table.isPartner(lead.from)) {
             debug('my partner lead', lead.bone.toString());
-            if (lead.bone.beatsAll(trump, _.union(trickBones, remaining))) {
+            if (lead.bone.beatsAll(trump, remaining)) {
                 debug('my partner will win');
                 /** Get the best money bone and, if we have one, play it */
                 const mostMoney = Bone.mostMoney(possible);
@@ -314,11 +313,11 @@ export const MoneyForPartner = new Strategy('give my partner money', {
  */
 
 export const TakeTheLead = new Strategy('try to take the lead', {
-    play({debug, leading, possible, unbeatable, trickBones, remaining}) {
+    play({debug, leading, possible, unbeatable, remaining}) {
         if (leading) {
             return;
         }
-        const winners = unbeatable(_.union(trickBones, remaining), possible);
+        const winners = unbeatable(remaining, possible);
         if (winners.length === 0) {
             return;
         }

@@ -19,7 +19,7 @@ export class State {
     }
 
     for(name: string): this {
-        this.debug = makeDebug(this.name).extend(name);
+        this.debug = makeDebug('strategy').extend(this.player.name).extend(name);
         return this;
     }
 
@@ -168,13 +168,14 @@ export class PlayState extends State {
 
     /**
      * A helper to figure out all the bones in 'possible' that can beat all the
-     * bones in 'against'
+     * bones in 'against' and also the trick bones
      */
 
     unbeatable = function(this: PlayState, against: Bone[], possible: Bone[]): Bone[] {
         const { trump, lead } = this;
-        /** The highest value of all bones in 'against' */
-        const value = Bone.highestValue(trump, against, lead?.bone);
+        /** The highest value of all bones in 'against' and the trick */
+        const value = Bone.highestValue(trump,
+            _.union(this.trickBones, against), lead?.bone);
         /** This happens if 'against' is empty, which is probably a bug */
         if (value < 0) {
             return [];

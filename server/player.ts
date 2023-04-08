@@ -16,6 +16,8 @@ export default interface Player extends PlayerHandler {
 
     readonly name: string;
 
+    readonly human: boolean;
+
     /**
      * These are the ones that return something
      */

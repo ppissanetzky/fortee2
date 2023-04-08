@@ -19,16 +19,20 @@ let name = process.argv[2];
 
 (async () => {
     if (!name) {
-        const create = await fetch(`http://localhost:${PORT}/api/test-game/pablo`);
-        debug(create.status, create.statusText);
-        if (!create.ok) {
+        const create = await fetch(`http://localhost:${PORT}/api/test-game/pablo`, {
+            redirect: 'manual'
+        });
+        debug(create.ok, create.status, create.statusText);
+        if (!create.ok && create.status !== 302) {
             return;
         }
         name = 'pablo';
     }
-    const response = await fetch(`http://localhost:${PORT}/api/join/${name}` )
+    const response = await fetch(`http://localhost:${PORT}/api/join/${name}`, {
+        redirect: 'manual'
+    })
     debug(response.status, response.statusText);
-    if (!response.ok) {
+    if (!response.ok && response.status !== 302) {
         return;
     }
     const { headers } = response;
