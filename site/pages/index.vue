@@ -1,13 +1,9 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="4" />
-      <v-col>
-        <h1>fortee2</h1>
-      </v-col>
-      <v-col cols="4" />
-    </v-row>
-  </v-container>
+  <div>
+    <v-sheet class="d-flex justify-space-around" style="margin: 100px;">
+      <v-img max-width="400" width="400" src="/logo.png" />
+    </v-sheet>
+  </div>
 </template>
 <script>
 export default {
