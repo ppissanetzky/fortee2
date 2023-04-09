@@ -233,11 +233,12 @@
                     align="center"
                     justify="center"
                   >
-                    <v-sheet
+                    <v-img
                       v-if="possible && bones[n - 1] &&!possible.includes(bones[n - 1])"
-                      color="#ffffffcc"
-                      width="160"
-                      height="80"
+                      width="180"
+                      height="90"
+                      src="/cover.png"
+                      contain
                     />
                   </v-row>
                 </template>
@@ -259,11 +260,12 @@
                     align="center"
                     justify="center"
                   >
-                    <v-sheet
+                    <v-img
                       v-if="possible && bones[n + 3] && !possible.includes(bones[n + 3])"
-                      color="#ffffffcc"
-                      width="160"
-                      height="80"
+                      width="180"
+                      height="90"
+                      src="/cover.png"
+                      contain
                     />
                   </v-row>
                 </template>
