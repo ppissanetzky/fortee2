@@ -12,6 +12,7 @@ declare module 'express-session' {
     interface SessionData {
         codeVerifier?: string;
         gameRoomToken?: string;
+        redirect?: string;
     }
 }
 
@@ -31,55 +32,51 @@ async function getIssuer() {
     return issuer;
 }
 
-export async function slackAuth(req: Request, res: Response, next: NextFunction) {
-    if (req.isAuthenticated()) {
-        return next();
-    }
+const REDIRECT_URI = `${config.FT2_SERVER_BASE_URL}/slack/authenticated`;
+
+async function getClient() {
+    const issuer = await getIssuer();
+    return new issuer.Client({
+        client_id: config.FT2_SLACK_CLIENT_ID,
+        client_secret: config.FT2_SLACK_CLIENT_SECRET,
+        redirect_uris: [REDIRECT_URI],
+        response_types: ['code']
+    });
+}
+
+export async function authenticate(req: Request, res: Response) {
+
+    const client = await getClient();
+
+    /** Make a challenge verification code and save it in the session */
+
+    const codeVerifier = generators.codeVerifier();
+
+    req.session.codeVerifier = codeVerifier;
+
+    await new Promise<void>((resolve, reject) => {
+        req.session.save((error) => error ? reject(error) : resolve());
+    });
+
+    /** Get the Slack auth URL */
+
+    const url = client.authorizationUrl({
+        scope: 'openid email profile',
+        code_challenge: generators.codeChallenge(codeVerifier),
+        code_challenge_method: 'S256',
+        team: 'T050GLABCFN'
+    });
+
+    debug('redirecting to', url);
+
+    /** Go there */
+
+    res.redirect(url);
+}
+
+export async function authenticated(req: Request, res: Response, next: NextFunction) {
     try {
-        const url = new URL(req.url, config.FT2_SERVER_BASE_URL);
-        const redirectUri = `${url.origin}${url.pathname}`;
-
-        debug('redirect uri', redirectUri);
-
-        const issuer = await getIssuer();
-        const client =  new issuer.Client({
-            client_id: config.FT2_SLACK_CLIENT_ID,
-            client_secret: config.FT2_SLACK_CLIENT_SECRET,
-            redirect_uris: [redirectUri],
-            response_types: ['code']
-        });
-
-        /** If there is no code, this is our initial request */
-
-        if (!req.query.code) {
-
-            /** Make a challenge verification code and save it in the session */
-
-            const codeVerifier = generators.codeVerifier();
-
-            req.session.codeVerifier = codeVerifier;
-
-            await new Promise<void>((resolve, reject) => {
-                req.session.save((error) => error ? reject(error) : resolve());
-            });
-
-            /** Get the Slack auth URL */
-
-            const url = client.authorizationUrl({
-                scope: 'openid email profile',
-                code_challenge: generators.codeChallenge(codeVerifier),
-                code_challenge_method: 'S256',
-                team: 'T050GLABCFN'
-            });
-
-            debug('redirecting to', url);
-
-            /** Go there */
-
-            return res.redirect(url);
-        }
-
-        /** Otherwise, it is the callback from Slack */
+        const client = await getClient();
 
         /** Pull the challenge verifier from the session */
 
@@ -89,7 +86,7 @@ export async function slackAuth(req: Request, res: Response, next: NextFunction)
 
         /** Verify the code */
 
-        const { access_token } = await client.callback(redirectUri,
+        const { access_token } = await client.callback(REDIRECT_URI,
             client.callbackParams(req),
             {code_verifier: codeVerifier});
         assert(access_token, 'Missing access_token');
@@ -105,7 +102,7 @@ export async function slackAuth(req: Request, res: Response, next: NextFunction)
 
         /** All is good, sign-in this user */
         await new Promise<void>((resolve, reject) => {
-            req.login({id, name},
+            req.login({id, name}, {session: true, keepSessionInfo: true},
                 (error) => error ? reject(error) : resolve());
         });
 

@@ -252,6 +252,10 @@ async function createInvitation(
 
     const room = new GameRoom(rules, table);
 
+    /** The URL to play */
+
+    const url = `${config.FT2_SERVER_BASE_URL}/slack/game/${room.token}`;
+
     /**
      * If it is just this user that wants to play with bots, we're going to
      * update the view and be done.
@@ -260,7 +264,7 @@ async function createInvitation(
     if (ids.length === 1) {
         return ack({
             response_action: 'push',
-            view: GAME_STARTED(room)
+            view: GAME_STARTED(url)
         });
     }
 
@@ -293,7 +297,7 @@ async function createInvitation(
                         .primary(true)
                         .actionId('play-action')
                         .text('Play')
-                        .url(room.url)
+                        .url(url)
                 )
 
             ).buildToObject()
@@ -311,7 +315,7 @@ async function createInvitation(
 
     ack({
         response_action: 'push',
-        view: GAME_STARTED(room, channel)
+        view: GAME_STARTED(url, channel)
     });
 
     /** Listen to events from the room */

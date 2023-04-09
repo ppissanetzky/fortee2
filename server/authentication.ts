@@ -1,9 +1,12 @@
 import path from 'node:path';
+import assert from 'node:assert';
 
+import fetch from 'node-fetch';
 import type { Express } from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 import { Strategy as LocalStrategy } from 'passport-local';
 import sqlite from 'better-sqlite3';
 import ms from 'ms';
@@ -182,12 +185,38 @@ export default function setupAuthentication(app: Express): void {
     google(app);
     local(app);
 
-    /**
-     * This one takes the user from
-     * session.passport.user and deserializes it, placing the result in req.user
-     */
+    passport.use(new OAuth2Strategy({
+            authorizationURL: 'https://discord.com/oauth2/authorize',
+            tokenURL: 'https://discord.com/api/oauth2/token',
+            clientID: config.FT2_DD_APP_ID,
+            clientSecret: config.FT2_DD_APP_SECRET,
+            callbackURL: `${config.FT2_SERVER_BASE_URL}/discord/authenticated`,
+            scope: ['email'],
+        },
+        async (accessToken: string, refreshToken: string, profile, TProfile, callback) => {
 
-    app.use(passport.authenticate('session'));
+            try {
+                const response = await fetch('https://discord.com/api/v10/users/@me', {
+                    headers: {
+                        ['User-Agent']: `DiscordBot (${config.FT2_SERVER_BASE_URL}, ${config.version})`,
+                        ['Authorization']: `Bearer ${accessToken}`
+                    }
+                });
+                assert(response.ok, `request for user info failed with ${response.status}`);
+                const me = await response.json();
+                debug.extend('discord')('me %j', me);
+                const user = {
+                    id: `discord/${me.id}`,
+                    name: me.username,
+                };
+                debug.extend('discord')('user %j', user);
+                callback(null, user);
+            }
+            catch (error) {
+                callback(error as any);
+            }
+        }
+    ));
 
     /**
      * Just to get the redirect to succeed

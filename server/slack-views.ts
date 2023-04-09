@@ -1,8 +1,7 @@
-import type GameRoom from './game-room';
 import { Button, Modal, Option, Section, setIfTruthy,
 	StaticMultiSelect, StaticSelect } from 'slack-block-builder';
 
-export function GAME_STARTED(room: GameRoom, channel?: string) {
+export function GAME_STARTED(url: string, channel?: string) {
     return Modal()
         .title('Your game is ready!')
         .notifyOnClose(false)
@@ -19,7 +18,7 @@ export function GAME_STARTED(room: GameRoom, channel?: string) {
                         .text('Play')
                         .primary(true)
                         .actionId('play-action')
-                        .url(room.url)
+                        .url(url)
                 )
         ).buildToObject();
 }

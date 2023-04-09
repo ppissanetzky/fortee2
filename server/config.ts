@@ -86,7 +86,16 @@ const variables: Record<string, string> = {
     FT2_SLACK_BOT_TOKEN: '',
     FT2_SLACK_APP_TOKEN: '',
     FT2_SLACK_CLIENT_ID: '',
-    FT2_SLACK_CLIENT_SECRET: ''
+    FT2_SLACK_CLIENT_SECRET: '',
+
+    /**
+     * For Discord
+     */
+
+    FT2_DD_APP_ID: '',
+    FT2_DD_APP_PK: '',
+    FT2_DD_APP_SECRET: '',
+    FT2_DD_BOT_TOKEN: '',
 };
 
 export default variables;
@@ -104,6 +113,9 @@ for (const name in variables) {
 }
 
 variables.PRODUCTION = process.env.NODE_ENV === 'production' ? YES : '';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+variables.version = require('../package.json').version;
 
 export function on(value: string): boolean {
     return value === YES;

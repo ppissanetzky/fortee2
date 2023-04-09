@@ -1,18 +1,20 @@
 
 import fs from 'node:fs';
+import assert from 'node:assert';
 
-import express, { Request } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 
 import config from './config';
 import WsServer from './ws-server';
 import { expected, makeDebug } from './utility';
 import setupAuthentication from './authentication';
 import connectToSlack from './slack';
-import { slackAuth } from './slack-authentication';
+import * as slack from './slack-authentication';
 import GameRoom from './game-room';
 import { Rules } from './core';
 import { TableBuilder, User } from './table-helper';
 import { HttpServer } from './http-server';
+import passport from 'passport';
 
 const debug = makeDebug('server');
 
@@ -57,6 +59,13 @@ else {
 
 setupAuthentication(app);
 
+/**
+ * This one takes the user from
+ * session.passport.user and deserializes it, placing the result in req.user
+ */
+
+app.use(passport.authenticate('session'));
+
 //-----------------------------------------------------------------------------
 
 /**
@@ -100,8 +109,78 @@ if (!config.PRODUCTION) {
     });
 }
 
-app.get('/game/:token', slackAuth, async (req, res) => {
-    const { params: { token } } = req;
+/**
+ * If the request is authenticated, redirects to the URI, otherwise, it
+ * saves the URI in the session and calls the next handler
+ */
+
+async function redirectTo(uri: string, req: Request, res: Response, next: NextFunction) {
+    assert(uri);
+    if (req.isAuthenticated()) {
+        return res.redirect(uri);
+    }
+    req.session.redirect = uri;
+    await saveSession(req);
+    next();
+}
+
+/** Redirects to the URI in req.session.redirect, deleting it */
+
+async function redirectFromSession(req: Request, res: Response) {
+    const { redirect } = req.session;
+    if (!redirect) {
+        return res.sendStatus(400);
+    }
+    delete req.session.redirect;
+    await saveSession(req);
+    res.redirect(redirect);
+}
+
+/** The entry point for a Discord game link */
+
+app.get('/discord/game/:token',
+    (req, res, next) => redirectTo(`/play/${req.params.token}`, req, res, next),
+    passport.authenticate('oauth2'));
+
+app.get('/discord/authenticated',
+    passport.authenticate('oauth2', {keepSessionInfo: true}),
+    redirectFromSession);
+
+/** The entry point for a Slack game link */
+
+app.get('/slack/game/:token',
+    (req, res, next) => redirectTo(`/play/${req.params.token}`, req, res, next),
+    slack.authenticate);
+
+app.get('/slack/authenticated',
+    slack.authenticated,
+    redirectFromSession);
+
+/**
+ * This one will only allow requests that have a user, otherwise it's a 401
+ */
+
+app.use((req, res, next) => {
+    debug('%o', req.user);
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    debug('unauthenticated', req.url);
+    return res.sendStatus(401);
+});
+
+/**
+ * The route used to play a game. It checks that everything is sane and then
+ * saves the game room token in the session so the WS has it implicitly
+ * when it connects. Finally, it redirects to the '/play' page.
+ */
+
+app.get('/play/:token', async (req, res) => {
+    const { token } = req.params;
+    debug('token', token);
+    if (!token) {
+        return res.sendStatus(400);
+    }
     const room = GameRoom.rooms.get(token);
     if (!room) {
         return res.sendStatus(404);
@@ -112,26 +191,9 @@ app.get('/game/:token', slackAuth, async (req, res) => {
     if (!room.table.has(req.user.id)) {
         return res.sendStatus(403);
     }
-    /** Save the token in the session and save the session */
-
     req.session.gameRoomToken = token;
-
     await saveSession(req);
-
-    res.redirect(`/play`);
-});
-
-/**
- * This one will only allow requests that have a user, otherwise it's a 401
- */
-
-app.use((req, res, next) => {
-    debug('%o', req.user);
-    if (req.isUnauthenticated()) {
-        debug('unauthenticated', req.url);
-        return res.sendStatus(401);
-    }
-    next();
+    res.redirect('/play')
 });
 
 /** Create the web server */

@@ -73,8 +73,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly id = GameRoom.ID++;
 
-    public readonly url: string;
-
     public readonly rules: Rules;
 
     public readonly table: TableBuilder;
@@ -101,7 +99,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     constructor(rules: Rules, table: TableBuilder) {
         super();
-        this.url = `${config.FT2_SERVER_BASE_URL}/game/${this.token}`;
         this.table = table;
         this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);
