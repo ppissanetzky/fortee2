@@ -12,33 +12,34 @@
       </v-icon>
       <span class="text-h5"><strong>{{ value.name }}</strong></span>
     </div>
-    <v-img height="90" width="180" src="/null.png">
-      <v-container fill-height class="pa-0 ma-0">
-        <v-row align-center>
-          <v-col cols="12" class="text-center">
-            <v-progress-circular
-              v-if="thinking"
-              indeterminate
-              size="40"
-              color="#0049bd"
-            />
-            <div v-else-if="value.bid && !value.trump">
-              <h2 class="black-text">
-                {{ value.bid }}
-              </h2>
-            </div>
-            <div v-else-if="value.play">
-              <v-img
-                :src="`/${value.play}.png`"
-                contain
-                width="180"
-                height="90"
+    <v-sheet height="90" width="180" color="#00000000">
+      <v-img v-if="!value.play" height="90" width="180" src="/null.png">
+        <v-container fill-height class="pa-0 ma-0">
+          <v-row align-center>
+            <v-col cols="12" class="text-center">
+              <v-progress-circular
+                v-if="thinking"
+                indeterminate
+                size="40"
+                color="#0049bd"
               />
-            </div>
-          </v-col>
-        </v-row>
-      </v-container>
-    </v-img>
+              <div v-else-if="value.bid && !value.trump">
+                <h2 class="black-text">
+                  {{ value.bid }}
+                </h2>
+              </div>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-img>
+      <v-img
+        v-else
+        :src="`/${value.play}.png`"
+        contain
+        width="180"
+        height="90"
+      />
+    </v-sheet>
   </v-sheet>
 </template>
 <script>
