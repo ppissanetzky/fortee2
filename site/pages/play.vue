@@ -1,288 +1,256 @@
 <template>
   <div>
-    <v-container fluid>
-      <v-row>
-        <v-col cols="3">
-          <v-container class="pa-0">
+    <div class="d-flex">
+      <v-sheet class="d-flex flex-column align-stretch pl-3 pr-3 pb-6" width="300">
+        <v-img class="d-flex" max-height="56" aspect-ratio="1" contain src="/logo.png" />
+        <v-card class="d-flex mt-1" flat tile color="#8fa5b7">
+          <v-container class="pa-2">
             <v-row>
-              <v-col class="ma-0 pa-3 pl-3 pr-3 ">
-                <v-img contain min-width="300" max-width="400" src="/logo.png" />
+              <v-col cols="6">
+                <div class="text-center white--text">
+                  <h1>
+                    US
+                  </h1>
+                  <span class="subtitle-1">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
+                </div>
+              </v-col>
+              <v-col cols="6">
+                <div class="text-center white--text">
+                  <h1>
+                    THEM
+                  </h1>
+                  <span class="subtitle-1">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
+                </div>
               </v-col>
             </v-row>
             <v-row>
-              <v-col cols="12" class="pt-0">
-                <v-card flat tile color="#8fa5b7" min-width="300" max-width="400">
-                  <v-container class="pa-2">
-                    <v-row>
-                      <v-col cols="6">
-                        <div class="text-center white--text">
-                          <h1>
-                            US
-                          </h1>
-                          <span class="subtitle-1">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
-                        </div>
-                      </v-col>
-                      <v-col cols="6">
-                        <div class="text-center white--text">
-                          <h1>
-                            THEM
-                          </h1>
-                          <span class="subtitle-1">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
-                        </div>
-                      </v-col>
-                    </v-row>
-                    <v-row>
-                      <v-col cols="6">
-                        <div class="text-center white--text">
-                          <h1 style="font-size: 300%">
-                            {{ US.marks }}
-                          </h1>
-                        </div>
-                      </v-col>
-                      <v-col cols="6">
-                        <div class="text-center white--text">
-                          <h1 style="font-size: 300%">
-                            {{ THEM.marks }}
-                          </h1>
-                        </div>
-                      </v-col>
-                    </v-row>
-                  </v-container>
+              <v-col cols="6">
+                <div class="text-center white--text">
+                  <h1 style="font-size: 300%">
+                    {{ US.marks }}
+                  </h1>
+                </div>
+              </v-col>
+              <v-col cols="6">
+                <div class="text-center white--text">
+                  <h1 style="font-size: 300%">
+                    {{ THEM.marks }}
+                  </h1>
+                </div>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card>
+        <v-sheet class="d-flex fill-height flex-column mt-2" color="#c0d4e5">
+          <v-card-text>
+            <div v-if="bidWinner" class="text-center" style="color: #6f6f6f;">
+              <span class="text-h6">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
+              <span v-if="trump[bidWinner]" class="text-h6"> on <strong>{{ trump[bidWinner] }}</strong></span>
+            </div>
+          </v-card-text>
+          <v-card-text v-if="bidWinner && trump[bidWinner]">
+            <v-progress-linear
+              :value="bidPercentage"
+              :reverse="teamFor(bidWinner) === 'THEM'"
+              rounded
+              height="25"
+              color="#8dc73f"
+              background-color="#e8e8e8"
+            >
+              <template #default>
+                <!-- {{ US.points }} -->
+              </template>
+            </v-progress-linear>
+          </v-card-text>
+          <v-container>
+            <v-row class="text-center" style="color: #676767;">
+              <v-col cols="6" class="pa-0 pl-1">
+                <h1 v-if="bidWinner && trump[bidWinner]">{{ US.points }}</h1>
+                <v-card flat color="#c0d4e5">
+                  <v-card
+                    v-for="(trick, index) in pile.US"
+                    :key="`US-${index}`"
+                    flat
+                    color="#c0d4e5"
+                    class="d-flex justify-space-around align-center pa-0"
+                  >
+                    <v-img
+                      v-for="bone in trick"
+                      :key="bone"
+                      class="ma-0 mt-1"
+                      contain
+                      max-width="30"
+                      :src="`/${bone}v.png`"
+                    />
+                  </v-card>
                 </v-card>
               </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" class="pa-0 pl-3 pr-3">
-                <v-card flat tile color="#c0d4e5" min-width="300" max-width="400">
-                  <v-card-text>
-                    <div v-if="bidWinner" class="text-center" style="color: #6f6f6f;">
-                      <span class="text-h6">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-                      <span v-if="trump[bidWinner]" class="text-h6"> on <strong>{{ trump[bidWinner] }}</strong></span>
-                    </div>
-                  </v-card-text>
-                  <v-card-text v-if="bidWinner && trump[bidWinner]">
-                    <v-progress-linear
-                      :value="bidPercentage"
-                      :reverse="teamFor(bidWinner) === 'THEM'"
-                      rounded
-                      height="25"
-                      color="#8dc73f"
-                      background-color="#e8e8e8"
-                    >
-                      <template #default>
-                        <!-- {{ US.points }} -->
-                      </template>
-                    </v-progress-linear>
-                  </v-card-text>
-                  <v-container>
-                    <v-row class="text-center" style="color: #676767;">
-                      <v-col cols="6" class="pa-0 pl-1">
-                        <h1 v-if="bidWinner && trump[bidWinner]">{{ US.points }}</h1>
-                        <v-card flat min-height="350" color="#c0d4e5">
-                          <v-card
-                            v-for="(trick, index) in pile.US"
-                            :key="`US-${index}`"
-                            flat
-                            color="#c0d4e5"
-                          >
-                            <v-card-actions>
-                              <v-img
-                                v-for="bone in trick"
-                                :key="bone"
-                                class="mr-1"
-                                contain
-                                max-width="30"
-                                :src="`/${bone}v.png`"
-                              />
-                            </v-card-actions>
-                          </v-card>
-                        </v-card>
-                      </v-col>
-                      <v-col cols="6" class="pa-0 pl-1 pr-1">
-                        <h1 v-if="bidWinner && trump[bidWinner]">{{ THEM.points }}</h1>
-                        <v-card flat min-height="350" color="#c0d4e5">
-                          <v-card
-                            v-for="(trick, index) in pile.THEM"
-                            :key="`THEM-${index}`"
-                            color="#c0d4e5"
-                            flat
-                          >
-                            <v-card-actions>
-                              <v-img
-                                v-for="bone in trick"
-                                :key="bone"
-                                class="mr-1"
-                                contain
-                                max-width="30"
-                                :src="`/${bone}v.png`"
-                              />
-                            </v-card-actions>
-                          </v-card>
-                        </v-card>
-                      </v-col>
-                    </v-row>
-                  </v-container>
+              <v-col cols="6" class="pa-0 pl-1 pr-1">
+                <h1 v-if="bidWinner && trump[bidWinner]">{{ THEM.points }}</h1>
+                <v-card flat color="#c0d4e5">
+                  <v-card
+                    v-for="(trick, index) in pile.THEM"
+                    :key="`THEM-${index}`"
+                    color="#c0d4e5"
+                    flat
+                    class="d-flex justify-space-around align-center pa-0"
+                  >
+                    <v-img
+                      v-for="bone in trick"
+                      :key="bone"
+                      class="ma-0 mt-1"
+                      contain
+                      max-width="30"
+                      :src="`/${bone}v.png`"
+                    />
+                  </v-card>
                 </v-card>
               </v-col>
             </v-row>
           </v-container>
-        </v-col>
-        <v-col cols="9">
-          <!-- THE PLAYING AREA -->
-          <div>
-            <div class="d-flex justify-space-around">
-              <div class="d-flex align-center justify-space-around mb-6">
-                <!-- LEFT PLAYER STATUS -->
-                <StatusNew v-model="left" class="ma-6 mb-12" />
-              </div>
+        </v-sheet>
+      </v-sheet>
+      <div>
+        <!-- THE PLAYING AREA -->
+        <div>
+          <div class="d-flex justify-space-around">
+            <div class="d-flex align-center justify-space-around mb-6">
+              <!-- LEFT PLAYER STATUS -->
+              <StatusNew v-model="left" class="ma-6 mb-12" />
+            </div>
 
-              <div class="d-flex flex-column align-center justify-space-around">
-                <!-- TOP PLAYER STATUS -->
-                <StatusNew v-model="top" class="ma-3 align-self-center" />
+            <div class="d-flex flex-column align-center justify-space-around">
+              <!-- TOP PLAYER STATUS -->
+              <StatusNew v-model="top" class="ma-3 align-self-center" />
 
-                <div class="d-flex justify-space-around align-self-center">
-                  <div class="d-flex align-center justify-space-around mr-3">
-                    <v-icon :color="pointLeft">
-                      mdi-chevron-left
-                    </v-icon>
-                  </div>
-                  <v-sheet height="140" width="180" class="d-flex flex-column align-self-center text-center justify-space-around">
-                    <v-icon :color="pointUp">
-                      mdi-chevron-up
-                    </v-icon>
-                    <h3 style="color: #6f6f6f;">
-                      {{ choiceTitle }}
-                    </h3>
-                    <v-icon :color="pointDown">
-                      mdi-chevron-down
-                    </v-icon>
-                  </v-sheet>
-                  <div class="d-flex align-center justify-space-around ml-3">
-                    <v-icon :color="pointRight">
-                      mdi-chevron-right
-                    </v-icon>
-                  </div>
+              <div class="d-flex justify-space-around align-self-center">
+                <div class="d-flex align-center justify-space-around mr-3">
+                  <v-icon :color="pointLeft">
+                    mdi-chevron-left
+                  </v-icon>
                 </div>
-                <!-- MY STATUS -->
-                <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
+                <v-sheet height="140" width="180" class="d-flex flex-column align-self-center text-center justify-space-around">
+                  <v-icon :color="pointUp">
+                    mdi-chevron-up
+                  </v-icon>
+                  <h3 style="color: #6f6f6f;">
+                    {{ choiceTitle }}
+                  </h3>
+                  <v-icon :color="pointDown">
+                    mdi-chevron-down
+                  </v-icon>
+                </v-sheet>
+                <div class="d-flex align-center justify-space-around ml-3">
+                  <v-icon :color="pointRight">
+                    mdi-chevron-right
+                  </v-icon>
+                </div>
               </div>
+              <!-- MY STATUS -->
+              <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
+            </div>
 
-              <div class="d-flex align-center justify-space-around mb-6">
-                <!-- RIGHT PLAYER STATUS -->
-                <StatusNew v-model="right" class="ma-6 mb-12" />
-              </div>
+            <div class="d-flex align-center justify-space-around mb-6">
+              <!-- RIGHT PLAYER STATUS -->
+              <StatusNew v-model="right" class="ma-6 mb-12" />
             </div>
           </div>
-          <div>
-            <!-- THE CHOICE BAR -->
-            <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
-              <v-spacer />
-              <!-- <h3 v-if="paused">
-                Waiting for players to join
-              </h3> -->
-              <!-- <h3 v-else-if="choiceTitle">
-                {{ choiceTitle }}
-              </h3>
-              <h3 v-else-if="waitingForBid">
-                Waiting for {{ waitingForBid }} to bid...
-              </h3>
-              <h3 v-else-if="waitingForTrump">
-                Waiting for {{ waitingForTrump }} to call trumps...
-              </h3>
-              <h3 v-else-if="waitingForPlay">
-                Waiting for {{ waitingForPlay }} to play...
-              </h3> -->
-              <div v-if="!paused" class="pl-6">
-                <v-chip
-                  v-for="choice in choices"
-                  :key="choice"
-                  label
-                  color="#ff3600"
-                  class="mr-1 white--text"
-                  @click="choose(choice)"
+        </div>
+        <div>
+          <!-- THE CHOICE BAR -->
+          <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
+            <v-spacer />
+            <div v-if="!paused" class="pl-6">
+              <v-chip
+                v-for="choice in choices"
+                :key="choice"
+                label
+                color="#ff3600"
+                class="mr-1 white--text"
+                @click="choose(choice)"
+              >
+                <strong>{{ choice }}</strong>
+                <v-progress-circular
+                  v-if="timed"
+                  v-model="timed"
+                  class="ml-2"
+                  size="18"
+                  width="5"
+                  color="white"
+                />
+              </v-chip>
+            </div>
+            <v-spacer />
+          </v-sheet>
+        </div>
+        <!-- MY BONES -->
+        <div class="mt-3">
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-3">
+            <v-img
+              v-for="n in 4"
+              :key="`t${n}`"
+              :src="`/${bones[n - 1]}.png`"
+              contain
+              width="180"
+              height="90"
+              class="ma-2"
+              @click="playBone(bones[n - 1])"
+            >
+              <template #default>
+                <v-row
+                  class="fill-height ma-0"
+                  align="center"
+                  justify="center"
                 >
-                  <strong>{{ choice }}</strong>
-                  <v-progress-circular
-                    v-if="timed"
-                    v-model="timed"
-                    class="ml-2"
-                    size="18"
-                    width="5"
-                    color="white"
+                  <v-img
+                    v-if="possible && bones[n - 1] &&!possible.includes(bones[n - 1])"
+                    width="180"
+                    height="90"
+                    src="/cover.png"
+                    contain
                   />
-                </v-chip>
-              </div>
-              <v-spacer />
-            </v-sheet>
-          </div>
-          <!-- MY BONES -->
-          <div class="mt-3">
-            <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-9">
-              <v-img
-                v-for="n in 4"
-                :key="`t${n}`"
-                :src="`/${bones[n - 1]}.png`"
-                contain
-                width="180"
-                height="90"
-                @click="playBone(bones[n - 1])"
-              >
-                <template #default>
-                  <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                  >
-                    <v-img
-                      v-if="possible && bones[n - 1] &&!possible.includes(bones[n - 1])"
-                      width="180"
-                      height="90"
-                      src="/cover.png"
-                      contain
-                    />
-                  </v-row>
-                </template>
-              </v-img>
-            </v-sheet>
-            <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-9 pl-16 pr-16">
-              <v-img
-                v-for="n in 3"
-                :key="`b${n}`"
-                :src="`/${bones[n + 3]}.png`"
-                contain
-                width="180"
-                height="90"
-                @click="playBone(bones[n + 3])"
-              >
-                <template #default>
-                  <v-row
-                    class="fill-height ma-0"
-                    align="center"
-                    justify="center"
-                  >
-                    <v-img
-                      v-if="possible && bones[n + 3] && !possible.includes(bones[n + 3])"
-                      width="180"
-                      height="90"
-                      src="/cover.png"
-                      contain
-                    />
-                  </v-row>
-                </template>
-              </v-img>
-            </v-sheet>
-          </div>
-          <div class="text-right">
-            <span class="caption">
-              designed by
-              <a href="https://www.nitecreative.com/" target="_blank">
-                nite creative
-              </a>
-            </span>
-          </div>
-        </v-col>
-      </v-row>
-    </v-container>
+                </v-row>
+              </template>
+            </v-img>
+          </v-sheet>
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-6 pl-12 pr-12">
+            <v-img
+              v-for="n in 3"
+              :key="`b${n}`"
+              :src="`/${bones[n + 3]}.png`"
+              contain
+              width="180"
+              height="90"
+              @click="playBone(bones[n + 3])"
+            >
+              <template #default>
+                <v-row
+                  class="fill-height ma-0"
+                  align="center"
+                  justify="center"
+                >
+                  <v-img
+                    v-if="possible && bones[n + 3] && !possible.includes(bones[n + 3])"
+                    width="180"
+                    height="90"
+                    src="/cover.png"
+                    contain
+                  />
+                </v-row>
+              </template>
+            </v-img>
+          </v-sheet>
+        </div>
+        <div class="text-right">
+          <span class="caption">
+            designed by
+            <a href="https://www.nitecreative.com/" target="_blank">
+              nite creative
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

@@ -7,7 +7,7 @@
     class="pa-0 ma-0"
   >
     <div v-if="name" class="text-center ma-1" style="color: #6f6f6f;">
-      <v-icon v-if="value.bot" class="mr-2 mb-2">
+      <v-icon v-if="value.bot" class="mr-2 mb-3">
         mdi-robot
       </v-icon>
       <span class="text-h5"><strong>{{ value.name }}</strong></span>
