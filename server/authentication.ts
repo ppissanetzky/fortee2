@@ -203,7 +203,7 @@ export default function setupAuthentication(app: Express): void {
                     }
                 });
                 assert(response.ok, `request for user info failed with ${response.status}`);
-                const me = await response.json();
+                const me = (await response.json()) as any;
                 debug.extend('discord')('me %j', me);
                 const user = {
                     id: `discord/${me.id}`,
