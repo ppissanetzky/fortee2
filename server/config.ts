@@ -114,8 +114,7 @@ for (const name in variables) {
 
 variables.PRODUCTION = process.env.NODE_ENV === 'production' ? YES : '';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-variables.version = require('../package.json').version;
+variables.version = 'v2';
 
 export function on(value: string): boolean {
     return value === YES;
