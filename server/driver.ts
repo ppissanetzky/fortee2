@@ -41,6 +41,8 @@ export class Status {
     public readonly bid: Bid;
     public readonly trump: Trump | undefined;
 
+    public readonly renege?: string;
+
     constructor(game: Game) {
         this.US = new TeamStatus(game, 'US');
         this.THEM = new TeamStatus(game, 'THEM');
@@ -48,6 +50,10 @@ export class Status {
         const hand = game.this_hand;
         this.bid = hand.high_bid;
         this.trump = hand.trump;
+
+        if (hand.renege >= 0) {
+            this.renege = game.players[hand.renege];
+        }
     }
 }
 
@@ -158,9 +164,9 @@ export default class GameDriver {
                 }
                 break;
             case STEP.PLAY: {
-                    const [from , possible] = this.game.get_next_player();
+                    const [from , possible, all] = this.game.get_next_player();
                     this.not(from, (player) => player.waitingForPlay({from}));
-                    const bone = await this.just(from).play({possible});
+                    const bone = await this.just(from).play({possible, all});
                     this.all((player) => player.playSubmitted({from, bone}));
                     const result = this.game.player_play(from, bone);
                     if (result.trick_over) {

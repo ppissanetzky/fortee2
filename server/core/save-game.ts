@@ -37,6 +37,7 @@ interface Hand {
     tricks: Trick[];
     stuck: boolean;
     made: boolean;
+    renege?: PlayerIndex;
 }
 
 export interface Save {
@@ -65,7 +66,8 @@ export default function saveGame(game: Game): Save {
             points: trick.trick_points
         })),
         stuck: hand.bid_forced,
-        made: hand.bid_made
+        made: hand.bid_made,
+        renege: hand.renege >= 0 ? hand.renege : undefined
     }));
     return {
         /** Not realy JSON, just has the bones (if any) as strings */

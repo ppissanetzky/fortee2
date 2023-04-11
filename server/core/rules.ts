@@ -63,6 +63,7 @@ function reviver(key: string, value: any): any {
                 assert(value.every((item) =>
                     _.isString(item) && ['HIGH_SUIT', 'LOW_SUIT', 'HIGH', 'LOW'].includes(item)));
                 return value;
+            case 'renege':
             case 'plunge_allowed':
             case 'sevens_allowed':
                 if (_.isString(value)) {
@@ -102,6 +103,7 @@ function reviver(key: string, value: any): any {
 
 export default class Rules {
 
+    public readonly renege = false;
     public readonly all_pass: AllPass = 'FORCE';
     public readonly min_bid: string = '30';
     public readonly forced_min_bid: string = '30';

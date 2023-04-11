@@ -86,6 +86,7 @@ export interface TrumpSubmitted {
 
 export interface YourPlay {
     possible: Bone[];
+    all: Bone[];
 }
 
 export interface PlaySubmitted {
