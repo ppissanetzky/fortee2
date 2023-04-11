@@ -51,7 +51,7 @@ export default class RemotePlayer implements Player {
         return msg;
     }
 
-    startingGame(msg: { table: string[], rules: Rules }): void {
+    startingGame(msg: { table: string[], rules: Rules, desc: string[] }): void {
         this.rules = msg.rules;
         this.socket.send('startingGame', msg);
     }

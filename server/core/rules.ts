@@ -124,6 +124,33 @@ export default class Rules {
         this.bones = bones;
     }
 
+    parts(): string[] {
+        const result: string[] = [];
+        if (this.renege) {
+            result.push('renege');
+        }
+        result.push(`min ${this.min_bid}`);
+        if (this.all_pass === 'SHUFFLE') {
+            result.push('reshuffle');
+        }
+        else {
+            result.push(`forced ${this.forced_min_bid}`);
+        }
+        if (this.plunge_allowed) {
+            result.push(`plunge ${this.plunge_min_marks}-${this.plunge_max_marks}`);
+        }
+        if (this.sevens_allowed) {
+            result.push('sevens');
+        }
+        if (this.nello_allowed === 'ALWAYS') {
+            result.push('nello');
+        }
+        else if (this.nello_allowed === 'FORCE') {
+            result.push('forced nello');
+        }
+        return result;
+    }
+
     toJSON() {
         return {
             ...this,

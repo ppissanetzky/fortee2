@@ -86,6 +86,18 @@ if (!config.PRODUCTION) {
             const name = expected(host.name);
             req.login({id, name}, (error) => error ? reject(error) : resolve());
         });
+        const s = JSON.stringify({
+            renege: true,
+            all_pass: 'FORCE',
+            min_bid: '1-mark',
+            forced_min_bid: '1-mark',
+            plunge_allowed: true,
+            plunge_min_marks: 2,
+            plunge_max_marks: 2,
+            sevens_allowed: true,
+            nello_allowed: 'FORCE'
+        });
+        const rules = Rules.fromJson(s);
         const room = new GameRoom(new Rules(), table);
         req.session.gameRoomToken = room.token;
         await saveSession(req);

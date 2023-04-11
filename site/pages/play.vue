@@ -151,7 +151,14 @@
               <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
             </div>
 
-            <div class="d-flex align-center justify-space-around mb-6">
+            <div class="d-flex flex-column align-center mb-6">
+              <v-sheet width="200" height="115" color="#00000000">
+                <div v-if="rules" class="pa-3 pt-9 text-center">
+                  <h5 style="color: #0049bd;">
+                    {{ rules.join(' \u00b7 ') }}
+                  </h5>
+                </div>
+              </v-sheet>
               <!-- RIGHT PLAYER STATUS -->
               <StatusNew v-model="right" class="ma-6 mb-12" />
             </div>
@@ -265,6 +272,7 @@ export default {
       joining: false,
       youAre: undefined,
       hosting: undefined,
+      rules: undefined,
       teams: {
         US: [],
         THEM: []
@@ -374,7 +382,6 @@ export default {
       }
       return '#00000000'
     }
-
   },
   watch: {},
   mounted () {},
@@ -396,6 +403,7 @@ export default {
           break
 
         case 'startingGame':
+          this.rules = message.desc
           break
 
         case 'youEnteredGameRoom':
