@@ -63,6 +63,7 @@ function reviver(key: string, value: any): any {
                 assert(value.every((item) =>
                     _.isString(item) && ['HIGH_SUIT', 'LOW_SUIT', 'HIGH', 'LOW'].includes(item)));
                 return value;
+            case 'renege':
             case 'plunge_allowed':
             case 'sevens_allowed':
                 if (_.isString(value)) {
@@ -102,6 +103,7 @@ function reviver(key: string, value: any): any {
 
 export default class Rules {
 
+    public readonly renege = false;
     public readonly all_pass: AllPass = 'FORCE';
     public readonly min_bid: string = '30';
     public readonly forced_min_bid: string = '30';
@@ -120,6 +122,33 @@ export default class Rules {
             assert(_.uniq(bones).length = Bone.ALL.length);
         }
         this.bones = bones;
+    }
+
+    parts(): string[] {
+        const result: string[] = [];
+        if (this.renege) {
+            result.push('renege');
+        }
+        result.push(`min ${this.min_bid}`);
+        if (this.all_pass === 'SHUFFLE') {
+            result.push('reshuffle');
+        }
+        else {
+            result.push(`forced ${this.forced_min_bid}`);
+        }
+        if (this.plunge_allowed) {
+            result.push(`plunge ${this.plunge_min_marks}-${this.plunge_max_marks}`);
+        }
+        if (this.sevens_allowed) {
+            result.push('sevens');
+        }
+        if (this.nello_allowed === 'ALWAYS') {
+            result.push('nello');
+        }
+        else if (this.nello_allowed === 'FORCE') {
+            result.push('forced nello');
+        }
+        return result;
     }
 
     toJSON() {

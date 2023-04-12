@@ -1,7 +1,8 @@
 <template>
   <div>
     <div class="d-flex">
-      <v-sheet class="d-flex flex-column align-stretch pl-3 pr-3 pb-6" width="300">
+      <!-- LEFT SIDE COLUMN -->
+      <v-sheet class="d-flex flex-column align-stretch pl-3 pr-2 pb-6" width="300">
         <v-img class="d-flex" max-height="56" aspect-ratio="1" contain src="/logo.png" />
         <v-card class="d-flex mt-1" flat tile color="#8fa5b7">
           <v-container class="pa-2">
@@ -79,7 +80,7 @@
                       :key="bone"
                       class="ma-0 mt-1"
                       contain
-                      max-width="30"
+                      max-width="29"
                       :src="`/${bone}v.png`"
                     />
                   </v-card>
@@ -100,7 +101,7 @@
                       :key="bone"
                       class="ma-0 mt-1"
                       contain
-                      max-width="30"
+                      max-width="29"
                       :src="`/${bone}v.png`"
                     />
                   </v-card>
@@ -150,14 +151,21 @@
               <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
             </div>
 
-            <div class="d-flex align-center justify-space-around mb-6">
+            <div class="d-flex flex-column align-center mb-6">
+              <v-sheet width="200" height="115" color="#00000000">
+                <div v-if="rules" class="pa-3 pt-9 text-center">
+                  <h5 style="color: #0049bd;">
+                    {{ rules.join(' \u00b7 ') }}
+                  </h5>
+                </div>
+              </v-sheet>
               <!-- RIGHT PLAYER STATUS -->
               <StatusNew v-model="right" class="ma-6 mb-12" />
             </div>
           </div>
         </div>
+        <!-- THE CHOICE BAR -->
         <div>
-          <!-- THE CHOICE BAR -->
           <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
             <v-spacer />
             <div v-if="!paused" class="pl-6">
@@ -184,7 +192,7 @@
           </v-sheet>
         </div>
         <!-- MY BONES -->
-        <div class="mt-3">
+        <div class="mt-2">
           <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-3">
             <v-img
               v-for="n in 4"
@@ -264,6 +272,7 @@ export default {
       joining: false,
       youAre: undefined,
       hosting: undefined,
+      rules: undefined,
       teams: {
         US: [],
         THEM: []
@@ -373,7 +382,6 @@ export default {
       }
       return '#00000000'
     }
-
   },
   watch: {},
   mounted () {},
@@ -395,6 +403,7 @@ export default {
           break
 
         case 'startingGame':
+          this.rules = message.desc
           break
 
         case 'youEnteredGameRoom':
@@ -519,8 +528,13 @@ export default {
           this.trickWinner = message.winner
           this.US = message.status.US
           this.THEM = message.status.THEM
-          this.pointTo = [message.winner]
-          await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], true)
+          if (message.status.renege) {
+            this.pointTo = [message.status.renege]
+            await this.prompt(`${message.status.renege} didn't follow suit, the hand goes to the other team`, ['Continue'], true)
+          } else {
+            this.pointTo = [message.winner]
+            await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], true)
+          }
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)

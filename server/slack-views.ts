@@ -99,6 +99,18 @@ export function RULES(metadata: string) {
 					)
 			),
 		Section()
+			.blockId('renege')
+			.text('Allow reneging')
+			.accessory(
+				StaticSelect({actionId: 'renege'})
+					.initialOption(
+						Option({value: 'NO', text: 'No'}))
+					.options(
+						Option({value: 'YES', text: 'Yes'}),
+						Option({value: 'NO', text: 'No'})
+					)
+			),
+		Section()
 			.blockId('follow_me_doubles')
 			.text('When playing follow-me, what are doubles?')
 			.accessory(

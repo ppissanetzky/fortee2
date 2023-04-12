@@ -16,6 +16,8 @@ export default class RemotePlayer implements Player {
 
     private socket: Socket;
 
+    private rules?: Rules;
+
     constructor(socket: Socket) {
         this.socket = socket;
     }
@@ -49,7 +51,8 @@ export default class RemotePlayer implements Player {
         return msg;
     }
 
-    startingGame(msg: { table: string[], rules: Rules }): void {
+    startingGame(msg: { table: string[], rules: Rules, desc: string[] }): void {
+        this.rules = msg.rules;
         this.socket.send('startingGame', msg);
     }
 
@@ -106,7 +109,10 @@ export default class RemotePlayer implements Player {
         this.socket.send('waitingForPlay', this.you(msg));
     }
 
-    async play(msg: { possible: Bone[] }): Promise<Bone> {
+    async play(msg: { possible: Bone[], all: Bone[] }): Promise<Bone> {
+        if (this.rules?.renege) {
+            msg.possible = msg.all;
+        }
         return this.socket.send('play', msg, 'playBone')
             .then((reply) => {
                 assert(reply);

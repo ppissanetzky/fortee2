@@ -54,6 +54,7 @@ class Trick {
     public trick_winner       = -1;
     public trick_points       = 0;
     public points             = new Score();
+    public renege             = -1;
 }
 
 class Hand {
@@ -81,6 +82,7 @@ class Hand {
     public tricks             : Trick[] = [];
     public hand_over          = false;
     public bid_made           = false;
+    public renege             = -1;
 
     constructor(first_bidder: number) {
         this.first_bidder = first_bidder;
@@ -116,6 +118,7 @@ export class PlayResult {
     public bid_made       = false;
     public winning_team?  : Team;
     public game_over      = false;
+    public renege         = -1;
 }
 
 export default class Game {
@@ -478,9 +481,10 @@ export default class Game {
         }
     }
 
-    // Get the next player and a list of possible bones he can play
+    // Get the next player and a list of possible bones he can play as well as
+    // a list of all the player's bones left
 
-    get_next_player(): [Player, Bone[]] {
+    get_next_player(): [Player, Bone[], Bone[]] {
 
         const hand = this.this_hand;
 
@@ -545,17 +549,17 @@ export default class Game {
             possible_bones = [...bones];
         }
 
-        return [player, possible_bones];
+        return [player, possible_bones, [...bones]];
     }
 
     // Called when a player plays a bone - returns a PlayResult
 
     player_play(player: Player, bone: Bone): PlayResult {
 
-        const [check_player , possible_bones] = this.get_next_player();
+        const [check_player , possible_bones, all_bones] = this.get_next_player();
 
         assert(check_player === player, `Player ${player} playing out of turn. Expecting ${check_player}`);
-        assert(possible_bones.includes(bone), `Player ${player} playing invalid bone ${bone.toString()}`);
+        assert(all_bones.includes(bone), `Player ${player} playing invalid bone ${bone.toString()}`);
 
         const result = new PlayResult();
 
@@ -597,9 +601,34 @@ export default class Game {
             hand.next_player = Game.inc_player( hand.next_player );
         }
 
+        // If this is the case, the rules have renege turned on and this player
+        // did not follow suit
+
+        if (!possible_bones.includes(bone)) {
+
+            result.trick_over = true;
+            // The next person on the other team
+            const winner = Game.inc_player(player_index);
+            // Their partner
+            const partner = Game.partner_for(winner);
+
+            result.renege = player_index;
+            result.hand_over = true;
+            result.winning_team = Game.team_for_player(winner);
+            result.trick_points = 0;
+            result.bid_made = result.winning_team === Game.team_for_player(hand.high_bidder);
+
+            if (partner === hand.high_bidder) {
+                result.trick_winner = partner;
+            }
+            else {
+                result.trick_winner = winner;
+            }
+        }
+
         // check the results of this play
 
-        if (hand.next_player === hand.trick_leader) {
+        else if (hand.next_player === hand.trick_leader) {
 
             // the trick is over
 
@@ -670,6 +699,8 @@ export default class Game {
                     result.bid_made      = false;
                 }
             }
+        }
+        if (result.trick_over) {
 
             if (result.hand_over) {
 
@@ -694,6 +725,9 @@ export default class Game {
             hand.this_trick.points.US       = hand.points.US;
             hand.this_trick.points.THEM     = hand.points.THEM;
             hand.this_trick.trick_over      = true;
+            hand.this_trick.renege          = result.renege;
+
+            hand.renege                     = result.renege;
 
             // # put the trick bones in the pile and clear them out
 
@@ -705,7 +739,7 @@ export default class Game {
 
             if (result.hand_over) {
                 if (result.early_finish) {
-                  this.next_step = STEP.EARLY_FINISH
+                    this.next_step = STEP.EARLY_FINISH
                 }
             }
         }

@@ -234,6 +234,7 @@ function loadRulesFrom(view: ViewOutput): Rules {
         ...value('min_bid'),
         ...value('all_pass'),
         ...value('forced_min_bid'),
+        ...value('renege'),
         ...value('follow_me_doubles'),
         ...value('plunge_allowed'),
         ...value('plunge_min_marks'),
