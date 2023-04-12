@@ -400,6 +400,12 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
+          this.send('info', {
+            screenW: window.screen.width,
+            screenH: window.screen.height,
+            innerW: window.innerWidth,
+            innerH: window.innerHeight
+          })
           break
 
         case 'startingGame':
