@@ -188,9 +188,9 @@ export default async function connectToSlack() {
                     }
                 });
             }
+            debug('info %j', info);
             const id = info.user?.id;
-            const name = info.user?.profile?.display_name
-                || info.user?.profile?.real_name;
+            const name = info.user?.profile?.real_name;
             if (id && name) {
                 table.setName(id, name);
             }
