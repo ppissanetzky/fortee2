@@ -1,101 +1,300 @@
 
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
-import { getDay, parseISO } from 'date-fns';
+import assert from 'node:assert';
 
 import { Database } from './db';
+import { makeDebug } from './utility';
+import Dispatcher from './dispatcher';
+import TexasTime from './texas-time';
+import Tournament, { TournamentRow } from './tournament';
+import config from './config';
+
+const debug = makeDebug('scheduler');
 
 const database = new Database('tournaments', 0);
 
-/**
- * Wraps around a date that is always US/Central, just so I won't
- * make mistakes.
- */
 
-class TexasTime {
-
-    /** This one parses the tournament dates that look like 2023-03-13 22:30 */
-
-    static parse(date: string): TexasTime {
-        return new TexasTime(zonedTimeToUtc(date, 'US/Central'));
+function insertTestTourneys() {
+    if (config.PRODUCTION) {
+        return;
     }
+    database.run('delete from tournaments');
+    const now = TexasTime.today();
+    const d = now.date;
+    d.setMinutes(d.getMinutes() + 1);
+    const signup = new TexasTime(d).toString();
+    d.setMinutes(d.getMinutes() + 1);
+    const e = new TexasTime(d).toString();
+    d.setMinutes(d.getMinutes() + 1);
+    const s = new TexasTime(d).toString();
 
-    static today(): TexasTime {
-        return new TexasTime(utcToZonedTime(Date.now(), 'US/Central'));
-    }
+    const t = new Tournament({
+        id: 0,
+        name: `Today's test tournament`,
+        type: 1,
+        signup_start_dt: signup,
+        signup_end_dt: e,
+        start_dt: s,
+        rules: '',
+        partner: 2,
+        seed: 0,
+        timezone: 'CST',
+        signup_opened: 0,
+        signup_closed: 0,
+        started: 0,
+        scheduled: 0,
+        finished: 0,
+        ladder_id: 0,
+        ladder_name: '',
+        lmdtm: '',
+        invitation: 0,
+        recurring: 0,
+        invitees: '',
+        prize: '',
+        winners: '',
+        recurring_source: 0,
+        host: ''
+    });
+    t.saveWith({});
+}
 
-    public readonly date: Date;
 
-    private constructor(date: Date) {
-        this.date = date;
-    }
-
-    /** Returns 1-7 where 1 is Monday  */
-    get dayOfWeek(): number {
-        /** This one returns 0 for Sunday */
-        const day = getDay(this.date);
-        return day === 0 ? 7 : day;
+interface SchedulerEvents {
+    signupOpen: Tournament;
+    signupClosed: Tournament;
+    started: Tournament;
+    canceled: Tournament;
+    finished: Tournament;
+    registered: {
+        t: Tournament;
+        user: string;
+        partner?: string;
+    },
+    unregistered: {
+        t: Tournament;
+        user: string;
     }
 }
 
-interface TournamentRow {
-    id: number; // 217173,
-    name: string; // '[QT] Time To Go Straight  (S)',
-    type: number; // 1,
-    signup_start_dt: string; // '2023-03-13 22:15',
-    signup_end_dt: string; // '2023-03-13 22:29',
-    start_dt: string; // '2023-03-13 22:30',
-    rules: string; // 'AllPass=FORCE,NelloAllowed=NEVER,NelloDoublesHIGH=NO,NelloDoublesLOW=NO,NelloDoublesHIGH_SUIT=YES,NelloDoublesLOW_SUIT=NO,PlungeAllowed=NO,SevensAllowed=NO,FollowMeDoublesHIGH=YES,FollowMeDoublesLOW=NO,FollowMeDoublesHIGH_SUIT=NO,FollowMeDoublesLOW_SUIT=NO,PlungeMinMarks=2,PlungeMaxMarks=2,MinBid=30,ForcedMinBid=30',
-    partner: number; // 2,
-    seed: number; // 1,
-    timezone: string; // 'CST',
-    signup_opened: number; // 1,
-    signup_closed: number; // 1,
-    started: number; // 1,
-    scheduled: number; // 0,
-    finished: number; // 1,
-    ladder_id: number; // 0,
-    ladder_name: string; //  '',
-    lmdtm: string; // '1450003559',
-    invitation: number; // 1,
+export default class Scheduler extends Dispatcher<SchedulerEvents> {
+
+    public static get(): Scheduler {
+        if (!this.instance) {
+            this.instance = new Scheduler();
+        }
+        return this.instance;
+    }
+
+    private static instance?: Scheduler;
+
+    public tourneys = new Map<number, Tournament>();
+
+    private constructor() {
+        super();
+        this.loadToday();
+    }
+
+    private loadToday(): void {
+        insertTestTourneys();
+
+        const today = TexasTime.today();
+
+        for (const t of this.todaysTournaments(today)) {
+            this.tourneys.set(t.id, new Tournament(t));
+            debug('loaded', t.id, t.start_dt, t.name);
+        }
+
+        for (const t of this.todaysRecurringTournaments(today)) {
+            const instance = this.createRecurringInstance(today, t);
+            if (instance) {
+                this.tourneys.set(instance.id, instance);
+            }
+        }
+
+        debug('have', this.tourneys.size, 'to schedule');
+
+        const now = TexasTime.today();
+        for (const t of this.tourneys.values()) {
+            const ms = Math.max(100, now.msUntil(TexasTime.parse(t.signup_start_dt)));
+            debug('signup in', ms, 'for', t.id, t.signup_start_dt, t.name);
+            setTimeout(() => this.openSignup(t), ms);
+        }
+
+        const tomorrow = TexasTime.midnight();
+        const ms = now.msUntil(tomorrow) + 1000;
+        debug('tomorrow', tomorrow.toString(), 'in', ms);
+        setTimeout(() => this.loadToday(), ms);
+    }
+
     /**
-     * 0 if it is not recurring
-     * 1-7 for Monday to Sunday
-     * 8 for every day
-     * 9 for week days
+     * Loads all recurring tournaments that don't already have an instance
+     * for today
      */
-    recurring: number; // 1,
-    invitees: string; // '',
-    prize: string; // '',
-    winners: string; // '',
-    recurring_source: number; // 0,
-    host: string; // 'rednsassy'
-}
 
-const db = database.connect();
+    private todaysRecurringTournaments(today: TexasTime): TournamentRow[] {
+        const date = today.dateString;
+        const dow = today.dayOfWeek;
+        return database.all(
+            `
+            SELECT * FROM tournaments
+            WHERE
+                (recurring = $dow OR recurring = 8 OR
+                (recurring = 9 AND $dow in (1, 2, 3, 4, 5)))
+                AND id NOT IN (
+                    SELECT recurring_source FROM tournaments AS other
+                    WHERE date(other.start_dt) = date($date)
+                )
+            ORDER BY
+                time(start_dt)
+            `
+            , { date, dow }
+        );
+    }
 
-db.function('texas_time', (s: string) => {
-    return TexasTime.parse(s).date.toISOString();
-});
+    private todaysTournaments(today: TexasTime): TournamentRow[] {
+        const date = today.toString();
+        return database.all(
+            `
+            SELECT * FROM tournaments
+            WHERE
+                date(start_dt) = date($date)
+                AND time(start_dt) > time($date)
+                AND started = 0
+                AND finished = 0
+                AND scheduled = 0
+                AND recurring = 0
+            ORDER BY
+                start_dt
+            `
+            , { date }
+        );
+    }
 
-function loadTodaysRecurringTournaments() {
-    const today = TexasTime.parse('2023-03-01');
-    const dow = today.dayOfWeek;
-    console.log(dow);
-    return db.all(
-        `
-        SELECT *, texas_time(start_dt) as tt FROM tournaments
-        WHERE
-            (recurring = $dow OR recurring = 8 OR
-            (recurring = 9 AND $dow in (1, 2, 3, 4, 5)))
-        `
-        , { dow }
-    );
-}
+    private createRecurringInstance(today: TexasTime, t: TournamentRow): Tournament | undefined {
+        assert(t.recurring);
 
-const today = TexasTime.parse('2023-03-01');
-console.log('Right now is', today, today.dayOfWeek);
+        /** The new start date time for this instance */
+        const start = today.withTimeFrom(TexasTime.parse(t.start_dt));
 
-for (const row of loadTodaysRecurringTournaments()) {
-    const tt = TexasTime.parse(row.start_dt);
-    console.log(row.id, row.start_dt, tt.dayOfWeek, row.recurring, row.tt, row.name);
+        /** See if the start time is earlier than now */
+        if (today.minutesUntil(start) < 5) {
+            debug('expired', t.id, start.toString(), t.name);
+            return;
+        }
+
+        /** Create and save the new instance */
+        const instance = new Tournament(t).saveWith({
+            id: 0,
+            start_dt: start.toString(),
+            signup_start_dt: today.withTimeFrom(TexasTime.parse(t.signup_start_dt)).toString(),
+            signup_end_dt: today.withTimeFrom(TexasTime.parse(t.signup_end_dt)).toString(),
+            signup_opened: 0,
+            signup_closed: 0,
+            started: 0,
+            scheduled: 0,
+            finished: 0,
+            invitees: '',
+            winners: '',
+            recurring: 0,
+            recurring_source: t.id
+        });
+
+        debug('created', instance.id, instance.start_dt, instance.name);
+
+        return instance;
+    }
+
+    private openSignup(t: Tournament) {
+        if (!t.signup_opened) {
+            t.saveWith({
+                signup_opened: 1
+            });
+            debug('signup opened for', t.id, t.signup_start_dt, t.name);
+            this.emit('signupOpen', t);
+        }
+
+        const now = TexasTime.today();
+        const ms = Math.max(100, now.msUntil(TexasTime.parse(t.signup_end_dt)));
+        setTimeout(() => this.closeSignup(t), ms);
+        debug('signup close in', ms, t.id, t.signup_end_dt, t.name);
+    }
+
+    private closeSignup(t: Tournament) {
+        if (!t.signup_closed) {
+            t.saveWith({
+                signup_closed: 1
+            });
+            debug('signup closed for', t.id, t.signup_end_dt, t.name);
+            this.emit('signupClosed', t);
+        }
+
+        // TODO: check signups, if not enough, will go to canceled
+
+        const now = TexasTime.today();
+        const ms = Math.max(100, now.msUntil(TexasTime.parse(t.start_dt)));
+        debug('start in', ms, t.id, t.signup_end_dt, t.name);
+        setTimeout(() => this.start(t), ms);
+    }
+
+    private start(t: Tournament) {
+        t.saveWith({
+            started: 1
+        });
+        debug('started', t.id, t.start_dt, t.name);
+        this.emit('started', t);
+    }
+
+    public register(id: number, user: string, partner = ''): Tournament {
+        assert(user);
+        const t = this.tourneys.get(id);
+        assert(t, `Invalid tournament ${id}`);
+        assert(t.signup_opened && !t.signup_closed, `Signup is not open for ${id}`);
+        assert(user !== partner, 'Yourself as partner');
+        if (t.invitation && !t.invitees.includes(user)) {
+            assert(false, 'Not invited');
+        }
+        for (const other of this.tourneys.values()) {
+            if (other === t) {
+                continue;
+            }
+            if (other.signup_opened && !other.started && !other.finished) {
+                if (other.signups().has(user)) {
+                    assert(false, `Already registered for ${other.id}`);
+                }
+            }
+            // TODO: check if this user is still playing in other
+        }
+        // In the DB
+        database.run(
+            `
+            INSERT OR REPLACE INTO signups
+            (id, user, partner) VALUES ($id, $user, $partner)
+            `
+            , { id, user, partner: partner || null }
+        );
+        this.emit('registered', {
+            t,
+            user,
+            partner
+        });
+        return t;
+    }
+
+    public unregister(id: number, user: string): Tournament {
+        assert(user);
+        const t = this.tourneys.get(id);
+        assert(t, `Invalid tournament ${id}`);
+        assert(t.signup_opened && !t.signup_closed, `Signup not open for ${id}`);
+        assert(t.signups().has(user), `Not signed up for ${id}`);
+        database.run(
+            `
+            DELETE from signups WHERE id = $id AND user = $user
+            `
+            , { id, user }
+        );
+        this.emit('unregistered', {
+            t,
+            user
+        });
+        return t;
+    }
 }

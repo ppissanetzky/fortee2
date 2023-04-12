@@ -12,6 +12,7 @@ export default class Dispatcher<T extends object> {
     on<K extends keyof T>(
         type: K, listener: (event: T[K]) => void) {
         this.emitter.on(type as string, listener);
+        return this;
     }
 
     once<K extends keyof T>(

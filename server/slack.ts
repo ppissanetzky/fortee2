@@ -7,6 +7,9 @@ import { Rules } from './core';
 import { TableBuilder } from './table-helper';
 import GameRoom from './game-room';
 import { Actions, Button, Message, Section, HomeTab, Header } from 'slack-block-builder';
+import Scheduler from './tournament-scheduler';
+import TexasTime from './texas-time';
+import SlackTournamentMessenger from './slack-tournament-messenger';
 
 const debug = makeDebug('slack');
 
@@ -207,6 +210,8 @@ export default async function connectToSlack() {
     debug('Connecting...');
     await app.start();
     debug('Connected');
+
+    SlackTournamentMessenger.start(app);
 }
 
 function loadRulesFrom(view: ViewOutput): Rules {

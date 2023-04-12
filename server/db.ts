@@ -39,7 +39,7 @@ export class DatabaseConnection {
     run(query: string, params: Params) {
         const statement = this.bs3.prepare(query);
         const info = statement.run(params || {});
-        return info.lastInsertRowid;
+        return info.lastInsertRowid as number;
     }
 
     // Returns the changes
