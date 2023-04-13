@@ -9,7 +9,7 @@ import { makeDebug } from './utility';
 
 const { FT2_DB_PATH } = config;
 
-type Params = Record<string, any>;
+export type Params = Record<string, any>;
 
 //-----------------------------------------------------------------------------
 // A persistent connection

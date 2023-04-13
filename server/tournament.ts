@@ -1,8 +1,6 @@
 
-import { Database } from './db';
 import TexasTime from './texas-time';
-
-const database = new Database('tournaments', 0);
+import * as db from './tournament-db';
 
 /** A row from the database */
 
@@ -105,7 +103,7 @@ export default class Tournament implements Readonly<TournamentRow> {
 
     saveWith(updates: Partial<TournamentRow>): this {
         const row = {...this.row, ...updates};
-        row.id = database.run(
+        row.id = db.run(
             `
                 INSERT OR REPLACE INTO tournaments
                 (
@@ -169,15 +167,12 @@ export default class Tournament implements Readonly<TournamentRow> {
         return this;
     }
 
-    signups(): Set<string> {
-        const { id } = this;
-        const rows = database.all(
-            `
-            SELECT user FROM signups WHERE id = $id
-            `
-            , { id }
-        );
-        return new Set(rows.map(({user}) => user));
+    signups() {
+        return db.getSignups(this.id);
+    }
+
+    isSignedUp(user: string) {
+        return db.isSignedUp(this.id, user);
     }
 
 }

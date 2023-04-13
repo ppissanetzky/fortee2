@@ -16,3 +16,4 @@ rules:
 ignorePatterns:
   - 'dist/**'
   - 'site/**'
+  - 'jest.config.js'

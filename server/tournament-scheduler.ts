@@ -1,23 +1,21 @@
 
 import assert from 'node:assert';
+import _ from 'lodash';
 
-import { Database } from './db';
 import { makeDebug } from './utility';
 import Dispatcher from './dispatcher';
 import TexasTime from './texas-time';
 import Tournament, { TournamentRow } from './tournament';
 import config from './config';
+import * as db from './tournament-db';
 
 const debug = makeDebug('scheduler');
-
-const database = new Database('tournaments', 0);
-
 
 function insertTestTourneys() {
     if (config.PRODUCTION) {
         return;
     }
-    database.run('delete from tournaments');
+    db.run('delete from tournaments');
     const now = TexasTime.today();
     const d = now.date;
     d.setMinutes(d.getMinutes() + 1);
@@ -133,7 +131,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     private todaysRecurringTournaments(today: TexasTime): TournamentRow[] {
         const date = today.dateString;
         const dow = today.dayOfWeek;
-        return database.all(
+        return db.all(
             `
             SELECT * FROM tournaments
             WHERE
@@ -152,7 +150,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
 
     private todaysTournaments(today: TexasTime): TournamentRow[] {
         const date = today.toString();
-        return database.all(
+        return db.all(
             `
             SELECT * FROM tournaments
             WHERE
@@ -257,7 +255,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
                 continue;
             }
             if (other.signup_opened && !other.started && !other.finished) {
-                if (other.signups().has(user)) {
+                if (other.isSignedUp(user)) {
                     assert(false, `Already registered for ${other.id}`);
                 }
             }
@@ -265,24 +263,12 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         }
         /** Check to see if it already exists */
 
-        const existing = database.first(
-            `
-            SELECT user FROM signups
-            WHERE id = $id and user = $user and partner IS $partner`
-            , { id, user, partner: partner || null }
-        );
-        if (existing) {
+        if (db.signupExists(id, user, partner)) {
             return [t, false];
         }
 
         // In the DB
-        database.run(
-            `
-            INSERT OR REPLACE INTO signups
-            (id, user, partner) VALUES ($id, $user, $partner)
-            `
-            , { id, user, partner: partner || null }
-        );
+        db.addSignup(id, user, partner);
         this.emit('registered', {
             t,
             user,
@@ -296,14 +282,8 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         const t = this.tourneys.get(id);
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup not open for ${id}`);
-        assert(t.signups().has(user), `Not signed up for ${id}`);
-        const changed = database.change(
-            `
-            DELETE from signups WHERE id = $id AND user = $user
-            `
-            , { id, user }
-        );
-        if (changed === 0) {
+        assert(t.isSignedUp(user), `Not signed up for ${id}`);
+        if (!db.deleteSignup(id, user)) {
             return [t, false];
         }
         this.emit('unregistered', {
