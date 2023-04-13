@@ -204,8 +204,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
         }
         catch (error) {
-            // TODO: what should we do?
             this.debug('game error', error);
+            this.all((socket) => socket.send('gameError', {}));
         }
         finally {
             this.state = State.OVER;

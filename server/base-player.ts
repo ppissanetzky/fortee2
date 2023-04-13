@@ -109,5 +109,9 @@ export class BasePlayer implements Player {
         msg;
     }
 
+    gameError(msg: any): void {
+        msg;
+    }
+
     // #endregion
 }

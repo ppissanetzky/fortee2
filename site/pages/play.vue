@@ -605,6 +605,14 @@ export default {
           this.bidWinner = undefined
           this.pile = { US: [], THEM: [] }
           break
+
+        case 'gameError':
+          this.choiceTitle = 'There was a bug in the game, it cannot continue'
+          this.ws.close(1000, 'game-error')
+          this.ws = undefined
+          this.paused = true
+          this.connected = []
+          break
       }
     },
     bidForTeam (team) {

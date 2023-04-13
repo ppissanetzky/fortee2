@@ -215,6 +215,13 @@ export interface GameMessages {
      */
 
     gameOver: GameOver;
+
+    /**
+     * There was an error during the game, it is not playable
+     * any more
+     */
+
+    gameError: any
 }
 
 export type OutgoingMessages =

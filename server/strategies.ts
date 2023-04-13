@@ -170,12 +170,19 @@ class BidWithStats {
         const allowed = TrumpStats.trumpsForRules(state.rules);
         const stats = TrumpStats.all(state.bones,
             _.intersection(allowed, possible))
-            .filter(({trump, total, points}) => {
+            .filter(({trump, total, points, best}) => {
                 /**
                  * Judgment call, drop everything below 70% and with 15
                  * or more points
                  */
                 if (total < 70 || points >= 15) {
+                    return false;
+                }
+                /**
+                 * Trumps that need at least 1-mark will get skipped unless
+                 * we know we will have a lay-down hand and will bid highest
+                 */
+                if (trump.needs_42 && !best) {
                     return false;
                 }
                 state.debug('looking at', trump.toString(), total, points);
