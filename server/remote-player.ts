@@ -138,4 +138,8 @@ export default class RemotePlayer implements Player {
         this.socket.send('gameOver', msg);
     }
 
+    gameError(msg: any): void {
+        this.socket.send('gameError', msg);
+    }
+
 }
