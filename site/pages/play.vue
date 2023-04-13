@@ -115,15 +115,24 @@
         <!-- THE PLAYING AREA -->
         <div>
           <div class="d-flex justify-space-around">
-            <div class="d-flex align-center justify-space-around mb-6">
+            <div class="d-flex flex-column align-center mb-6">
+              <v-sheet width="200" height="115" color="#00000000" />
               <!-- LEFT PLAYER STATUS -->
               <StatusNew v-model="left" class="ma-6 mb-12" />
+              <v-sheet width="200" height="90" color="#00000000">
+                <div v-if="snack" class="pa-1 pt-3 text-center">
+                  <h3 style="color: #6f6f6f;">
+                    {{ snack }}
+                  </h3>
+                </div>
+              </v-sheet>
             </div>
 
             <div class="d-flex flex-column align-center justify-space-around">
               <!-- TOP PLAYER STATUS -->
               <StatusNew v-model="top" class="ma-3 align-self-center" />
 
+              <!-- CENTER STATUS AND POINTERS -->
               <div class="d-flex justify-space-around align-self-center">
                 <div class="d-flex align-center justify-space-around mr-3">
                   <v-icon :color="pointLeft">
@@ -308,7 +317,8 @@ export default {
       choices: [],
       timed: 0,
       choose: () => undefined,
-      possible: undefined
+      possible: undefined,
+      snack: undefined
     }
   },
   fetch () {
@@ -395,6 +405,12 @@ export default {
         }))
       }
     },
+    showSnack (value) {
+      this.snack = value
+      setTimeout(() => {
+        this.snack = undefined
+      }, 3500)
+    },
     async handleMessage (type, message, ack) {
       console.log(ack || '', type, message)
       switch (type) {
@@ -439,7 +455,9 @@ export default {
 
         case 'startingHand':
           this.pointTo = [this.youAre]
-          await this.prompt('Ready to start the next hand?', ['Yes'], true)
+          await this.prompt('Ready to start the next hand?', ['Yes'], 5)
+          this.US.points = undefined
+          this.THEM.points = undefined
           this.bids = {}
           this.trump = {}
           this.bidWinner = undefined
@@ -536,10 +554,10 @@ export default {
           this.THEM = message.status.THEM
           if (message.status.renege) {
             this.pointTo = [message.status.renege]
-            await this.prompt(`${message.status.renege} didn't follow suit, the hand goes to the other team`, ['Continue'], true)
+            await this.prompt(`${message.status.renege} didn't follow suit, the hand goes to the other team`, ['Continue'], 3)
           } else {
             this.pointTo = [message.winner]
-            await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], true)
+            await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], 3)
           }
           this.plays = {}
           this.trickWinner = undefined
@@ -558,14 +576,7 @@ export default {
             this.US = message.status.US
             this.THEM = message.status.THEM
             this.pointTo = players
-            await this.prompt(title, ['Continue'], true)
-            this.US.points = undefined
-            this.THEM.points = undefined
-            this.bids = {}
-            this.trump = {}
-            this.bidWinner = undefined
-            this.pile = { US: [], THEM: [] }
-            this.bones = []
+            this.showSnack(title)
             this.send('readyToContinue', null, ack)
           }
           break
@@ -629,13 +640,14 @@ export default {
       this.choiceTitle = title
       this.choices = choices
       return new Promise((resolve) => {
+        const total = typeof timed === 'number' ? timed : 10
         let interval
-        let seconds = 10
+        let seconds = total
         if (timed) {
           this.timed = 100
           interval = setInterval(() => {
             seconds--
-            this.timed = 100 * (seconds / 10)
+            this.timed = 100 * (seconds / total)
             if (seconds <= 0) {
               this.choose(choices[0])
             }
