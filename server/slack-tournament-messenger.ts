@@ -1,9 +1,8 @@
 import assert from 'node:assert';
 
 import { App, BlockAction, BlockElementAction } from '@slack/bolt';
-import { ChatPostMessageArguments, ChatUpdateArguments } from '@slack/web-api';
 
-import { Actions, Button, Message, Section, SlackMessageDto } from 'slack-block-builder';
+import { Actions, Button, Message, Section, setIfTruthy, SlackMessageDto, UserSelect } from 'slack-block-builder';
 import config from './config';
 import Tournament from './tournament';
 import Scheduler from './tournament-scheduler';
@@ -74,6 +73,14 @@ export default class SlackTournamentMessenger {
                 this.register(body);
             });
 
+        this.app.action({type: 'block_actions', action_id: 'unregister-action'},
+            async ({ack, body}) => {
+                await ack();
+                this.unregister(body);
+            });
+
+        this.app.action('register-partner-action', async ({ack}) => ack());
+
         debug('attached');
     }
 
@@ -141,6 +148,8 @@ export default class SlackTournamentMessenger {
         }
     }
 
+    /** When a user presses the register button in the tourney message */
+
     private async register(action: BlockAction<BlockElementAction>) {
         debug('register %j', action);
         const { user, message } = action;
@@ -151,18 +160,63 @@ export default class SlackTournamentMessenger {
             assert(metadata, 'missing metadata');
             const { event_payload: { id } } =  metadata;
             assert(id, 'missing id');
-            const t = this.scheduler.register(id, user.id);
+            const partner = action.state?.values?.['register-block']?.['register-partner-action']?.selected_user;
+            const [t, added] = this.scheduler.register(id, user.id, partner || '');
             const text = `You're registered for *${t.name}* at ${t.startTime}, good luck!`;
             await this.app.client.chat.postEphemeral({
                 channel: action.container.channel_id,
                 user: user.id,
                 text
             });
+            if (added) {
+                if (partner) {
+                    const text = `<@${user.id}> signed up for the *${t.name}* tournament at ${t.startTime} with you as a partner`
+                    await this.app.client.chat.postMessage({
+                        channel: partner,
+                        text
+                    });
+                }
+            }
         }
         catch (error) {
             debug('register failed', error);
             if (error instanceof Error) {
                 const text = `Something went wrong trying to register: ${error.message}`;
+                await this.app.client.chat.postEphemeral({
+                    channel: action.container.channel_id,
+                    user: user.id,
+                    text
+                });
+            }
+        }
+    }
+
+    /** When a user presses the un-register button in the tourney message */
+
+    private async unregister(action: BlockAction<BlockElementAction>) {
+        debug('unregister %j', action);
+        const { user, message } = action;
+        try {
+            assert(user, 'missing user');
+            assert(message, 'missing message');
+            const { metadata } = message;
+            assert(metadata, 'missing metadata');
+            const { event_payload: { id } } =  metadata;
+            assert(id, 'missing id');
+            const [t, removed] = this.scheduler.unregister(id, user.id);
+            if (removed) {
+                const text = `You dropped out of the *${t.name}* tournament at ${t.startTime}`;
+                await this.app.client.chat.postEphemeral({
+                    channel: action.container.channel_id,
+                    user: user.id,
+                    text
+                });
+            }
+        }
+        catch (error) {
+            debug('unregister failed', error);
+            if (error instanceof Error) {
+                const text = `Something went wrong trying to unregister: ${error.message}`;
                 await this.app.client.chat.postEphemeral({
                     channel: action.container.channel_id,
                     user: user.id,
@@ -180,12 +234,22 @@ export default class SlackTournamentMessenger {
             Message({channel: this.channel})
                 .text(text)
                 .blocks(
-                    Section().text(text),
-                    Actions().elements(
+                    Section()
+                        .text(text),
+                    Actions()
+                        .blockId('register-block')
+                        .elements(
+                        setIfTruthy(t.choosePartner,
+                            UserSelect().actionId('register-partner-action')
+                        ),
                         Button()
                             .primary(true)
                             .actionId('register-action')
-                            .text('Register')
+                            .text('Sign up'),
+                        Button()
+                            .danger(true)
+                            .actionId('unregister-action')
+                            .text('Drop out')
                     )
 
                 )
@@ -228,11 +292,34 @@ export default class SlackTournamentMessenger {
     }
 
     private async registered({t, user, partner}: {t: Tournament, user: string, partner?: string}) {
-        //
+        const ts = this.threads.get(t.id);
+        if (!ts) {
+            return;
+        }
+        let text = `<@${user}> signed up`;
+        if (partner) {
+            text += ` with <@${partner}>`;
+        }
+        text += `\nWe have ${t.signups().size}`;
+        this.app.client.chat.postMessage(
+            Message({channel: this.channel})
+                .threadTs(ts)
+                .text(text)
+                .buildToObject()
+        );
     }
     private async unregistered({t, user}: {t: Tournament, user: string}) {
-        //
+        const ts = this.threads.get(t.id);
+        if (!ts) {
+            return;
+        }
+        let text = `<@${user}> dropped out`;
+        text += `\nWe have ${t.signups().size || 'no one'}`;
+        this.app.client.chat.postMessage(
+            Message({channel: this.channel})
+                .threadTs(ts)
+                .text(text)
+                .buildToObject()
+        );
     }
-
-
 }

@@ -22,7 +22,7 @@ function insertTestTourneys() {
     const d = now.date;
     d.setMinutes(d.getMinutes() + 1);
     const signup = new TexasTime(d).toString();
-    d.setMinutes(d.getMinutes() + 1);
+    d.setMinutes(d.getMinutes() + 5);
     const e = new TexasTime(d).toString();
     d.setMinutes(d.getMinutes() + 1);
     const s = new TexasTime(d).toString();
@@ -35,7 +35,7 @@ function insertTestTourneys() {
         signup_end_dt: e,
         start_dt: s,
         rules: '',
-        partner: 2,
+        partner: 1,
         seed: 0,
         timezone: 'CST',
         signup_opened: 0,
@@ -243,12 +243,12 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         this.emit('started', t);
     }
 
-    public register(id: number, user: string, partner = ''): Tournament {
+    public register(id: number, user: string, partner = ''): [Tournament, boolean] {
         assert(user);
         const t = this.tourneys.get(id);
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup is not open for ${id}`);
-        assert(user !== partner, 'Yourself as partner');
+        assert(user !== partner, 'Yourself as partner?');
         if (t.invitation && !t.invitees.includes(user)) {
             assert(false, 'Not invited');
         }
@@ -263,6 +263,18 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             }
             // TODO: check if this user is still playing in other
         }
+        /** Check to see if it already exists */
+
+        const existing = database.first(
+            `
+            SELECT user FROM signups
+            WHERE id = $id and user = $user and partner IS $partner`
+            , { id, user, partner: partner || null }
+        );
+        if (existing) {
+            return [t, false];
+        }
+
         // In the DB
         database.run(
             `
@@ -276,25 +288,28 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             user,
             partner
         });
-        return t;
+        return [t, true];
     }
 
-    public unregister(id: number, user: string): Tournament {
+    public unregister(id: number, user: string): [Tournament, boolean] {
         assert(user);
         const t = this.tourneys.get(id);
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup not open for ${id}`);
         assert(t.signups().has(user), `Not signed up for ${id}`);
-        database.run(
+        const changed = database.change(
             `
             DELETE from signups WHERE id = $id AND user = $user
             `
             , { id, user }
         );
+        if (changed === 0) {
+            return [t, false];
+        }
         this.emit('unregistered', {
             t,
             user
         });
-        return t;
+        return [t, true];
     }
 }

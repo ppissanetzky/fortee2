@@ -99,6 +99,10 @@ export default class Tournament implements Readonly<TournamentRow> {
             && !this.started && !this.finished);
     }
 
+    get choosePartner(): boolean {
+        return this.partner === 2;
+    }
+
     saveWith(updates: Partial<TournamentRow>): this {
         const row = {...this.row, ...updates};
         row.id = database.run(
