@@ -7,9 +7,8 @@ import { Rules } from './core';
 import { TableBuilder } from './table-helper';
 import GameRoom from './game-room';
 import { Actions, Button, Message, Section, HomeTab, Header } from 'slack-block-builder';
-import Scheduler from './tournament-scheduler';
-import TexasTime from './texas-time';
 import SlackTournamentMessenger from './slack-tournament-messenger';
+import UserNames from './user-names';
 
 const debug = makeDebug('slack');
 
@@ -25,6 +24,8 @@ export default async function connectToSlack() {
         debug('not connecting to Slack');
         return;
     }
+
+    UserNames.start(app);
 
     app.event('app_home_opened', async ({event, client}) => {
         debug('app home opened %j', event);

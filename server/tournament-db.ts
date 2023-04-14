@@ -2,10 +2,14 @@ import _ from 'lodash';
 
 import { Database, Params } from './db';
 
-const database = new Database('tournaments', 0);
+const database = new Database('tournaments', 1);
 
 export function all(query: string, params?: Params) {
     return database.all(query, params);
+}
+
+export function first(query: string, params?: Params) {
+    return database.first(query, params);
 }
 
 export function run(query: string, params?: Params) {
