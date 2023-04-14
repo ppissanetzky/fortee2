@@ -105,7 +105,6 @@ dotenv.config();
 for (const name in variables) {
     const value = process.env[name];
     if (!value && variables[name]) {
-        console.log(`Using default value for ${name}`);
         continue;
     }
     assert(value, `Missing environment variable ${name}`);

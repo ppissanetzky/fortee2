@@ -4,13 +4,14 @@
   "author": "Pablo Pissanetzky",
   "license": "private",
   "scripts": {
+    "test": "(cd server && npm test)",
     "install": "(cd site && npm i) && (cd server && npm i)",
     "dev": "(cd site && npm run dev)",
     "generate": "(cd site && npm run generate)",
     "server": "(cd server && npm run server)",
     "start": "(cd site && npm run generate) && (cd server && npx tsc) && docker-compose up --build",
     "container": "./build.sh && docker-compose up --build",
-    "preversion": "git checkout main && git pull origin main && (cd server && npx tsc)",
+    "preversion": "git checkout main && git pull origin main && npm test",
     "postversion": "git push origin main --tags"
   }
 }

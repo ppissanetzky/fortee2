@@ -44,11 +44,26 @@ const enum State {
 }
 
 export interface GameRoomEvents {
+    /** The user ID that just joined, could happen many times */
+    userJoined: string;
+    /** The user ID that disconnected, could happen many times */
+    userLeft: string;
+    gameStarted: void;
+    gamePaused: void;
+    gameResumed: void;
     gameOver: {
         bots: number;
         save: SaveHelper;
     },
+    gameError: unknown;
     expired: void;
+}
+
+export interface GameRoomOptions {
+    rules: Rules;
+    table: TableBuilder;
+    expire?: boolean;
+    replay?: boolean;
 }
 
 /**
@@ -91,14 +106,18 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private readonly debug = makeDebug('game-room');
 
+    public readonly options: GameRoomOptions;
+
     /**
      * A set of user names that have been invited to this room. Always
      * includes the host
      */
     public readonly invited = new Set<string>();
 
-    constructor(rules: Rules, table: TableBuilder) {
+    constructor(options: GameRoomOptions) {
         super();
+        this.options = options;
+        const { rules, table, expire } = options;
         this.table = table;
         this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);
@@ -121,13 +140,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         assert(this.positions.every((name) => name), 'Positions are wrong');
         this.debug('positions %j', this.positions);
 
-        setTimeout(() => {
-            if (!this.started) {
-                this.debug('expired for %j', this.table);
-                GameRoom.rooms.delete(this.token);
-                this.emit('expired', undefined);
-            }
-        }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
+        if (expire !== false) {
+            setTimeout(() => {
+                if (!this.started) {
+                    this.debug('expired for %j', this.table);
+                    GameRoom.rooms.delete(this.token);
+                    this.emit('expired', undefined);
+                }
+            }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
+        }
     }
 
     get size(): number {
@@ -183,6 +204,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private async run() {
         try {
+            this.emit('gameStarted', undefined);
             // Create the players
             this.players = this.positions.map((name) => {
                 const socket = this.sockets.get(name);
@@ -206,6 +228,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         catch (error) {
             this.debug('game error', error);
             this.all((socket) => socket.send('gameError', {}));
+            this.emit('gameError', error);
         }
         finally {
             this.state = State.OVER;
@@ -220,6 +243,16 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 this.debug('game over, removing %s for %j', this.token, this.table);
                 GameRoom.rooms.delete(this.token);
             }
+
+            /**
+             * If there is no replay option, we're going to close all the
+             * sockets now. This will help with players leaving tabs open
+             * and being unable to get into the next game.
+             */
+
+            if (this.options.replay === false) {
+                this.all((socket) => socket.close('no-replay'));
+            }
         }
     }
 
@@ -230,17 +263,26 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         assert(this.invited.has(name), `User "${name}" has not been invited`);
         this.debug('joined', name);
         this.sockets.set(name, socket);
+        this.emit('userJoined', expected(this.table.idFor(name)));
         // If and when the user leaves
         socket.gone.then((reason) => {
             this.sockets.delete(name);
-            this.debug('removed', name, 'have', this.size);
+            this.debug('removed', name, ': reason', reason, ': have', this.size);
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;
             }
             if (name === this.host && reason === 'host-close' && this.state === State.OVER) {
                 this.not(name, (other) => other.close('host-close'));
-
             }
+            /**
+             * We closed it after the game was over and there is no replay,
+             * so we don't need to notify anyone
+             */
+            if (reason === 'no-replay') {
+                return;
+            }
+            this.emit('userLeft', expected(this.table.idFor(name)));
+            this.emit('gamePaused', undefined);
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
                     name,
@@ -249,7 +291,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
         });
         // Look for playAgain from the host
-        if (name === this.host) {
+        if (name === this.host && this.options.replay !== false) {
             socket.on('playAgain', () => {
                 assert(this.state === State.OVER);
                 this.state = State.PLAYING;
@@ -297,6 +339,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 // same as before
                 player.reset(socket);
             });
+            this.emit('gameResumed', undefined);
         }
 
         // TODO: rejoin after the game is over?
