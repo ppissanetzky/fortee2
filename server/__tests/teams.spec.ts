@@ -217,7 +217,7 @@ describe('brackets', () => {
         expect(rounds[0]).toHaveLength(4);
         expect(rounds[1]).toHaveLength(2);
         expect(rounds[2]).toHaveLength(1);
-        const byes = rounds[0].filter((game) => game.hasBye);
+        const byes = rounds[0].filter((game) => game.bye);
         /** 3 of the 4 games in round 1 have byes */
         expect(byes).toHaveLength(3);
         /** Make sure no game has two byes */

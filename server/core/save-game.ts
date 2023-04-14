@@ -86,10 +86,13 @@ export class SaveHelper {
         this.save = save;
     }
 
-    get winners(): string[] {
-        const indices = this.save.marks.US > this.save.marks.THEM
+    get winnerIndices(): number[] {
+        return this.save.marks.US > this.save.marks.THEM
             ? [0, 2] : [1, 3];
-        return indices.map((index) => this.save.players[index]);
+    }
+
+    get winners(): string[] {
+        return this.winnerIndices.map((index) => this.save.players[index]);
     }
 
     get losers(): string[] {

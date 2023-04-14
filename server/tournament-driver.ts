@@ -3,6 +3,12 @@ import _ from 'lodash';
 
 import Tournament from './tournament';
 import Dispatcher from './dispatcher';
+import UserNames from './user-names';
+import GameRoom from './game-room';
+import { TableBuilder } from './table-helper';
+import { Rules } from './core';
+import { SaveHelper } from './core/save-game';
+import { expected, makeDebug } from './utility';
 
 export class Team {
 
@@ -19,6 +25,7 @@ export class Game {
 
     public readonly id: number;
     public readonly teams: Team[] = [];
+    public readonly round;
     public started = false;
     public finished = false;
     public col = -1;
@@ -26,24 +33,141 @@ export class Game {
     public readonly previous_games: Game[] = [];
     public next_game?: Game;
 
-    constructor(id: number) {
+    constructor(id: number, round: number) {
         this.id = id;
+        this.round = round;
     }
 
-    get hasBye(): boolean {
-        return this.teams.includes(Team.bye);
+    /** If the game has a bye, returns the other team */
+    get bye(): Team | undefined {
+        const [a, b] = this.teams;
+        if (a === Team.bye) {
+            return b;
+        }
+        if (b === Team.bye) {
+            return a;
+        }
+    }
+
+    async start(driver: TournamentDriver): Promise<SaveHelper> {
+
+        const debug = makeDebug('t-game')
+            .extend(`t${driver.t.id}r${this.round}g${this.id}`);
+
+        return new Promise((resolve, reject) => {
+
+            const { bye } = this;
+
+            if (bye) {
+                /** Announce the bye */
+                for (const user of bye.users) {
+                    driver.emit('announceBye', {
+                        t: driver.t,
+                        round: this.round,
+                        user
+                    });
+                }
+
+                /** Advance this team to the next game */
+                const next_game = expected(this.next_game);
+                next_game.teams.push(bye);
+                if (next_game.teams.length === 2) {
+                    return resolve(next_game.start(driver));
+                }
+                return;
+            }
+
+            const { teams } = this;
+
+            assert(teams.length === 2);
+
+            Promise.all([
+                UserNames.user(teams[0].users[0]),
+                UserNames.user(teams[1].users[0]),
+                UserNames.user(teams[0].users[1]),
+                UserNames.user(teams[1].users[1])
+            ])
+            .then((users) => {
+
+                const table = new TableBuilder(users);
+
+                debug('starting with %j', table);
+
+                // TODO: Rules from T
+                const room = new GameRoom(new Rules(), table);
+
+                room.on('userJoined', (user) => {
+                    debug('joined', user);
+                });
+
+                room.on('userLeft', (user) => {
+                    debug('left', user);
+                });
+
+                room.on('gamePaused', () => {
+                    debug('paused');
+                });
+
+                room.on('gameResumed', () => {
+                    debug('resumed');
+                });
+
+                room.once('gameStarted', () => {
+                    debug('started');
+                });
+
+                room.once('gameError', (error) => {
+                    debug('error', error);
+                    reject(error);
+                });
+
+                room.once('expired', () => {
+                    debug('expired');
+                });
+
+                room.once('gameOver', ({save}) => {
+                    debug('game over %j', save.winners);
+                    const { next_game } = this;
+                    /** The final game is over! */
+                    if (!next_game) {
+                        debug('tournament over %j', save.winners);
+                        return resolve(save);
+                    }
+                    /** These are the winners, they advance */
+                    const [a, b] = save.winnerIndices;
+                    const team = new Team(
+                        expected(table.table[a]).id,
+                        expected(table.table[b]).id);
+                    next_game.teams.push(team);
+                    /** If both teams are there, we can start that game */
+                    if (next_game.teams.length === 2) {
+                        debug('starting next');
+                        return resolve(next_game.start(driver));
+                    }
+                    /** Otherwise, it will advance when the other game is over */
+                    debug('next not ready');
+                });
+
+                driver.emit('summonTable', {
+                    t: driver.t,
+                    round: this.round,
+                    room
+                });
+            });
+        });
     }
 }
 
 export interface AnnounceBye {
+    t: Tournament;
     user: string;
     round: number;
 }
 
-export interface SummonPlayer {
-    user: string;
+export interface SummonTable {
+    t: Tournament;
     round: number;
-    gameRoomToken: string;
+    room: GameRoom;
 }
 
 export interface TournamentDriverEvents {
@@ -51,10 +175,10 @@ export interface TournamentDriverEvents {
     announceBye: AnnounceBye;
 
     /** Tell this player to come to this room */
-    summonPlayer: SummonPlayer;
+    summonTable: SummonTable;
 }
 
-export default class TournamentDriver {
+export default class TournamentDriver extends Dispatcher<TournamentDriverEvents> {
 
     public readonly t: Tournament;
 
@@ -73,8 +197,12 @@ export default class TournamentDriver {
     /** The current round */
     public round = 0;
 
+    private readonly debug;
+
     constructor(t: Tournament) {
+        super();
         this.t = t;
+        this.debug = makeDebug('t-driver').extend(`t${t.id}`);
         [this.teams, this.dropped] = this.pickTeams();
         [this.games, this.rounds] = this.createBracket();
     }
@@ -182,7 +310,7 @@ export default class TournamentDriver {
         }
 
         for (let i = 0; i < game_count; i++) {
-            const game = new Game(i + 1);
+            const game = new Game(i + 1, 0);
             rounds[0].push(game);
             games.set(game.id, game);
         }
@@ -228,7 +356,7 @@ export default class TournamentDriver {
 
             for (let i = 0; i < round_games; i++) {
 
-                const game = new Game(game_id);
+                const game = new Game(game_id, round - 1);
 
                 rounds[round - 1].push(game);
 
@@ -255,5 +383,14 @@ export default class TournamentDriver {
         }
 
         return [games, rounds];
+    }
+
+    async run() {
+
+        /** Start these games */
+
+        const save = await Promise.all(this.rounds[0].map((game) => game.start(this)));
+        this.debug('DONE!');
+        return save;
     }
 }

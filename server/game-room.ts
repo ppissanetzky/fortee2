@@ -44,10 +44,18 @@ const enum State {
 }
 
 export interface GameRoomEvents {
+    /** The user ID that just joined, could happen many times */
+    userJoined: string;
+    /** The user ID that disconnected, could happen many times */
+    userLeft: string;
+    gameStarted: void;
+    gamePaused: void;
+    gameResumed: void;
     gameOver: {
         bots: number;
         save: SaveHelper;
     },
+    gameError: unknown;
     expired: void;
 }
 
@@ -183,6 +191,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private async run() {
         try {
+            this.emit('gameStarted', undefined);
             // Create the players
             this.players = this.positions.map((name) => {
                 const socket = this.sockets.get(name);
@@ -206,6 +215,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         catch (error) {
             this.debug('game error', error);
             this.all((socket) => socket.send('gameError', {}));
+            this.emit('gameError', error);
         }
         finally {
             this.state = State.OVER;
@@ -230,6 +240,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         assert(this.invited.has(name), `User "${name}" has not been invited`);
         this.debug('joined', name);
         this.sockets.set(name, socket);
+        this.emit('userJoined', expected(this.table.idFor(name)));
         // If and when the user leaves
         socket.gone.then((reason) => {
             this.sockets.delete(name);
@@ -239,8 +250,9 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             }
             if (name === this.host && reason === 'host-close' && this.state === State.OVER) {
                 this.not(name, (other) => other.close('host-close'));
-
             }
+            this.emit('userLeft', expected(this.table.idFor(name)));
+            this.emit('gamePaused', undefined);
             this.not(name, (other) => {
                 other.send('leftGameRoom', {
                     name,
@@ -297,6 +309,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 // same as before
                 player.reset(socket);
             });
+            this.emit('gameResumed', undefined);
         }
 
         // TODO: rejoin after the game is over?

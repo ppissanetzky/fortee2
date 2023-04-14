@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import { App } from '@slack/bolt';
 
 import * as db from './tournament-db';
@@ -73,6 +74,17 @@ export default class UserNames {
         catch (error) {
             debug('failed to look up "%s"', id, error);
         }
+    }
+
+    static async expected(id: string): Promise<string> {
+        const result = await this.get(id);
+        assert(result, `No name for ${id}`);
+        return result;
+    }
+
+    static async user(id: string) {
+        const name = await this.expected(id);
+        return { id, name };
     }
 }
 

@@ -20,7 +20,7 @@ export default class Dispatcher<T extends object> {
         this.emitter.once(type as string, listener);
     }
 
-    protected emit<K extends keyof T>(type: K, event: T[K]): void {
+    emit<K extends keyof T>(type: K, event: T[K]): void {
         this.emitter.emit(type as string, event);
     }
 }
