@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "eslint .",
+    "test": "npm run build && npx eslint . --quiet && npx jest",
     "server": "DEBUG=42:* nodemon server.ts",
     "play": "DEBUG=42:* ts-node test-client.ts",
     "build": "tsc",

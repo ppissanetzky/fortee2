@@ -4,7 +4,7 @@
   "author": "Pablo Pissanetzky",
   "license": "private",
   "scripts": {
-    "test": "(cd server && npx tsc && npx jest)",
+    "test": "(cd server && npm test)",
     "install": "(cd site && npm i) && (cd server && npm i)",
     "dev": "(cd site && npm run dev)",
     "generate": "(cd site && npm run generate)",
