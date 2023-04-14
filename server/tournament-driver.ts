@@ -93,9 +93,8 @@ export class Game {
 
         return new Promise((resolve, reject) => {
 
-            // TODO: Rules from T
             const room = new GameRoom({
-                rules: new Rules(),
+                rules: Rules.fromAny(driver.t.rules),
                 table,
                 expire: false,
                 replay: false

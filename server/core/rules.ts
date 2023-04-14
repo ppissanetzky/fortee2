@@ -161,4 +161,96 @@ export default class Rules {
     static fromJson(json: string): Rules {
         return Object.assign(new Rules(), JSON.parse(json, reviver));
     }
+
+    // AllPass=FORCE,NelloAllowed=NEVER,NelloDoublesHIGH=NO,NelloDoublesLOW=NO,NelloDoublesHIGH_SUIT=YES,NelloDoublesLOW_SUIT=NO,PlungeAllowed=NO,SevensAllowed=NO,FollowMeDoublesHIGH=YES,FollowMeDoublesLOW=NO,FollowMeDoublesHIGH_SUIT=NO,FollowMeDoublesLOW_SUIT=NO,PlungeMinMarks=2,PlungeMaxMarks=2,MinBid=30,ForcedMinBid=30
+
+    static fromOldTournament(s: string): Rules {
+        assert(s, 'Empty rules');
+        const json = s.split(',').reduce((result, pair) => {
+            const [key, value] = pair.split('=');
+            switch (key) {
+                case 'AllPass':
+                    result.all_pass = value;
+                    break;
+                case 'NelloAllowed':
+                    result.nello_allowed = value;
+                    break;
+                case 'NelloDoublesHIGH':
+                    if (value ==='YES') {
+                        result.nello_doubles.push('HIGH');
+                    }
+                    break;
+                case 'NelloDoublesLOW':
+                    if (value ==='YES') {
+                        result.nello_doubles.push('LOW');
+                    }
+                    break;
+                case 'NelloDoublesHIGH_SUIT':
+                    if (value ==='YES') {
+                        result.nello_doubles.push('HIGH_SUIT');
+                    }
+                    break;
+                case 'NelloDoublesLOW_SUIT':
+                    if (value ==='YES') {
+                        result.nello_doubles.push('LOW_SUIT');
+                    }
+                    break;
+                case 'PlungeAllowed':
+                    result.plunge_allowed = value === 'YES';
+                    break;
+                case 'SevensAllowed':
+                    result.sevens_allowed = value === 'YES';
+                    break;
+                case 'FollowMeDoublesHIGH':
+                    if (value ==='YES') {
+                        result.follow_me_doubles.push('HIGH');
+                    }
+                    break;
+                case 'FollowMeDoublesLOW':
+                    if (value ==='YES') {
+                        result.follow_me_doubles.push('LOW');
+                    }
+                    break;
+                case 'FollowMeDoublesHIGH_SUIT':
+                    if (value ==='YES') {
+                        result.follow_me_doubles.push('HIGH_SUIT');
+                    }
+                    break;
+                case 'FollowMeDoublesLOW_SUIT':
+                    if (value ==='YES') {
+                        result.follow_me_doubles.push('LOW_SUIT');
+                    }
+                    break;
+                case 'PlungeMinMarks':
+                    result.plunge_min_marks = parseInt(value, 10);
+                    break;
+                case 'PlungeMaxMarks':
+                    result.plunge_max_marks = parseInt(value, 10);
+                    break;
+                case 'MinBid':
+                    result.min_bid = value;
+                    break;
+                case 'ForcedMinBid':
+                    result.forced_min_bid = value;
+                    break;
+                default:
+                    assert(false, `Invalid key "${key}"`);
+            }
+            return result;
+        },
+        {
+            nello_doubles: [],
+            follow_me_doubles: [],
+        } as Record<keyof Rules, any>);
+
+        return this.fromJson(JSON.stringify(json));
+    }
+
+    static fromAny(s: string) {
+        assert(s, 'Empty rules');
+        if (s.includes('AllPass')) {
+            return this.fromOldTournament(s);
+        }
+        return this.fromJson(s);
+    }
 }
