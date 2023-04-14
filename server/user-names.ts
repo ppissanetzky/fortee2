@@ -1,5 +1,3 @@
-import assert from 'node:assert';
-
 import { App } from '@slack/bolt';
 
 import * as db from './tournament-db';
@@ -46,9 +44,10 @@ export default class UserNames {
             return;
         }
         db.run(INSERT, { id, name });
+        debug('saved "%s" "%s"', id, name);
     }
 
-    static async get(id: string): Promise<string | void> {
+    static async get(id?: string): Promise<string | void> {
         if (!id) {
             return;
         }
@@ -57,18 +56,23 @@ export default class UserNames {
             return row.name;
         }
         const app = await UserNames.deferred.promise;
-        const info = await app.client.users.info({user: id});
-        if (!info.ok) {
-            debug('failed to look up "%s": %j', id, info);
-            return;
+        try {
+            const info = await app.client.users.info({user: id});
+            if (!info.ok) {
+                debug('failed to look up "%s": %j', id, info);
+                return;
+            }
+            const name = info.user?.profile?.real_name;
+            if (!name) {
+                debug('no name for "%s" : %j', id, info);
+                return;
+            }
+            db.run(INSERT, { id, name });
+            return name;
         }
-        const name = info.user?.profile?.real_name;
-        if (!name) {
-            debug('no name for "%s" : %j', id, info);
-            return;
+        catch (error) {
+            debug('failed to look up "%s"', id, error);
         }
-        db.run(INSERT, { id, name });
-        return name;
     }
 }
 

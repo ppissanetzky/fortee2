@@ -197,6 +197,8 @@ export default async function connectToSlack() {
             const name = info.user?.profile?.real_name;
             if (id && name) {
                 table.setName(id, name);
+                /** Save it for later */
+                UserNames.put(id, name)
             }
         }
 

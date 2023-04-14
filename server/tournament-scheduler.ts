@@ -8,6 +8,7 @@ import TexasTime from './texas-time';
 import Tournament, { TournamentRow } from './tournament';
 import config from './config';
 import * as db from './tournament-db';
+import UserNames from './user-names';
 
 const debug = makeDebug('scheduler');
 
@@ -261,14 +262,19 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             }
             // TODO: check if this user is still playing in other
         }
-        /** Check to see if it already exists */
 
+        /** Check to see if it already exists */
         if (db.signupExists(id, user, partner)) {
             return [t, false];
         }
 
-        // In the DB
+        /** In the DB */
         db.addSignup(id, user, partner);
+
+        /** To prime the user names database */
+        UserNames.get(user);
+        UserNames.get(partner);
+
         this.emit('registered', {
             t,
             user,
