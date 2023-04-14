@@ -38,6 +38,15 @@ app.use(express.json({limit: '20kb'}));
 
 //-----------------------------------------------------------------------------
 
+if (fs.existsSync('./site')) {
+    app.use(express.static('./site'));
+}
+else {
+    debug('Not serving static site');
+}
+
+//-----------------------------------------------------------------------------
+
 app.use((req, res, next) => {
     debug('%s %s %j', req.method, req.url, req.headers);
     res.once('finish', () => {
@@ -45,15 +54,6 @@ app.use((req, res, next) => {
     });
     next();
 });
-
-//-----------------------------------------------------------------------------
-
-if (fs.existsSync('./site')) {
-    app.use(express.static('./site'));
-}
-else {
-    debug('Not serving static site');
-}
 
 //-----------------------------------------------------------------------------
 
