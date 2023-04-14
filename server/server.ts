@@ -98,7 +98,10 @@ if (!config.PRODUCTION) {
             nello_allowed: 'FORCE'
         });
         const rules = Rules.fromJson(s);
-        const room = new GameRoom(new Rules(), table);
+        const room = new GameRoom({
+            rules: new Rules(),
+            table
+        });
         req.session.gameRoomToken = room.token;
         await saveSession(req);
         res.redirect(`/play`);

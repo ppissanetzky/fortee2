@@ -42,13 +42,15 @@ function s(n: string): [string, null] {
     return [n, null];
 }
 
-t.signups = () => new Map([
-    s('A'), s('B'), s('C'), s('D'), s('E'), s('F'), s('G'), s('H'),
+const signups: string[] = [];
 
-//    s('I'), s('J')
-]);
+for (let i = 0; i < 8; i++) {
+    signups.push(`P${i}`);
+}
 
-for (const id of t.signups().keys()) {
+t.signups = () => new Map(signups.map((n) => s(n)));
+
+for (const id of signups) {
     UserNames.put(id, id);
 }
 
@@ -85,7 +87,4 @@ driver.on('summonTable', ({room}) => {
     }
 });
 
-(async () => {
-    await driver.run();
-    console.log('done');
-})();
+driver.run().then(() => console.log('done'));

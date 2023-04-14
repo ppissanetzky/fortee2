@@ -259,7 +259,7 @@ async function createInvitation(
     assert(host, 'How can we not have a host');
     assert(ids.length > 0, 'No ids?');
 
-    const room = new GameRoom(rules, table);
+    const room = new GameRoom({rules, table});
 
     /** The URL to play */
 
