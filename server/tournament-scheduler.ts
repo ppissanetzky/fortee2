@@ -9,6 +9,7 @@ import Tournament, { TournamentRow } from './tournament';
 import config from './config';
 import * as db from './tournament-db';
 import UserNames from './user-names';
+import TournamentDriver, { TournamentDriverEvents } from './tournament-driver';
 
 const debug = makeDebug('scheduler');
 
@@ -57,12 +58,12 @@ function insertTestTourneys() {
 }
 
 
-interface SchedulerEvents {
+interface SchedulerEvents extends TournamentDriverEvents {
     signupOpen: Tournament;
     signupClosed: Tournament;
     started: Tournament;
     canceled: Tournament;
-    finished: Tournament;
+    failed: Tournament;
     registered: {
         t: Tournament;
         user: string;
@@ -226,20 +227,49 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             this.emit('signupClosed', t);
         }
 
-        // TODO: check signups, if not enough, will go to canceled
+        const driver = new TournamentDriver(t);
+
+        if (driver.canceled) {
+            t.saveWith({
+                finished: 1
+            });
+            debug('canceled', t.id, t.start_dt, t.name);
+            this.emit('canceled', t);
+            this.tourneys.delete(t.id);
+            return;
+        }
 
         const now = TexasTime.today();
         const ms = Math.max(100, now.msUntil(TexasTime.parse(t.start_dt)));
         debug('start in', ms, t.id, t.signup_end_dt, t.name);
-        setTimeout(() => this.start(t), ms);
+        setTimeout(() => this.start(driver), ms);
     }
 
-    private start(t: Tournament) {
+    private async start(driver: TournamentDriver) {
+        const { t } = driver;
         t.saveWith({
+            scheduled: 1,
             started: 1
         });
         debug('started', t.id, t.start_dt, t.name);
         this.emit('started', t);
+
+        driver.on('announceBye', (event) => this.emit('announceBye', event));
+        driver.on('summonTable', (event) => this.emit('summonTable', event));
+        driver.on('tournamentOver', (event) => this.emit('tournamentOver', event));
+
+        try {
+            await driver.run();
+        }
+        catch (error) {
+            this.emit('failed', t);
+        }
+        finally {
+            t.saveWith({
+                finished: 1
+            });
+            this.tourneys.delete(t.id);
+        }
     }
 
     public register(id: number, user: string, partner = ''): [Tournament, boolean] {

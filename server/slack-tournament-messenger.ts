@@ -6,7 +6,9 @@ import { Actions, Button, Message, Section, setIfTruthy, SlackMessageDto, UserSe
 import config from './config';
 import Tournament from './tournament';
 import Scheduler from './tournament-scheduler';
-import { makeDebug } from './utility';
+import { expected, makeDebug } from './utility';
+import { AnnounceBye, SummonTable, TournamentOver } from './tournament-driver';
+import { startRoomConversation } from './slack';
 
 const debug = makeDebug('slack-t-msngr');
 
@@ -63,7 +65,12 @@ export default class SlackTournamentMessenger {
             .on('canceled', (t) => ready.then(() => this.canceled(t)))
             .on('started', (t) => ready.then(() => this.started(t)))
             .on('registered', (event) => ready.then(() => this.registered(event)))
-            .on('unregistered', (event) => ready.then(() => this.unregistered(event)));
+            .on('unregistered', (event) => ready.then(() => this.unregistered(event)))
+
+            .on('announceBye', (event) => ready.then(() => this.announceBye(event)))
+            .on('summonTable', (event) => ready.then(() => this.summonTable(event)))
+            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
+            .on('failed', (t) => ready.then(() => this.tournamentFailed(t)));
 
         /** When someone clicks the 'register' action on a message */
 
@@ -308,6 +315,7 @@ export default class SlackTournamentMessenger {
                 .buildToObject()
         );
     }
+
     private async unregistered({t, user}: {t: Tournament, user: string}) {
         const ts = this.threads.get(t.id);
         if (!ts) {
@@ -321,5 +329,49 @@ export default class SlackTournamentMessenger {
                 .text(text)
                 .buildToObject()
         );
+    }
+
+    private async announceBye(event: AnnounceBye) {
+        const { t , user, round } = event;
+        const ts = expected(this.threads.get(t.id));
+        const text = `<@${user}> you have a bye in round ${round}, hang tight`;
+        this.app.client.chat.postMessage(
+            Message({channel: this.channel})
+                .threadTs(ts)
+                .text(text)
+                .buildToObject()
+        );
+    }
+
+    private async summonTable(event: SummonTable) {
+        const { t, round, room } = event;
+        const text = `It's time for round ${round} of *${t.name}*!`;
+        startRoomConversation(room, text);
+    }
+
+    private async tournamentOver(event: TournamentOver) {
+        const { t, winners } = event;
+        const who = winners.users.map((user) => `<@${user}>`).join(' and ');
+        const text = `:trophy: Congratulations to ${who} for winning the *${t.name}* tournament!`;
+        const message = messageWithMetadata(t,
+            Message({channel: this.channel})
+                .text(text)
+                .blocks(Section().text(text))
+                .buildToObject());
+        this.postMessage(t, message);
+        // We no longer need the thread
+        this.threads.delete(t.id);
+    }
+
+    private async tournamentFailed(t: Tournament ) {
+        const text = `:poop: The *${t.name}* tournament ran into a bug and is over. Time to go make a :sandwich:`;
+        const message = messageWithMetadata(t,
+            Message({channel: this.channel})
+                .text(text)
+                .blocks(Section().text(text))
+                .buildToObject());
+        this.postMessage(t, message);
+        // We no longer need the thread
+        this.threads.delete(t.id);
     }
 }

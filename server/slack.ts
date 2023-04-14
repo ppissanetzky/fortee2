@@ -1,6 +1,6 @@
 import assert  from 'node:assert';
 import { App, ModalView, AckFn, ViewResponseAction, ViewOutput } from '@slack/bolt';
-import { makeDebug } from './utility';
+import { expected, makeDebug } from './utility';
 import { START_GAME, GAME_STARTED, RULES } from './slack-views';
 import config, {off} from './config';
 import { Rules } from './core';
@@ -248,6 +248,10 @@ function loadRulesFrom(view: ViewOutput): Rules {
     }));
 }
 
+function getRoomUrl(room: GameRoom): string {
+    return `${config.FT2_SERVER_BASE_URL}/slack/game/${room.token}`
+}
+
 async function createInvitation(
     ack: AckFn<ViewResponseAction> | AckFn<void>,
     table: TableBuilder,
@@ -263,7 +267,7 @@ async function createInvitation(
 
     /** The URL to play */
 
-    const url = `${config.FT2_SERVER_BASE_URL}/slack/game/${room.token}`;
+    const url = getRoomUrl(room);
 
     /**
      * If it is just this user that wants to play with bots, we're going to
@@ -277,24 +281,31 @@ async function createInvitation(
         });
     }
 
-    /**
-     * Otherwise, there is at least one other human involved so we're
-     * going to open up a direct message conversation between everyone
-     */
+    const who = ids.length === 2 ? 'you' : `y'all`;
+    const text = `:face_with_cowboy_hat: <@${host.id}> wants to a play a game with ${who}`;
+    const channel = await startRoomConversation(room, text);
+
+    /** 'Push' the next page of the modal - this is just visible to the host */
+
+    ack({
+        response_action: 'push',
+        view: GAME_STARTED(url, channel)
+    });
+}
+
+export async function startRoomConversation(room: GameRoom, text: string): Promise<string> {
+
+    const url = getRoomUrl(room);
 
     const conversation = await app.client.conversations.open({
-        users: table.ids.join(',')
+        users: room.table.ids.join(',')
     });
 
     debug('conversation started: %j', conversation);
 
-    const channel = conversation.channel?.id;
+    const channel = expected(conversation.channel?.id);
 
-    assert(channel, 'conversation missing channel.id');
-
-    /** Post an opening message to the channel */
-
-    const text = `:face_with_cowboy_hat: <@${host.id}> wants to a play a game with y'all`;
+    /** Post the opening message to the channel */
 
     const playMessage = await app.client.chat.postMessage(
         Message({channel})
@@ -316,16 +327,9 @@ async function createInvitation(
         const { ts } = playMessage;
         if (ts) {
             app.client.chat.delete({channel, ts});
-            debug('deleted play message for %j', table.table);
+            debug('deleted play message for %j', room.table.table);
         }
     };
-
-    /** 'Push' the next page of the modal - this is just visible to the host */
-
-    ack({
-        response_action: 'push',
-        view: GAME_STARTED(url, channel)
-    });
 
     /** Listen to events from the room */
 
@@ -337,7 +341,7 @@ async function createInvitation(
         }).join(' and ');
         app.client.chat.postMessage(
             Message({channel})
-                .text(`Congrats to ${winners} on a ${score} victory! :trophy:`)
+                .text(`Congrats to ${winners} on a ${score} victory!`)
                 .buildToObject()
         );
         /** Delete the 'play' message */
@@ -351,4 +355,6 @@ async function createInvitation(
                 .text('The game took too long to get started and expired :hourglass:')
                 .buildToObject());
     });
+
+    return channel;
 }

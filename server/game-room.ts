@@ -243,6 +243,16 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 this.debug('game over, removing %s for %j', this.token, this.table);
                 GameRoom.rooms.delete(this.token);
             }
+
+            /**
+             * If there is no replay option, we're going to close all the
+             * sockets now. This will help with players leaving tabs open
+             * and being unable to get into the next game.
+             */
+
+            if (this.options.replay === false) {
+                this.all((socket) => socket.close('no-replay'));
+            }
         }
     }
 
@@ -257,12 +267,19 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         // If and when the user leaves
         socket.gone.then((reason) => {
             this.sockets.delete(name);
-            this.debug('removed', name, 'have', this.size);
+            this.debug('removed', name, ': reason', reason, ': have', this.size);
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;
             }
             if (name === this.host && reason === 'host-close' && this.state === State.OVER) {
                 this.not(name, (other) => other.close('host-close'));
+            }
+            /**
+             * We closed it after the game was over and there is no replay,
+             * so we don't need to notify anyone
+             */
+            if (reason === 'no-replay') {
+                return;
             }
             this.emit('userLeft', expected(this.table.idFor(name)));
             this.emit('gamePaused', undefined);

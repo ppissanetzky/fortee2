@@ -127,21 +127,29 @@ export class Game {
             });
 
             room.once('gameOver', ({save}) => {
-                debug('game over %j', save.winners);
+                /** These are the winners, they advance */
+                const [a, b] = save.winnerIndices;
+                const winners = new Team(
+                    expected(table.table[a]).id,
+                    expected(table.table[b]).id);
+                debug('game over %j', winners);
+
                 const { next_game } = this;
                 /** The final game is over! */
                 if (!next_game) {
                     debug('tournament over %j', save.winners);
+                    driver.emit('tournamentOver', {
+                        t: driver.t,
+                        winners,
+                        room,
+                        save
+                    });
                     return resolve();
                 }
-                /** These are the winners, they advance */
-                const [a, b] = save.winnerIndices;
-                const team = new Team(
-                    expected(table.table[a]).id,
-                    expected(table.table[b]).id);
-                next_game.teams.push(team);
+                /** Otherwise, this team advances */
+                next_game.teams.push(winners);
                 /** Now, try to start the next game */
-                return resolve(next_game.start(driver));
+                resolve(next_game.start(driver));
             });
 
             driver.emit('summonTable', {
@@ -165,12 +173,22 @@ export interface SummonTable {
     room: GameRoom;
 }
 
+export interface TournamentOver {
+    t: Tournament;
+    winners: Team;
+    save: SaveHelper;
+    room: GameRoom;
+}
+
 export interface TournamentDriverEvents {
     /** Tell this user that they have a bye in this round */
     announceBye: AnnounceBye;
 
     /** Tell this player to come to this room */
     summonTable: SummonTable;
+
+    /** It's over */
+    tournamentOver: TournamentOver;
 }
 
 export default class TournamentDriver extends Dispatcher<TournamentDriverEvents> {
@@ -197,6 +215,10 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
         this.debug = makeDebug('t-driver').extend(`t${t.id}`);
         [this.teams, this.dropped] = this.pickTeams();
         [this.games, this.rounds] = this.createBracket();
+    }
+
+    get canceled(): boolean {
+        return this.rounds.length === 0;
     }
 
     /**
