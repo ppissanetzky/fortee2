@@ -278,7 +278,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup is not open for ${id}`);
         assert(user !== partner, 'Yourself as partner?');
-        if (t.invitation && !t.invitees.includes(user)) {
+        if (t.invitation && t.invitees && !t.invitees.includes(user)) {
             assert(false, 'Not invited');
         }
         for (const other of this.tourneys.values()) {
