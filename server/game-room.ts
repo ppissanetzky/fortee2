@@ -64,6 +64,7 @@ export interface GameRoomOptions {
     table: TableBuilder;
     expire?: boolean;
     replay?: boolean;
+    useBotIds?: boolean;
 }
 
 /**
@@ -71,6 +72,14 @@ export interface GameRoomOptions {
  */
 
 export default class GameRoom extends Dispatcher <GameRoomEvents> {
+
+    /** If it is a bot, returns its name */
+
+    static isBot(id: string): string | undefined {
+        if (id.startsWith(':bot:')) {
+            return id.substring(5);
+        }
+    }
 
     private static ID = 1000;
 
@@ -129,6 +138,11 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.positions = table.table.map((user) => {
             if (user) {
                 const name = expected(user.name);
+                if (GameRoom.isBot(user.id)) {
+                    const bot = new ProductionBot(name);
+                    this.bots.set(name, bot);
+                    return name;
+                }
                 this.invited.add(name);
                 return name;
             }
@@ -148,6 +162,12 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                     this.emit('expired', undefined);
                 }
             }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
+        }
+
+        /** If the room is just bots, start it now */
+        if (this.bots.size === 4) {
+            this.state = State.PLAYING;
+            this.run();
         }
     }
 

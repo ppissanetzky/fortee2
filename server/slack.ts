@@ -285,6 +285,8 @@ async function createInvitation(
     const text = `:face_with_cowboy_hat: <@${host.id}> wants to a play a game with ${who}`;
     const channel = await startRoomConversation(room, text);
 
+    assert(channel);
+
     /** 'Push' the next page of the modal - this is just visible to the host */
 
     ack({
@@ -293,17 +295,24 @@ async function createInvitation(
     });
 }
 
-export async function startRoomConversation(room: GameRoom, text: string): Promise<string> {
+export async function startRoomConversation(room: GameRoom, text: string): Promise<string| void> {
 
-    const url = getRoomUrl(room);
+    const users = room.table.ids.filter((id) => !GameRoom.isBot(id));
+
+    /** This is an all-bot game */
+    if (users.length === 0) {
+        return;
+    }
 
     const conversation = await app.client.conversations.open({
-        users: room.table.ids.join(',')
+        users: users.join(',')
     });
 
     debug('conversation started: %j', conversation);
 
     const channel = expected(conversation.channel?.id);
+
+    const url = getRoomUrl(room);
 
     /** Post the opening message to the channel */
 

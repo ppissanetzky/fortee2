@@ -9,6 +9,15 @@ import { TableBuilder } from './table-helper';
 import { Rules } from './core';
 import { SaveHelper } from './core/save-game';
 import { expected, makeDebug } from './utility';
+import nextBotName from './bot-names';
+
+async function user(id: string) {
+    const name = GameRoom.isBot(id);
+    if (name) {
+        return {id, name};
+    }
+    return UserNames.user(id);
+}
 
 export class Team {
 
@@ -59,11 +68,13 @@ export class Game {
         if (bye) {
             /** Announce the bye */
             for (const user of bye.users) {
-                driver.emit('announceBye', {
-                    t: driver.t,
-                    round: this.round,
-                    user
-                });
+                if (!GameRoom.isBot(user)) {
+                    driver.emit('announceBye', {
+                        t: driver.t,
+                        round: this.round,
+                        user
+                    });
+                }
             }
 
             /** Advance this team to the next game */
@@ -83,10 +94,10 @@ export class Game {
         }
 
         const table = new TableBuilder([
-            await UserNames.user(teams[0].users[0]),
-            await UserNames.user(teams[1].users[0]),
-            await UserNames.user(teams[0].users[1]),
-            await UserNames.user(teams[1].users[1])
+            await user(teams[0].users[0]),
+            await user(teams[1].users[0]),
+            await user(teams[0].users[1]),
+            await user(teams[1].users[1])
         ]);
 
         debug('starting with %j', table);
@@ -97,7 +108,8 @@ export class Game {
                 rules: Rules.fromAny(driver.t.rules),
                 table,
                 expire: false,
-                replay: false
+                replay: false,
+                useBotIds: true,
             });
 
             room.on('userJoined', (user) => {
@@ -231,6 +243,18 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
 
         /** Put all the players in a reject pile */
         const rejects = new Set(signups.keys());
+
+        /** If the host is 'bots', fill the teams with bots */
+        if (this.t.host === 'bots') {
+            const count = rejects.size;
+            let max = 8;
+            while (count > max) {
+                max *= 2;
+            }
+            for (let i = 0; i < max - count; i++) {
+                rejects.add(`:bot:${nextBotName()}`);
+            }
+        }
 
         /** The teams */
         const teams: Team[] = [];

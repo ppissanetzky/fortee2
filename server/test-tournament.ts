@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import { EventEmitter } from 'node:stream';
 
 import Tournament from './tournament';
 import TournamentDriver from './tournament-driver';
@@ -6,7 +7,7 @@ import { makeDebug } from './utility';
 import UserNames from './user-names';
 import type Socket from './socket';
 import Bot from './bot';
-import { EventEmitter } from 'node:stream';
+import { Rules } from './core';
 
 const debug = makeDebug('test-t');
 
@@ -17,7 +18,7 @@ const t = new Tournament({
     signup_start_dt: '',
     signup_end_dt: '',
     start_dt: '',
-    rules: '',
+    rules: JSON.stringify(new Rules()),
     partner: 1,
     seed: 0,
     timezone: 'CST',
@@ -35,7 +36,7 @@ const t = new Tournament({
     prize: '',
     winners: '',
     recurring_source: 0,
-    host: ''
+    host: 'bots'
 });
 
 function s(n: string): [string, null] {
@@ -44,7 +45,7 @@ function s(n: string): [string, null] {
 
 const signups: string[] = [];
 
-for (let i = 0; i < 8; i++) {
+for (let i = 0; i < 1; i++) {
     signups.push(`P${i}`);
 }
 
@@ -61,6 +62,9 @@ driver.on('summonTable', ({room}) => {
     debug('summon %j', room.table.table);
     for (const p of room.table.table) {
         assert(p);
+        if (p.id.startsWith(':bot:')) {
+            continue;
+        }
         const bot = new Bot(p.id, true) as any;
         const emitter = new EventEmitter();
         const socket = {
@@ -81,10 +85,14 @@ driver.on('summonTable', ({room}) => {
                     return Promise.resolve(result);
                 }
             },
-            on: emitter.on.bind(emitter)
+            on: emitter.on.bind(emitter),
+            close: () => void 0,
         };
         room.join(socket as unknown as Socket);
     }
 });
 
-driver.run().then(() => console.log('done'));
+(async () => {
+    await driver.run();
+    console.log('done');
+})();

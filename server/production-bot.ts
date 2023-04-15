@@ -6,8 +6,8 @@ import { Bid1, Fallback, MoneyForPartner,
     WinWithMoney} from './strategies';
 
 export default class ProductionBot extends Bot {
-    constructor() {
-        super();
+    constructor(name?: string) {
+        super(name);
         this.with(
             Bid1,
             Pass,

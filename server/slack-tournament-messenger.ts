@@ -9,6 +9,7 @@ import Scheduler from './tournament-scheduler';
 import { expected, makeDebug } from './utility';
 import { AnnounceBye, SummonTable, TournamentOver } from './tournament-driver';
 import { startRoomConversation } from './slack';
+import GameRoom from './game-room';
 
 const debug = makeDebug('slack-t-msngr');
 
@@ -20,6 +21,14 @@ function messageWithMetadata(t: Tournament, message: SlackMessageDto): any {
             event_payload: { id }
         }
     });
+}
+
+function mention(id: string): string {
+    const name = GameRoom.isBot(id);
+    if (name) {
+        return `:robot_face: ${name}`;
+    }
+    return `<@${id}>`;
 }
 
 export default class SlackTournamentMessenger {
@@ -334,7 +343,7 @@ export default class SlackTournamentMessenger {
     private async announceBye(event: AnnounceBye) {
         const { t , user, round } = event;
         const ts = expected(this.threads.get(t.id));
-        const text = `<@${user}> you have a bye in round ${round}, hang tight`;
+        const text = `${mention(user)} you have a bye in round ${round}, hang tight`;
         this.app.client.chat.postMessage(
             Message({channel: this.channel})
                 .threadTs(ts)
@@ -351,7 +360,7 @@ export default class SlackTournamentMessenger {
 
     private async tournamentOver(event: TournamentOver) {
         const { t, winners } = event;
-        const who = winners.users.map((user) => `<@${user}>`).join(' and ');
+        const who = winners.users.map((user) => mention(user)).join(' and ');
         const text = `:trophy: Congratulations to ${who} for winning the *${t.name}* tournament!`;
         const message = messageWithMetadata(t,
             Message({channel: this.channel})
