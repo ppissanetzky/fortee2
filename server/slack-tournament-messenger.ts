@@ -2,7 +2,7 @@ import assert from 'node:assert';
 
 import { App, BlockAction, BlockElementAction } from '@slack/bolt';
 
-import { Actions, Button, Message, Section, setIfTruthy, SlackMessageDto, UserSelect } from 'slack-block-builder';
+import { Actions, Button, Message, MessageBuilder, Section, setIfTruthy, SlackMessageDto, UserSelect } from 'slack-block-builder';
 import config from './config';
 import Tournament from './tournament';
 import Scheduler from './tournament-scheduler';
@@ -31,6 +31,11 @@ function mention(id: string): string {
     return `<@${id}>`;
 }
 
+type Thread = {
+    ts: string;
+    thread_ts?: string;
+}
+
 export default class SlackTournamentMessenger {
 
     static start(app: App) {
@@ -48,7 +53,7 @@ export default class SlackTournamentMessenger {
 
     /** A map from tournament ID to Slack ts for its thread */
 
-    private readonly threads = new Map<number, string>();
+    private readonly threads = new Map<number, Thread>();
 
     private constructor(app: App) {
         this.app = app;
@@ -135,7 +140,7 @@ export default class SlackTournamentMessenger {
         const { tourneys } = this.scheduler;
         for (const message of messages) {
             if (message.metadata?.event_type === 'tournament') {
-                const { ts } = message;
+                const { ts, thread_ts } = message;
                 const payload = message.metadata?.event_payload as any;
                 if (ts && payload) {
                     const id: number = payload.id;
@@ -143,7 +148,7 @@ export default class SlackTournamentMessenger {
                         debug('thread is for old tourney', ts, id, message.text);
                     }
                     else {
-                        this.threads.set(id, ts);
+                        this.threads.set(id, {ts, thread_ts});
                         debug('found thread', ts, id, message.text);
                     }
                 }
@@ -153,14 +158,16 @@ export default class SlackTournamentMessenger {
     }
 
     private async postMessage(t: Tournament, message: any) {
-        message.ts = this.threads.get(t.id);
+        const thread = this.threads.get(t.id);
+        message.ts = thread?.ts;
+        message.thread_ts = thread?.thread_ts;
         const response = message.ts
             ? await this.app.client.chat.update(message)
             : await this.app.client.chat.postMessage(message);
         debug('posted %j', response);
-        if (response.ok && response.ts) {
+        if (response.ok && response.ts && !thread) {
             debug('ts', message.ts, 'new ts', response.ts);
-            this.threads.set(t.id, response.ts);
+            this.threads.set(t.id, { ts: response.ts });
         }
     }
 
@@ -307,49 +314,39 @@ export default class SlackTournamentMessenger {
         this.postMessage(t, message);
     }
 
-    private async registered({t, user, partner}: {t: Tournament, user: string, partner?: string}) {
-        const ts = this.threads.get(t.id);
-        if (!ts) {
+    private async postThreadReply(t: Tournament, text: string) {
+        const thread = this.threads.get(t.id);
+        if (!thread) {
             return;
         }
+        thread.thread_ts = thread.ts;
+        this.app.client.chat.postMessage(
+            Message()
+                .channel(this.channel)
+                .text(text)
+                .threadTs(thread.ts)
+                .buildToObject());
+    }
+
+    private async registered({t, user, partner}: {t: Tournament, user: string, partner?: string}) {
         let text = `<@${user}> signed up`;
         if (partner) {
             text += ` with <@${partner}>`;
         }
         text += `\nWe have ${t.signups().size}`;
-        this.app.client.chat.postMessage(
-            Message({channel: this.channel})
-                .threadTs(ts)
-                .text(text)
-                .buildToObject()
-        );
+        this.postThreadReply(t, text);
     }
 
     private async unregistered({t, user}: {t: Tournament, user: string}) {
-        const ts = this.threads.get(t.id);
-        if (!ts) {
-            return;
-        }
         let text = `<@${user}> dropped out`;
         text += `\nWe have ${t.signups().size || 'no one'}`;
-        this.app.client.chat.postMessage(
-            Message({channel: this.channel})
-                .threadTs(ts)
-                .text(text)
-                .buildToObject()
-        );
+        this.postThreadReply(t, text);
     }
 
     private async announceBye(event: AnnounceBye) {
         const { t , user, round } = event;
-        const ts = expected(this.threads.get(t.id));
         const text = `${mention(user)} you have a bye in round ${round}, hang tight`;
-        this.app.client.chat.postMessage(
-            Message({channel: this.channel})
-                .threadTs(ts)
-                .text(text)
-                .buildToObject()
-        );
+        this.postThreadReply(t, text);
     }
 
     private async summonTable(event: SummonTable) {
