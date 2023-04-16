@@ -10,6 +10,7 @@ import config from './config';
 import * as db from './tournament-db';
 import UserNames from './user-names';
 import TournamentDriver, { TournamentDriverEvents } from './tournament-driver';
+import { Rules } from './core';
 
 const debug = makeDebug('scheduler');
 
@@ -20,9 +21,9 @@ function insertTestTourneys() {
     db.run('delete from tournaments');
     const now = TexasTime.today();
     const d = now.date;
-    d.setMinutes(d.getMinutes() + 1);
+    d.setMinutes(d.getMinutes());
     const signup = new TexasTime(d).toString();
-    d.setMinutes(d.getMinutes() + 5);
+    d.setMinutes(d.getMinutes() + 1);
     const e = new TexasTime(d).toString();
     d.setMinutes(d.getMinutes() + 1);
     const s = new TexasTime(d).toString();
@@ -34,8 +35,8 @@ function insertTestTourneys() {
         signup_start_dt: signup,
         signup_end_dt: e,
         start_dt: s,
-        rules: '',
-        partner: 1,
+        rules: JSON.stringify(new Rules()),
+        partner: 2,
         seed: 0,
         timezone: 'CST',
         signup_opened: 0,
@@ -52,7 +53,7 @@ function insertTestTourneys() {
         prize: '',
         winners: '',
         recurring_source: 0,
-        host: ''
+        host: 'bots'
     });
     t.saveWith({});
 }
@@ -86,7 +87,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
 
     private static instance?: Scheduler;
 
-    public tourneys = new Map<number, Tournament>();
+    public readonly tourneys = new Map<number, Tournament>();
 
     private constructor() {
         super();

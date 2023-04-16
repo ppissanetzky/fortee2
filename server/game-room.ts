@@ -16,6 +16,7 @@ import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
 import config from './config';
 import sanitize from 'sanitize-filename';
+import Tournament from './tournament';
 
 const enum State {
     /**
@@ -62,9 +63,7 @@ export interface GameRoomEvents {
 export interface GameRoomOptions {
     rules: Rules;
     table: TableBuilder;
-    expire?: boolean;
-    replay?: boolean;
-    useBotIds?: boolean;
+    tournament?: Tournament;
 }
 
 /**
@@ -103,7 +102,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly host: string;
 
-    private readonly positions: string[];
+    public readonly positions: string[];
 
     public readonly sockets = new Map<string, Socket>();
 
@@ -126,7 +125,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     constructor(options: GameRoomOptions) {
         super();
         this.options = options;
-        const { rules, table, expire } = options;
+        const { rules, table, tournament } = options;
         this.table = table;
         this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);
@@ -154,7 +153,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         assert(this.positions.every((name) => name), 'Positions are wrong');
         this.debug('positions %j', this.positions);
 
-        if (expire !== false) {
+        if (!tournament) {
             setTimeout(() => {
                 if (!this.started) {
                     this.debug('expired for %j', this.table);
@@ -169,6 +168,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.state = State.PLAYING;
             this.run();
         }
+    }
+
+    get t(): Tournament | undefined {
+        return this.options.tournament;
     }
 
     get size(): number {
@@ -270,7 +273,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
              * and being unable to get into the next game.
              */
 
-            if (this.options.replay === false) {
+            if (this.options.tournament) {
                 this.all((socket) => socket.close('no-replay'));
             }
         }
@@ -311,7 +314,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
         });
         // Look for playAgain from the host
-        if (name === this.host && this.options.replay !== false) {
+        if (name === this.host && !this.options.tournament) {
             socket.on('playAgain', () => {
                 assert(this.state === State.OVER);
                 this.state = State.PLAYING;

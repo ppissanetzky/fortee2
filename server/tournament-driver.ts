@@ -107,9 +107,7 @@ export class Game {
             const room = new GameRoom({
                 rules: Rules.fromAny(driver.t.rules),
                 table,
-                expire: false,
-                replay: false,
-                useBotIds: true,
+                tournament: driver.t
             });
 
             room.on('userJoined', (user) => {

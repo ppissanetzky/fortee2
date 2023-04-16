@@ -15,6 +15,7 @@ import { Rules } from './core';
 import { TableBuilder, User } from './table-helper';
 import { HttpServer } from './http-server';
 import passport from 'passport';
+import tournamentRouter from './tournament-router';
 
 const debug = makeDebug('server');
 
@@ -38,15 +39,6 @@ app.use(express.json({limit: '20kb'}));
 
 //-----------------------------------------------------------------------------
 
-if (fs.existsSync('./site')) {
-    app.use(express.static('./site'));
-}
-else {
-    debug('Not serving static site');
-}
-
-//-----------------------------------------------------------------------------
-
 app.use((req, res, next) => {
     debug('%s %s %j', req.method, req.url, req.headers);
     res.once('finish', () => {
@@ -65,6 +57,39 @@ setupAuthentication(app);
  */
 
 app.use(passport.authenticate('session'));
+
+//-----------------------------------------------------------------------------
+
+if (!config.PRODUCTION) {
+    app.use((req, res, next) => {
+        if (!req.isAuthenticated()) {
+            return req.login({id: 'pablo', name: 'pablo'}, () => next());
+        }
+        next();
+    });
+}
+
+//-----------------------------------------------------------------------------
+// Everything under /au has to be authenticated, even the static pages
+//-----------------------------------------------------------------------------
+
+app.use('/au', async (req, res, next) => {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    req.session.redirect = req.originalUrl;
+    await saveSession(req);
+    slack.authenticate(req, res);
+});
+
+//-----------------------------------------------------------------------------
+
+if (fs.existsSync('./site')) {
+    app.use(express.static('./site'));
+}
+else {
+    debug('Not serving static site');
+}
 
 //-----------------------------------------------------------------------------
 
@@ -222,3 +247,5 @@ WsServer.create(app);
 /** Connect to Slack */
 
 connectToSlack();
+
+app.use('/api/tournaments', tournamentRouter);

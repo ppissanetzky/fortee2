@@ -165,6 +165,15 @@ export class TableBuilder {
         }, [] as string[]);
     }
 
+    get names(): string[] {
+        return this.table.reduce((result, item) => {
+            if (item?.name) {
+                result.push(item.name);
+            }
+            return result;
+        }, [] as string[]);
+    }
+
     get otherIds(): string[] {
         return this.table.reduce((result, item, index) => {
             if (index !== HOST && item) {

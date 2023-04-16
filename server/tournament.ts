@@ -42,12 +42,32 @@ export interface TournamentRow {
     host: string; // 'rednsassy'
 }
 
+export const enum State {
+
+    /** Open not started or finished */
+    OPEN     = 'open',
+    /** Closed, not started or finished */
+    WTS      = 'wts',
+    /** Closed, started, not finished */
+    PLAYING  = 'playing',
+    /** Closed, not started, finished */
+    CANCELED = 'canceled',
+    /** Not open, closed, started, finished */
+    DONE     = 'done',
+    /** Not open, not closed, not started, not finished */
+    LATER    = 'later',
+}
+
 export default class Tournament implements Readonly<TournamentRow> {
 
     private row: TournamentRow;
 
     constructor(row: TournamentRow) {
         this.row = row;
+    }
+
+    toJSON() {
+        return this.row;
     }
 
     get id(): number { return this.row.id; }
@@ -76,6 +96,22 @@ export default class Tournament implements Readonly<TournamentRow> {
     get recurring_source(): number { return this.row.recurring_source; }
     get host(): string { return this.row.host; }
 
+    get state(): State {
+        if (this.finished) {
+            return this.started ? State.DONE : State.CANCELED;
+        }
+        if (this.started) {
+            return State.PLAYING;
+        }
+        if (!this.signup_opened) {
+            return State.LATER;
+        }
+        if (!this.signup_closed) {
+            return State.OPEN;
+        }
+        return State.WTS;
+    }
+
     get minutesTilOpen(): number {
         return TexasTime.minutesUntil(this.signup_start_dt);
     }
@@ -90,6 +126,14 @@ export default class Tournament implements Readonly<TournamentRow> {
 
     get startTime(): string {
         return TexasTime.parse(this.start_dt).timeString;
+    }
+
+    get openTime(): string {
+        return TexasTime.parse(this.signup_start_dt).timeString;
+    }
+
+    get closeTime(): string {
+        return TexasTime.parse(this.signup_end_dt).timeString;
     }
 
     get isOpen(): boolean {
