@@ -157,7 +157,10 @@
                 </div>
               </div>
               <!-- MY STATUS -->
-              <StatusNew v-model="me" :name="false" class="mt-6 mb-12 align-self-center" />
+              <StatusNew v-model="me" :name="false" class="mt-6 mb-1 align-self-center" />
+              <h2 class="mb-3" style="color: #6f6f6f;">
+                {{ youAre }}
+              </h2>
             </div>
 
             <div class="d-flex flex-column align-center mb-6">
