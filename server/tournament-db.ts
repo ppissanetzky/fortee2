@@ -80,7 +80,9 @@ export function getTournaments(date: TexasTime, limit: number): TournamentRowWit
         WHERE
             date(start_dt) = date($date)
             AND recurring = 0
-            AND finished = 0
+            AND (finished = 0
+                OR (finished = 1 AND datetime('now') < datetime(lmdtm, '+10 minutes'))
+            )
         ORDER BY start_dt
         LIMIT $limit
         `

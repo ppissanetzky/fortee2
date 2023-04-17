@@ -95,10 +95,13 @@ export class SaveHelper {
         return this.winnerIndices.map((index) => this.save.players[index]);
     }
 
-    get losers(): string[] {
-        const indices = this.save.marks.US < this.save.marks.THEM
+    get loserIndices(): number[] {
+        return this.save.marks.US < this.save.marks.THEM
             ? [0, 2] : [1, 3];
-        return indices.map((index) => this.save.players[index]);
+    }
+
+    get losers(): string[] {
+        return this.loserIndices.map((index) => this.save.players[index]);
     }
 
     get score(): number[] {

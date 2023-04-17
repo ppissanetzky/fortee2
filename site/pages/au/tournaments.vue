@@ -1,23 +1,5 @@
 <template>
   <div class="ma-3">
-    <!-- <v-app-bar dense color="#0049bd" class="white--text">
-      <v-toolbar-title>Tournaments</v-toolbar-title>
-      <v-spacer />
-      <v-menu left bottom>
-        <template #activator="{ on, attrs }">
-          <v-btn icon v-bind="attrs" v-on="on">
-            <v-icon color="white">
-              mdi-dots-vertical
-            </v-icon>
-          </v-btn>
-        </template>
-        <v-list>
-          <v-list-item v-for="n in 5" :key="n" @click="() => {}">
-            <v-list-item-title>Option {{ n }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </v-app-bar> -->
     <v-card
       color="#0049bd"
       class="mb-3"
@@ -30,9 +12,11 @@
         <v-spacer />
         <v-img contain max-width="300" src="/logo.png" />
       </v-toolbar>
-      <v-toolbar flat>
-        <v-btn outlined height="40">Play with 3 bots</v-btn>
-      </v-toolbar>
+      <!-- <v-toolbar flat>
+        <v-btn outlined height="40">
+          Play with 3 bots
+        </v-btn>
+      </v-toolbar> -->
     </v-card>
     <div>
       <v-card
@@ -40,10 +24,13 @@
         :key="t.id"
         min-width="375"
         color="#c0d4e5"
+        class="mb-3"
       >
         <!-- NAME AND START TIME -->
         <v-toolbar flat color="#00000000">
-          <v-icon color="black" class="pr-2">mdi-trophy</v-icon>
+          <v-icon color="black" class="pr-2">
+            mdi-trophy
+          </v-icon>
           <h2>{{ t.name }}</h2>
           <v-spacer />
           <h2>{{ t.startTime }}</h2>
@@ -67,6 +54,12 @@
           <v-chip v-else-if="t.later" label>
             opens at {{ t.openTime }}
           </v-chip>
+          <v-chip v-else-if="t.canceled" label>
+            canceled
+          </v-chip>
+          <span v-else-if="t.winners">
+            Won by <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>
+          </span>
         </v-toolbar>
         <!-- <v-divider /> -->
 
@@ -76,6 +69,9 @@
             You are <strong>signed up</strong>
             <span v-if="t.partner">
               with <strong>{{ nameOf(t.partner) }}</strong>
+            </span>
+            <span v-if="t.wts">
+              - please wait until <strong>{{ t.startTime }}</strong>
             </span>
           </span>
           <span v-else>
@@ -124,26 +120,36 @@
             {{ t.count || 'No one' }} signed up
           </span>
         </v-toolbar>
-        <v-toolbar v-if="t.table" flat>
-          <span>
+        <!-- ONCE THE TOURNAMENT IS PLAYING -->
+        <v-toolbar v-if="t.isOn && t.signedUp" flat>
+          <span v-if="!t.inTourney">
+            Unfortunately, you were dropped from the tournament
+          </span>
+          <span v-if="!t.stillPlaying">
+            Better luck next time...
+          </span>
+          <span v-else-if="!t.hasRoom && t.hasBye">
+            You drew a <strong>bye</strong>, please wait for your first game
+          </span>
+          <span v-else-if="t.hasRoom">
             Your partner is <strong>{{ partner(t) }}</strong>
             and you're playing against
             <strong>{{ others(t)[0] }}</strong> and
             <strong>{{ others(t)[1] }}</strong>
           </span>
         </v-toolbar>
-        <v-toolbar v-if="t.table" flat>
+        <v-toolbar v-if="t.url" flat>
           <v-btn
             outlined
             color="green"
             class="mr-2"
             height="40"
-            @click="goToTable(t.table.url)"
+            @click="goToTable(t.url)"
           >
             go to your table
           </v-btn>
         </v-toolbar>
-        <v-sheet v-if="t.open || t.table" height="12" />
+        <v-sheet v-if="t.open || (t.isOn && t.signedUp)" height="12" />
       </v-card>
     </div>
   </div>
@@ -155,7 +161,8 @@ export default {
       you: undefined,
       today: [],
       users: [],
-      loading: false
+      loading: false,
+      ws: undefined
     }
   },
   async fetch () {
@@ -166,6 +173,25 @@ export default {
     }
     this.today = tournaments
     this.you = you
+
+    let url = `wss://${window.location.hostname}/api/tournaments/tws`
+    if (process.env.NUXT_ENV_DEV) {
+      url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
+    }
+    this.ws = new WebSocket(url)
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message) {
+        const { tournament, drop, tomorrow } = message
+        if (tournament) {
+          this.updateTournament(tournament)
+        } else if (drop) {
+          this.dropTournament(drop)
+        } else if (tomorrow) {
+          history.go()
+        }
+      }
+    }
   },
   methods: {
     nameOf (id) {
@@ -180,9 +206,7 @@ export default {
       if (error) {
         //
       } else {
-        tournament.newPartner = tournament.partner
-        const i = this.today.indexOf(t => t.id === id)
-        this.today.splice(i, 1, tournament)
+        this.updateTournament(tournament)
       }
       this.loading = false
     },
@@ -193,33 +217,48 @@ export default {
       if (error) {
         //
       } else {
-        tournament.newPartner = tournament.partner
-        const i = this.today.indexOf(t => t.id === id)
-        this.today.splice(i, 1, tournament)
+        this.updateTournament(tournament)
       }
       this.loading = false
+    },
+    updateTournament (tournament) {
+      if (!tournament) {
+        return
+      }
+      const i = this.today.findIndex(t => t.id === tournament.id)
+      if (i < 0) {
+        return
+      }
+      tournament.newPartner = tournament.partner
+      this.today.splice(i, 1, tournament)
+    },
+    dropTournament (id) {
+      const i = this.today.findIndex(t => t.id === id)
+      if (i < 0) {
+        return
+      }
+      this.today.splice(i, 1)
     },
     goToTable (url) {
       window.open(url, '_blank')
     },
     partner (t) {
-      const { table } = t
-      if (table && this.you) {
-        const i = table.players.indexOf(this.you)
-        return table.players[[2, 3, 0, 1][i]]
+      const { positions } = t
+      if (positions && this.you) {
+        const i = positions.indexOf(this.you)
+        return positions[[2, 3, 0, 1][i]]
       }
     },
     others (t) {
-      const { table } = t
-      if (table) {
+      const { positions } = t
+      if (positions) {
         const us = [this.you, this.partner(t)]
-        return table.players.filter(name => !us.includes(name))
+        return positions.filter(name => !us.includes(name))
       }
       return []
     },
     connected (t, name) {
-      const { table } = t
-      return table && table.connected.includes(name)
+      return false
     }
   }
 }

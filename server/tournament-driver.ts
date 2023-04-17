@@ -10,6 +10,7 @@ import { Rules } from './core';
 import { SaveHelper } from './core/save-game';
 import { expected, makeDebug } from './utility';
 import nextBotName from './bot-names';
+import config from './config';
 
 async function user(id: string) {
     const name = GameRoom.isBot(id);
@@ -28,6 +29,17 @@ export class Team {
     constructor(a: string, b: string) {
         this.users = [a, b];
     }
+
+    public has(userId: string): boolean {
+        return this.users.includes(userId);
+    }
+
+    public other(userId: string): string | undefined {
+        const i = this.users.indexOf(userId);
+        if (i >= 0) {
+            return i === 0 ? this.users[1] : this.users[0];
+        }
+    }
 }
 
 export class Game {
@@ -41,10 +53,15 @@ export class Game {
     public row = -1;
     public readonly previous_games: Game[] = [];
     public next_game?: Game;
+    public room?: GameRoom;
 
     constructor(id: number, round: number) {
         this.id = id;
         this.round = round;
+    }
+
+    has(userId: string): Team | undefined {
+        return this.teams.find((team) => team.has(userId));
     }
 
     /** If the game has a bye, returns the other team */
@@ -80,6 +97,8 @@ export class Game {
             /** Advance this team to the next game */
             const next_game = expected(this.next_game);
             next_game.teams.push(bye);
+            this.started = true;
+            this.finished = true;
             return Promise.resolve(next_game.start(driver));
         }
 
@@ -110,6 +129,8 @@ export class Game {
                 tournament: driver.t
             });
 
+            this.room = room;
+
             room.on('userJoined', (user) => {
                 debug('joined', user);
             });
@@ -128,14 +149,19 @@ export class Game {
 
             room.once('gameStarted', () => {
                 debug('started');
+                this.started = true;
             });
 
             room.once('gameError', (error) => {
                 debug('error', error);
+                this.room = undefined;
+                this.finished = true;
                 reject(error);
             });
 
             room.once('gameOver', ({save}) => {
+                this.room = undefined;
+                this.finished = true;
                 /** These are the winners, they advance */
                 const [a, b] = save.winnerIndices;
                 const winners = new Team(
@@ -143,10 +169,24 @@ export class Game {
                     expected(table.table[b]).id);
                 debug('game over %j', winners);
 
+                /** Keep track of the losers */
+                const losers = save.loserIndices.map((i) =>
+                    expected(table.table[i]).id);
+                losers.forEach((loser) => driver.losers.add(loser));
+
+                /** Emit an event */
+                driver.emit('gameOver', {
+                    t: driver.t,
+                    round: this.round,
+                    winners: winners.users,
+                    losers
+                });
+
                 const { next_game } = this;
                 /** The final game is over! */
                 if (!next_game) {
                     debug('tournament over %j', save.winners);
+                    driver.winners = save.winners;
                     driver.emit('tournamentOver', {
                         t: driver.t,
                         winners,
@@ -182,6 +222,15 @@ export interface SummonTable {
     room: GameRoom;
 }
 
+export interface GameOver {
+    t: Tournament;
+    round: number;
+    /** User IDs */
+    winners: string[];
+    /** User IDs */
+    losers: string[];
+}
+
 export interface TournamentOver {
     t: Tournament;
     winners: Team;
@@ -196,8 +245,107 @@ export interface TournamentDriverEvents {
     /** Tell this player to come to this room */
     summonTable: SummonTable;
 
+    /** A game is over */
+    gameOver: GameOver;
+
     /** It's over */
     tournamentOver: TournamentOver;
+}
+
+/**
+ * The status of a player in the tournament, MUST be JSON-able
+ */
+
+export class Status {
+
+    /**
+     * This just tells us that this status exists
+     */
+    readonly isOn = true;
+
+    /**
+     * Whether the player made it into the tournament:
+     *  signed up and didn't get dropped
+     */
+    readonly inTourney: boolean = false;
+
+    /**
+     * True if the player made it into the tournament and had a bye, even
+     * if the player already lost or the tournament is over
+     */
+    readonly hasBye: boolean = false;
+
+    /**
+     * Whether the player is still playing in the tournament:
+     *  made it in and has not lost yet
+     */
+    readonly stillPlaying: boolean = false;
+
+    /**
+     * The ID of the partner that the player got after signup
+     */
+    readonly actualPartner?: string = undefined;
+
+    /**
+     * Whether there is a room for this player right now
+     */
+    readonly hasRoom: boolean = false;
+
+    /**
+     * If the player is supposed to be a in a room, the URL to play
+     */
+    readonly url?: string = undefined;
+
+    /**
+     * The names of all the players in the room, if in a room. This is also
+     * an indication that the player should be in the room
+     */
+    readonly positions?: string[] = undefined;
+
+    /**
+     * Winner names, signals that the tournament is over and did not fail
+     */
+    readonly winners?: string[] = undefined;
+
+    /**
+     * If there was a problem and it failed. It is over
+     */
+    readonly failed: boolean = false;
+
+    constructor (driver: TournamentDriver, userId: string) {
+        this.winners = driver.winners;
+        this.failed = driver.failed;
+
+        for (const game of driver.games.values()) {
+            const team = game.has(userId);
+            if (!team) {
+                continue;
+            }
+            /** We found the partner */
+            this.actualPartner = team.other(userId);
+
+            /** The user is definitely here */
+            this.inTourney = true;
+
+            /** The user had a bye in this game */
+            const { bye } = game;
+            if (bye && bye.has(userId)) {
+                this.hasBye = true;
+            }
+
+            /** Still playing */
+            if (!game.finished) {
+                this.stillPlaying = true;
+            }
+
+            const { room } = game;
+            if (room) {
+                this.hasRoom = true;
+                this.url = `${config.FT2_SERVER_BASE_URL}/play/${room.token}`
+                this.positions = [...room.positions];
+            }
+        }
+    }
 }
 
 export default class TournamentDriver extends Dispatcher<TournamentDriverEvents> {
@@ -216,6 +364,15 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
     /** The rounds */
     public readonly rounds: Game[][];
 
+    /** User IDs that lost their games */
+    public readonly losers = new Set<string>();
+
+    /** The names of the winners, once it is over */
+    public winners?: string[] = undefined;
+
+    /** If it failed */
+    public failed = false;
+
     private readonly debug;
 
     constructor(t: Tournament) {
@@ -230,6 +387,10 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
         return this.rounds.length === 0;
     }
 
+    statusFor(userId: string): Status {
+        return new Status(this, userId);
+    }
+
     /**
      * Pairs up all the signups and returns teams as well as one
      * person who got dropped (or none)
@@ -238,6 +399,11 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
     private pickTeams(): [Team[], string | undefined] {
         /** Get the signups in a map of user/partner and shuffle it */
         const signups = new Map(_.shuffle(Array.from(this.t.signups().entries())));
+
+        /** No one signed up, we're done */
+        if (signups.size === 0) {
+            return [[], undefined];
+        }
 
         /** Put all the players in a reject pile */
         const rejects = new Set(signups.keys());
@@ -421,7 +587,13 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
     }
 
     async run() {
-        /** Start the first round */
-        await Promise.all(this.rounds[0].map((game) => game.start(this)));
+        /** Let'er rip! */
+        try {
+            await Promise.all(this.rounds[0].map((game) => game.start(this)));
+        }
+        catch (error) {
+            this.failed = true;
+            throw error;
+        }
     }
 }

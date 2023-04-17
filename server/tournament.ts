@@ -196,7 +196,7 @@ export default class Tournament implements Readonly<TournamentRow> {
                     $finished,
                     $ladder_id,
                     $ladder_name,
-                    $lmdtm,
+                    datetime('now'),
                     $invitation,
                     $recurring,
                     $invitees,

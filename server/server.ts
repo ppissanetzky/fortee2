@@ -100,7 +100,7 @@ else {
 if (!config.PRODUCTION) {
     app.get('/api/test-game/:players', async (req, res) => {
         const names: (User | null)[] = req.params.players.split(',')
-            .map((name) => ({id:`test/${name}` , name}));
+            .map((name) => ({id: name , name}));
         while (names.length < 4) {
             names.push(null);
         }
@@ -140,7 +140,7 @@ if (!config.PRODUCTION) {
             return res.sendStatus(404);
         }
         await new Promise<void>((resolve, reject) => {
-            req.login({id: `test/${name}`, name},
+            req.login({id: name, name},
                 (error) => error ? reject(error) : resolve());
         });
         req.session.gameRoomToken = room.token;

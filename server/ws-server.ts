@@ -1,18 +1,39 @@
-import type { Express, Request, Response } from 'express';
+import assert from 'node:assert';
+
+import type { Express, Request } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import ms from 'ms';
 
-import { makeDebug, makeToken } from './utility';
+import { expected, makeDebug, makeToken } from './utility';
 import Socket from './socket';
 import config from './config';
+
+class StatusError extends Error {
+    constructor(public readonly status: number) {
+        super(String(status));
+    }
+}
+
+function status(status: number) {
+    return new StatusError(status);
+}
 
 //------------------------------------------------------------------------------
 
 export default class WsServer {
 
     static create(app: Express) {
-        new WsServer(app);
+        assert(!this.instance);
+        this.instance = new WsServer(app);
     }
+
+    static get(): WsServer {
+        const { instance } = this;
+        assert(instance);
+        return instance;
+    }
+
+    private static instance?: WsServer;
 
     private readonly debug = makeDebug('wss');
 
@@ -36,45 +57,53 @@ export default class WsServer {
          * This is where the WebSocket upgrade starts
          */
 
-        app.get('/ws', (req, res) => this.upgrade(req, res));
+        app.get('/ws', async (req, res, next) => {
+            const user = req.user;
+            if (!user) {
+                return next(status(401));
+            }
+
+            const { gameRoomToken } = req.session;
+            if (!gameRoomToken) {
+                this.debug('missing grt');
+                return next(status(400));
+            }
+
+            this.debug('upgrade %j', user);
+            if (this.connected.has(user.id)) {
+                this.debug(`user %j already connected`, user);
+                return next(status(403));
+            }
+
+            try {
+                const ws = await this.upgrade(req);
+                const user = expected(req.user);
+                this.connected.add(user.id);
+                // Create a socket for it
+                Socket.connected(user.name, ws, expected(req.session.gameRoomToken))
+                    .gone.then(() => this.connected.delete(user.id));
+            }
+            catch (error) {
+                next(error);
+            }
+        });
     }
 
-    private async upgrade(req: Request, res: Response) {
-
+    public async upgrade(req: Request): Promise<WebSocket> {
         /** Make sure it is an upgrade */
-
         const headers = ['connection', 'upgrade'].map((name) =>
             req.get(name)?.toLowerCase()).join();
-
         if (headers !== 'upgrade,websocket') {
-            return res.sendStatus(400);
+            throw status(400);
         }
-
-        const user = req.user;
-
+        const { user } = req;
         if (!user) {
-            return res.sendStatus(401);
+            throw status(401);
         }
-
         const { id, name } = user;
         if (!(id && name)) {
-            return res.sendStatus(401);
+            throw status(401);
         }
-
-        const { gameRoomToken } = req.session;
-
-        if (!gameRoomToken) {
-            this.debug('missing grt');
-            return res.sendStatus(401);
-        }
-
-        this.debug('upgrade', id, name);
-
-        if (this.connected.has(id)) {
-            this.debug(`user ${id} "${name}" already connected`);
-            return res.sendStatus(403);
-        }
-
         // Upgrade to a ws
         try {
             const ws = await new Promise<WebSocket>((resolve, reject) => {
@@ -85,19 +114,15 @@ export default class WsServer {
                     resolve(ws);
                 });
             });
-
             // All good
-            this.debug('accepted', id, name);
-            this.setupPings(name, ws);
-            this.connected.add(id);
-            // Create a socket for it
-            Socket.connected(name, ws, gameRoomToken)
-                .gone.then(() => this.connected.delete(id));
+            this.debug('accepted %j', user);
+            this.setupPings(user.name, ws);
+            return ws;
         }
         catch (error) {
             this.debug('upgrade failed :', error instanceof Error
                 ? error.message : error);
-            res.sendStatus(400);
+            throw status(500);
         }
     }
 
