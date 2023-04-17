@@ -33,6 +33,10 @@ export default class WsServer {
         return instance;
     }
 
+    static isConnected(userId: string): boolean {
+        return this.get().connected.has(userId);
+    }
+
     private static instance?: WsServer;
 
     private readonly debug = makeDebug('wss');

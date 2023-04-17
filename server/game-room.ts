@@ -66,6 +66,11 @@ export interface GameRoomOptions {
     tournament?: Tournament;
 }
 
+export interface Invitation {
+    text: string;
+    url: string;
+}
+
 /**
  * This one handles the messages for all users in a game room
  */
@@ -116,6 +121,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly options: GameRoomOptions;
 
+    public readonly gone: Promise<void>;
+
     /**
      * A set of user names that have been invited to this room. Always
      * includes the host
@@ -133,6 +140,12 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.debug = this.debug.extend(String(this.id));
         this.debug('created %s for %j', this.token, table.table);
         this.debug('rules %o', rules);
+
+        this.gone = new Promise((resolve) => {
+            this.once('expired', () => resolve());
+            this.once('gameError', () => resolve());
+            this.once('gameOver', () => resolve());
+        });
 
         this.positions = table.table.map((user) => {
             if (user) {
@@ -172,6 +185,17 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     get t(): Tournament | undefined {
         return this.options.tournament;
+    }
+
+    get url(): string {
+        return `${config.FT2_SERVER_BASE_URL}/play/${this.token}`;
+    }
+
+    get invitation(): Invitation {
+        return {
+            text: `${this.host} invited you to play a game`,
+            url: this.url
+        }
     }
 
     get size(): number {

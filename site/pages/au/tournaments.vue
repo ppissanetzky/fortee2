@@ -10,13 +10,51 @@
           <strong>Hi, {{ you }}</strong>
         </v-toolbar-title>
         <v-spacer />
+        <v-btn outlined small color="white" class="mr-3" @click="quickGame()">
+          quick game
+        </v-btn>
+        <v-menu
+          v-model="menu"
+          :close-on-content-click="false"
+        >
+          <template #activator="{ on, attrs }">
+            <v-btn
+              v-bind="attrs"
+              outlined
+              small
+              color="white"
+              class="mr-9"
+              v-on="on"
+            >
+              custom game
+            </v-btn>
+          </template>
+          <custom-game :users="users" />
+        </v-menu>
         <v-img contain max-width="300" src="/logo.png" />
       </v-toolbar>
-      <!-- <v-toolbar flat>
-        <v-btn outlined height="40">
-          Play with 3 bots
+    </v-card>
+    <v-card
+      v-if="invitation"
+      outlined
+      class="mb-3"
+      min-width="375"
+      style="border-color: #ff3600; border-width: 2px;"
+    >
+      <v-card-title>
+        <v-icon color="black" class="pr-2">
+          mdi-play-circle
+        </v-icon>
+        {{ invitation.text }}
+        <v-spacer />
+        <v-btn
+          outlined
+          small
+          @click="window.open(invitation.url, '_blank')"
+        >
+          play
         </v-btn>
-      </v-toolbar> -->
+      </v-card-title>
     </v-card>
     <div>
       <v-card
@@ -162,17 +200,25 @@ export default {
       today: [],
       users: [],
       loading: false,
-      ws: undefined
+      ws: undefined,
+      menu: false,
+      invitation: undefined
     }
   },
   async fetch () {
-    const { users, tournaments, you } = await this.$axios.$get('/api/tournaments')
+    const {
+      users,
+      tournaments,
+      you,
+      invitation
+    } = await this.$axios.$get('/api/tournaments')
     this.users = Object.keys(users).map(key => ({ value: key, text: users[key] }))
     for (const t of tournaments) {
       t.newPartner = t.partner
     }
     this.today = tournaments
     this.you = you
+    this.invitation = invitation
 
     let url = `wss://${window.location.hostname}/api/tournaments/tws`
     if (process.env.NUXT_ENV_DEV) {
@@ -182,13 +228,23 @@ export default {
     this.ws.onmessage = (event) => {
       const message = JSON.parse(event.data)
       if (message) {
-        const { tournament, drop, tomorrow } = message
+        const {
+          tournament,
+          drop,
+          tomorrow,
+          invitation
+        } = message
+
         if (tournament) {
           this.updateTournament(tournament)
+        } else if (drop === 'invitation') {
+          this.invitation = undefined
         } else if (drop) {
           this.dropTournament(drop)
         } else if (tomorrow) {
           history.go()
+        } else if (invitation) {
+          this.invitation = invitation
         }
       }
     }
@@ -259,6 +315,13 @@ export default {
     },
     connected (t, name) {
       return false
+    },
+    async quickGame () {
+      const { url /* , error */ } = await this.$axios
+        .$post('/api/tournaments/start-game', { rules: 'default' })
+      if (url) {
+        window.open(url, '_blank')
+      }
     }
   }
 }

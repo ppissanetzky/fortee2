@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 
 import _ from 'lodash';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { WebSocket } from 'ws';
 
 import Scheduler from './tournament-scheduler';
@@ -11,12 +11,25 @@ import Tournament, { State } from './tournament';
 import { Rules } from './core';
 import { expected, makeDebug } from './utility';
 import WsServer from './ws-server';
+import { TableBuilder, User } from './table-helper';
+import GameRoom, { Invitation } from './game-room';
+import { get } from 'node:https';
 
 const debug = makeDebug('t-router');
 
 const router = express.Router();
 
 export default router;
+
+class AppError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
+}
+
+function fail(message: string): never {
+    throw new AppError(message);
+}
 
 const scheduler = Scheduler.get();
 
@@ -55,6 +68,14 @@ function externalT(user: Express.User, signups: Signups, row: db.TournamentRowWi
     }
 }
 
+function getInvitationFor(user: Express.User): Invitation | undefined {
+    for (const room of GameRoom.rooms.values()) {
+        if (!room.t && room.table.hasOther(user.id)) {
+            return room.invitation
+        }
+    }
+}
+
 router.get('/', async (req, res) => {
     const { user } = req;
     assert(user);
@@ -64,7 +85,13 @@ router.get('/', async (req, res) => {
     const signups = db.getSignupsForUser(today, user.id)
     const tournaments = db.getTournaments(today, 4)
         .map((row) => externalT(user, signups, row));
-    res.json({users, tournaments, you: user.name});
+    const invitation = getInvitationFor(user)
+    res.json({
+        users,
+        you: user.name,
+        tournaments,
+        invitation
+    });
 });
 
 router.get('/signup/:id/:partner', (req, res) => {
@@ -135,6 +162,18 @@ router.get('/dropout/:id', (req, res) => {
 
 const sockets = new Map<WebSocket, Express.User>();
 
+function socketsFor(userId: string): WebSocket[] | undefined {
+    const result: WebSocket[] = [];
+    for (const [ws, user] of sockets.entries()) {
+        if (user.id === userId) {
+            result.push(ws);
+        }
+    }
+    if (result.length > 0) {
+        return result;
+    }
+}
+
 router.get('/tws', async (req, res, next) => {
     try {
         const ws = await WsServer.get().upgrade(req);
@@ -172,6 +211,19 @@ function push(thing: Record<string, any>) {
     }
 }
 
+function pushToUser(user: Express.User, thing: Record<string, any>): boolean {
+    const sockets = socketsFor(user.id);
+    if (sockets) {
+        const message = JSON.stringify(thing);
+        sockets.forEach((ws) => {
+            debug('push to %s %j', user.name, thing);
+            ws.send(message);
+        });
+        return true;
+    }
+    return false;
+}
+
 scheduler.on('registered', ({t}) => pushUpdate(t.id));
 scheduler.on('unregistered', ({t}) => pushUpdate(t.id));
 scheduler.on('signupOpen', ({id}) => pushUpdate(id));
@@ -191,3 +243,75 @@ scheduler.on('summonTable', ({t}) => pushUpdate(t.id));
 scheduler.on('announceBye', ({t}) => pushUpdate(t.id));
 
 
+router.post('/start-game', express.json(), (req, res) => {
+    const { user, body } = req;
+    assert(user);
+    debug('custom game %j', body);
+    const { partner, left, right, rules } = body;
+    const players: string [] = [user.id, partner, left, right].filter((p) => p);
+    if (_.uniq(players).length !== players.length) {
+        return fail('You have duplicate players');
+    }
+    const users = new Map<string, Express.User>(players.map((userId) => {
+        const name = db.getUser(userId);
+        if (!name) {
+            return fail('Something is wrong with the players');
+        }
+        return [userId, {id: userId, name}];
+    }));
+    let r: Rules;
+    if (rules === 'default') {
+        r = new Rules();
+    }
+    else {
+        try {
+            r = Rules.fromAny(JSON.stringify(rules));
+        }
+        catch (error) {
+            return fail('The rules are invalid');
+        }
+    }
+    assert(r);
+
+    if (WsServer.isConnected(user.id)) {
+        return fail(`You are already connected, maybe you left a tab open?`);
+    }
+
+    for (const user of users.values()) {
+        if (!socketsFor(user.id)) {
+            return fail(`${user.name} is not here, ask them to come to this site`);
+        }
+    }
+
+    const table = new TableBuilder([
+        users.get(user.id) || null,
+        users.get(left) || null,
+        users.get(partner) || null,
+        users.get(right) || null
+    ]);
+
+    const room = new GameRoom({rules: r, table});
+
+    for (const other of users.values()) {
+        if (other.id !== user.id) {
+            pushToUser(other, {
+                invitation: room.invitation
+            });
+        }
+    }
+
+    room.gone.then(() => {
+        for (const other of users.values()) {
+            pushToUser(other, {drop: 'invitation'});
+        }
+    });
+
+    res.json({url: room.url});
+});
+
+router.use((error: any, req: Request, res: Response, next: NextFunction) => {
+    if (error instanceof AppError) {
+        return res.json({error: error.message});
+    }
+    next(error);
+});

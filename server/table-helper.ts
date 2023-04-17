@@ -209,6 +209,11 @@ export class TableBuilder {
         return null;
     }
 
+    hasOther(id: UserId): boolean {
+        return this.table.some((user, index) =>
+            user && index !== HOST && user.id === id);
+    }
+
     idFor(name: Name): string | null {
         assert(name);
         for (const pair of this.table) {
