@@ -50,7 +50,7 @@
         <v-btn
           outlined
           small
-          @click="window.open(invitation.url, '_blank')"
+          @click="openInvitation"
         >
           play
         </v-btn>
@@ -321,6 +321,11 @@ export default {
         .$post('/api/tournaments/start-game', { rules: 'default' })
       if (url) {
         window.open(url, '_blank')
+      }
+    },
+    openInvitation () {
+      if (this.invitation) {
+        window.open(this.invitation.url, '_blank')
       }
     }
   }
