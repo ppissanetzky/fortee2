@@ -2,11 +2,12 @@ import assert from 'node:assert';
 
 import { App, BlockAction, BlockElementAction } from '@slack/bolt';
 
-import { Actions, Button, Message, MessageBuilder, Section, setIfTruthy, SlackMessageDto, UserSelect } from 'slack-block-builder';
+import { Actions, Button, Message, Section, setIfTruthy,
+    SlackMessageDto, UserSelect } from 'slack-block-builder';
 import config from './config';
 import Tournament from './tournament';
 import Scheduler from './tournament-scheduler';
-import { expected, makeDebug } from './utility';
+import { makeDebug } from './utility';
 import { AnnounceBye, SummonTable, TournamentOver } from './tournament-driver';
 import { startRoomConversation } from './slack';
 import GameRoom from './game-room';
@@ -75,32 +76,32 @@ export default class SlackTournamentMessenger {
 
         this.scheduler
             .on('signupOpen', (t) => ready.then(() => this.signupOpen(t)))
-            .on('signupClosed', (t) => ready.then(() => this.signupClosed(t)))
-            .on('canceled', (t) => ready.then(() => this.canceled(t)))
-            .on('started', (t) => ready.then(() => this.started(t)))
-            .on('registered', (event) => ready.then(() => this.registered(event)))
-            .on('unregistered', (event) => ready.then(() => this.unregistered(event)))
+            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)));
+            // .on('signupClosed', (t) => ready.then(() => this.signupClosed(t)))
+            // .on('canceled', (t) => ready.then(() => this.canceled(t)))
+            // .on('started', (t) => ready.then(() => this.started(t)))
+            // .on('registered', (event) => ready.then(() => this.registered(event)))
+            // .on('unregistered', (event) => ready.then(() => this.unregistered(event)))
 
-            .on('announceBye', (event) => ready.then(() => this.announceBye(event)))
-            .on('summonTable', (event) => ready.then(() => this.summonTable(event)))
-            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
-            .on('failed', (t) => ready.then(() => this.tournamentFailed(t)));
+            // .on('announceBye', (event) => ready.then(() => this.announceBye(event)))
+            // .on('summonTable', (event) => ready.then(() => this.summonTable(event)))
+            // .on('failed', (t) => ready.then(() => this.tournamentFailed(t)));
 
         /** When someone clicks the 'register' action on a message */
 
-        this.app.action({type: 'block_actions', action_id: 'register-action'},
-            async ({ack, body}) => {
-                await ack();
-                this.register(body);
-            });
+        // this.app.action({type: 'block_actions', action_id: 'register-action'},
+        //     async ({ack, body}) => {
+        //         await ack();
+        //         this.register(body);
+        //     });
 
-        this.app.action({type: 'block_actions', action_id: 'unregister-action'},
-            async ({ack, body}) => {
-                await ack();
-                this.unregister(body);
-            });
+        // this.app.action({type: 'block_actions', action_id: 'unregister-action'},
+        //     async ({ack, body}) => {
+        //         await ack();
+        //         this.unregister(body);
+        //     });
 
-        this.app.action('register-partner-action', async ({ack}) => ack());
+        // this.app.action('register-partner-action', async ({ack}) => ack());
 
         debug('attached');
     }
@@ -252,30 +253,30 @@ export default class SlackTournamentMessenger {
     private async signupOpen(t: Tournament) {
         const text =
               `:trophy: *${t.name}* starts at ${t.startTime}\n`
-            + `Signup is now open for ${t.minutesTilClose} minutes`;
+            + '> <https://fortee2.com/au/tournaments|Click here to sign up>';
         const message = messageWithMetadata(t,
             Message({channel: this.channel})
                 .text(text)
-                .blocks(
-                    Section()
-                        .text(text),
-                    Actions()
-                        .blockId('register-block')
-                        .elements(
-                        setIfTruthy(t.choosePartner,
-                            UserSelect().actionId('register-partner-action')
-                        ),
-                        Button()
-                            .primary(true)
-                            .actionId('register-action')
-                            .text('Sign up'),
-                        Button()
-                            .danger(true)
-                            .actionId('unregister-action')
-                            .text('Drop out')
-                    )
+                // .blocks(
+                //     Section()
+                //         .text(text),
+                //     Actions()
+                //         .blockId('register-block')
+                //         .elements(
+                //         setIfTruthy(t.choosePartner,
+                //             UserSelect().actionId('register-partner-action')
+                //         ),
+                //         Button()
+                //             .primary(true)
+                //             .actionId('register-action')
+                //             .text('Sign up'),
+                //         Button()
+                //             .danger(true)
+                //             .actionId('unregister-action')
+                //             .text('Drop out')
+                //     )
 
-                )
+                // )
                 .buildToObject());
         this.postMessage(t, message);
     }
@@ -362,7 +363,7 @@ export default class SlackTournamentMessenger {
         const message = messageWithMetadata(t,
             Message({channel: this.channel})
                 .text(text)
-                .blocks(Section().text(text))
+                // .blocks(Section().text(text))
                 .buildToObject());
         this.postMessage(t, message);
         // We no longer need the thread
