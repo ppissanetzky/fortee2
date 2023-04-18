@@ -112,6 +112,14 @@ export default class Tournament implements Readonly<TournamentRow> {
         return State.WTS;
     }
 
+    get utcCloseTime(): number {
+        return TexasTime.toUTC(this.signup_end_dt);
+    }
+
+    get utcStartTime(): number {
+        return TexasTime.toUTC(this.start_dt);
+    }
+
     get minutesTilOpen(): number {
         return TexasTime.minutesUntil(this.signup_start_dt);
     }

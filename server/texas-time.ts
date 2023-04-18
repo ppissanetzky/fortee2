@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 
 import _ from 'lodash';
-import { utcToZonedTime } from 'date-fns-tz';
+import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import { differenceInMilliseconds, differenceInMinutes, format,
     getDay, parse, addDays  } from 'date-fns';
 
@@ -34,6 +34,11 @@ export default class TexasTime {
         const date = addDays(this.today().date, 1);
         date.setHours(0, 0);
         return new TexasTime(date);
+    }
+
+    static toUTC(date: string): number {
+        const t = TexasTime.parse(date);
+        return zonedTimeToUtc(t.date, 'US/Central').getTime();
     }
 
     public readonly date: Date;

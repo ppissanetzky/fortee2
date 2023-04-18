@@ -45,8 +45,10 @@ function externalT(user: Express.User, signups: Signups, row: db.TournamentRowWi
         id: t.id,
         name: t.name,
         startTime: t.startTime,
+        utcStartTime: t.utcStartTime,
         openTime: t.openTime,
         closeTime: t.closeTime,
+        utcCloseTime: t.utcCloseTime,
         choosePartner: t.choosePartner,
         rules: Rules.fromAny(t.rules).parts(),
         /** How many players are signed up for this one */

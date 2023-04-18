@@ -24,7 +24,7 @@ function insertTestTourneys() {
     const d = now.date;
     d.setMinutes(d.getMinutes());
     const signup = new TexasTime(d).toString();
-    d.setMinutes(d.getMinutes() + 1);
+    d.setMinutes(d.getMinutes() + 2);
     const e = new TexasTime(d).toString();
     d.setMinutes(d.getMinutes() + 1);
     const s = new TexasTime(d).toString();
@@ -104,7 +104,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     }
 
     private loadToday(): void {
-        // insertTestTourneys();
+        insertTestTourneys();
 
         const today = TexasTime.today();
 

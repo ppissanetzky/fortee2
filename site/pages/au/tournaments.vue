@@ -80,11 +80,11 @@
             {{ r }}
           </v-chip>
           <v-spacer />
-          <v-chip v-if="t.open" label color="green" class="white--text">
-            open until {{ t.closeTime }}
+          <v-chip v-if="t.open" label color="red" class="white--text">
+            closes in {{ ticks[t.id]?.close }}
           </v-chip>
           <v-chip v-else-if="t.wts" label color="green" class="white--text">
-            starts soon
+            starts in {{ ticks[t.id]?.start }}
           </v-chip>
           <v-chip v-else-if="t.playing" label color="green" class="white--text">
             playing now
@@ -109,11 +109,14 @@
               with <strong>{{ nameOf(t.partner) }}</strong>
             </span>
             <span v-if="t.wts">
-              - please wait until <strong>{{ t.startTime }}</strong>
+              - please wait until <strong>{{ t.startTime }}</strong> ({{ ticks[t.id]?.start }})
             </span>
           </span>
+          <span v-else-if="t.open">
+            You are <strong>not signed up</strong>, you have {{ ticks[t.id]?.close }}
+          </span>
           <span v-else>
-            You are <strong>not signed up</strong>
+            You did not sign up
           </span>
           <v-spacer />
         </v-toolbar>
@@ -202,7 +205,9 @@ export default {
       loading: false,
       ws: undefined,
       menu: false,
-      invitation: undefined
+      invitation: undefined,
+      interval: undefined,
+      ticks: {}
     }
   },
   async fetch () {
@@ -219,6 +224,8 @@ export default {
     this.today = tournaments
     this.you = you
     this.invitation = invitation
+
+    this.tick()
 
     let url = `wss://${window.location.hostname}/api/tournaments/tws`
     if (process.env.NUXT_ENV_DEV) {
@@ -327,6 +334,33 @@ export default {
       if (this.invitation) {
         window.open(this.invitation.url, '_blank')
       }
+    },
+    tick () {
+      if (!this.interval) {
+        this.interval = setInterval(() => this.tick(), 1000)
+      }
+      const now = Date.now()
+      const format = (t) => {
+        const ms = t - now
+        if (ms > 0) {
+          const time = {
+            h: Math.floor(ms / 3600000) % 24,
+            m: Math.floor(ms / 60000) % 60,
+            s: Math.floor(ms / 1000) % 60
+          }
+          return Object.entries(time)
+            .filter(val => val[1] !== 0)
+            .map(([key, val]) => `${val}${key}`)
+            .join(' ')
+        }
+      }
+      this.ticks = this.today.reduce((result, t) => {
+        result[t.id] = {
+          close: format(t.utcCloseTime),
+          start: format(t.utcStartTime)
+        }
+        return result
+      }, {})
     }
   }
 }
