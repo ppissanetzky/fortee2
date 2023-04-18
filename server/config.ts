@@ -36,6 +36,12 @@ const variables: Record<string, string> = {
     FT2_PING_INTERVAL: '',
 
     /**
+     * How long a game can go idle before it times out - a 'ms' string
+     */
+
+    FT2_GAME_EXPIRY: '6m',
+
+    /**
      * How long after we expire an invitation from slack - a 'ms' string
      */
 

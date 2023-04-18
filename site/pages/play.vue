@@ -610,7 +610,11 @@ export default {
           break
 
         case 'gameError':
-          this.choiceTitle = 'There was a bug in the game, it cannot continue'
+          if (message.error === 'expired') {
+            this.choiceTitle = 'This game expired'
+          } else {
+            this.choiceTitle = 'There was a bug in the game, it cannot continue'
+          }
           this.ws.close(1000, 'game-error')
           this.ws = undefined
           this.paused = true

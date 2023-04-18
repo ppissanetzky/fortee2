@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { Bid, Bone, Trump, Rules, Game, STEP, Team } from './core';
 import type Player from './player';
 import saveGame, { type Save } from './core/save-game';
+import ms from 'ms';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -68,6 +69,8 @@ export interface SaveWithMetadata extends Save {
     ended: number;
 }
 
+export class TimeOutError extends Error {}
+
 export default class GameDriver {
 
     /**
@@ -75,26 +78,23 @@ export default class GameDriver {
      *
      */
 
-    static async start(rules: Rules, players: Player[]): Promise<SaveWithMetadata> {
-        const started = Date.now();
-        const driver = new GameDriver(rules, players);
-        const save = await driver.next();
-        const ended = Date.now();
-        const bots = players.filter(({human}) => !human).map(({name}) => name);
-        return {
-            ...save,
-            started,
-            ended,
-            bots
-        };
+    static async start(rules: Rules, players: Player[], maxIdleMs: number): Promise<SaveWithMetadata> {
+        const driver = new GameDriver(rules, players, maxIdleMs);
+        return driver.run();
     }
 
     private readonly players: Player[];
+
     private readonly game: Game;
 
-    private constructor(rules: Rules, players: Player[]) {
+    private readonly maxIdleMs: number;
+
+    private lastTime = 0;
+
+    private constructor(rules: Rules, players: Player[], maxIdleMs: number) {
         assert(players.length === 4, 'Too few players');
         this.players = players;
+        this.maxIdleMs = maxIdleMs;
         const table = players.map(({name}) => name);
         this.all((player) => player.startingGame({
             table,
@@ -102,6 +102,43 @@ export default class GameDriver {
             desc: rules.parts()
         }));
         this.game = new Game(table, rules);
+    }
+
+    private async run(): Promise<SaveWithMetadata> {
+        const started = Date.now();
+        this.lastTime = started;
+        let done = false;
+        const idle = new Promise<void>((resolve, reject) => {
+            if (this.maxIdleMs === 0) {
+                return resolve();
+            }
+            const interval = setInterval(() => {
+                if (done) {
+                    clearInterval(interval);
+                    return resolve();
+                }
+                const time = Date.now() - this.lastTime;
+                if (time > this.maxIdleMs) {
+                    clearInterval(interval);
+                    reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
+                }
+            }, ms('30s'));
+        });
+        try {
+            const [save] = await Promise.all([this.next(), idle]);
+            const ended = Date.now();
+            const bots = this.players.filter(({human}) =>
+                !human).map(({name}) => name);
+            return {
+                ...save,
+                started,
+                ended,
+                bots
+            };
+        }
+        finally {
+            done = true;
+        }
     }
 
     private all(cb: Callback): void {
@@ -131,6 +168,7 @@ export default class GameDriver {
     }
 
     private async next(): Promise<Save> {
+        this.lastTime = Date.now();
         switch (this.game.next_step) {
             case STEP.START_HAND: {
                     await Promise.all(this.players.map((player) =>

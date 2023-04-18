@@ -112,6 +112,10 @@ export interface GameOver {
     status: Status;
 }
 
+export interface GameError {
+    error?: string;
+}
+
 export interface GameMessages {
     /**
      * The table, sent once when the game is started
@@ -221,7 +225,7 @@ export interface GameMessages {
      * any more
      */
 
-    gameError: any
+    gameError: GameError
 }
 
 export type OutgoingMessages =

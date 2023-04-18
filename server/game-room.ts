@@ -9,7 +9,7 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata } from './driver';
+import GameDriver, { Rules, SaveWithMetadata, TimeOutError } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
@@ -263,7 +263,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 return bot;
             });
             // Start'er up
-            const save = await GameDriver.start(this.rules, this.players);
+            const save = await GameDriver.start(
+                this.rules, this.players, ms(config.FT2_GAME_EXPIRY));
 
             this.saveGame(save);
 
@@ -273,9 +274,18 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
         }
         catch (error) {
-            this.debug('game error', error);
-            this.all((socket) => socket.send('gameError', {}));
-            this.emit('gameError', error);
+            /** The clients will close the socket when they get this */
+
+            if (error instanceof TimeOutError) {
+                this.debug('game expired', error.message);
+                this.all((socket) => socket.send('gameError', {error: 'expired'}));
+                this.emit('expired', undefined);
+            }
+            else {
+                this.debug('game error', error);
+                this.all((socket) => socket.send('gameError', {}));
+                this.emit('gameError', error);
+            }
         }
         finally {
             this.state = State.OVER;

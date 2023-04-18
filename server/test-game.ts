@@ -83,7 +83,7 @@ async function play(): Promise<void> {
     //     new Bot(undefined, true).with(Pass),
     // ];
 
-    return GameDriver.start(rules, players).then((save) => {
+    return GameDriver.start(rules, players, 0).then((save) => {
         let made = 0;
         let total = 0;
         let stuck = 0;
