@@ -7,34 +7,30 @@
         <v-card class="d-flex mt-1" flat tile color="#8fa5b7">
           <v-container class="pa-2">
             <v-row>
-              <v-col cols="6">
+              <v-col cols="6" class="pa-2">
                 <div class="text-center white--text">
-                  <h1>
-                    US
-                  </h1>
-                  <span class="subtitle-1">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
+                  <h2>US</h2>
+                  <span class="subtitle-1 pl-1">{{ teams.US[0] }} <br> {{ teams.US[1] }}</span>
                 </div>
               </v-col>
-              <v-col cols="6">
+              <v-col cols="6" class="pa-2">
                 <div class="text-center white--text">
-                  <h1>
-                    THEM
-                  </h1>
-                  <span class="subtitle-1">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
+                  <h2>THEM</h2>
+                  <span class="subtitle-1 pr-1">{{ teams.THEM[0] }} <br> {{ teams.THEM[1] }}</span>
                 </div>
               </v-col>
             </v-row>
             <v-row>
-              <v-col cols="6">
+              <v-col cols="6" class="pa-0 pb-2">
                 <div class="text-center white--text">
-                  <h1 style="font-size: 300%">
+                  <h1>
                     {{ US.marks }}
                   </h1>
                 </div>
               </v-col>
-              <v-col cols="6">
+              <v-col cols="6" class="pa-0 pb-2">
                 <div class="text-center white--text">
-                  <h1 style="font-size: 300%">
+                  <h1>
                     {{ THEM.marks }}
                   </h1>
                 </div>
