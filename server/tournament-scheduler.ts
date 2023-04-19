@@ -19,6 +19,7 @@ function insertTestTourneys() {
     if (config.PRODUCTION) {
         return;
     }
+    return;
     db.run('delete from tournaments');
     const now = TexasTime.today();
     const d = now.date;

@@ -62,7 +62,9 @@
           <v-container>
             <v-row class="text-center" style="color: #676767;">
               <v-col cols="6" class="pa-0 pl-1">
-                <h1 v-if="bidWinner && trump[bidWinner]">{{ US.points }}</h1>
+                <h1 v-if="bidWinner && trump[bidWinner]">
+                  {{ US.points }}
+                </h1>
                 <v-card flat color="#c0d4e5">
                   <v-card
                     v-for="(trick, index) in pile.US"
@@ -83,7 +85,9 @@
                 </v-card>
               </v-col>
               <v-col cols="6" class="pa-0 pl-1 pr-1">
-                <h1 v-if="bidWinner && trump[bidWinner]">{{ THEM.points }}</h1>
+                <h1 v-if="bidWinner && trump[bidWinner]">
+                  {{ THEM.points }}
+                </h1>
                 <v-card flat color="#c0d4e5">
                   <v-card
                     v-for="(trick, index) in pile.THEM"

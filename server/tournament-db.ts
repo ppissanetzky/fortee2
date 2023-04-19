@@ -8,7 +8,13 @@ export interface TournamentRowWithCount extends TournamentRow {
     readonly count: number;
 }
 
-const database = new Database('tournaments', 1);
+export interface UserInfo {
+    name: string;
+    prefs: Record<string, any>;
+    roles: string[];
+}
+
+const database = new Database('tournaments', 2);
 
 export function all(query: string, params?: Params) {
     return database.all(query, params);
@@ -71,18 +77,15 @@ export function deleteSignup(id: number, user: string): boolean {
 export function getTournaments(date: TexasTime, limit: number): TournamentRowWithCount[] {
     return database.all(
         `
-        SELECT tournaments.*, ifnull(s.count, 0) AS count
-        FROM tournaments
-        LEFT OUTER JOIN (
-            SELECT id, count(distinct(user)) AS count
-            FROM signups GROUP BY id
-        ) AS s ON tournaments.id = s.id
+        SELECT tournaments.*, counts.count AS count
+        FROM tournaments, counts
         WHERE
             date(start_dt) = date($date)
             AND recurring = 0
             AND (finished = 0
                 OR (finished = 1 AND datetime('now') < datetime(lmdtm, '+10 minutes'))
             )
+            AND counts.id = tournaments.id
         ORDER BY start_dt
         LIMIT $limit
         `
@@ -112,24 +115,34 @@ export function getUsers(): Record<string, string> {
     }, {});
 }
 
-export function getUser(id: string): string | undefined {
+export function getUser(id: string): UserInfo | undefined {
     const row = database.first(
-        'SELECT name FROM users WHERE id = $id', { id });
+        'SELECT name, roles, prefs FROM users WHERE id = $id', { id });
     if (row) {
-        return row.name;
+        return {
+            name: row.name,
+            prefs: row.prefs ? JSON.parse(row.prefs) : {},
+            roles: row.roles ? row.roles.split(',') : []
+        };
     }
 }
 
 export function getTournament(id: number): TournamentRowWithCount | undefined {
     return database.first(
         `
-        SELECT tournaments.*, ifnull(s.count, 0) AS count
-        FROM tournaments
-        LEFT OUTER JOIN (
-            SELECT id, count(distinct(user)) AS count
-            FROM signups GROUP BY id
-        ) AS s ON tournaments.id = s.id
-        WHERE tournaments.id = $id
+        SELECT tournaments.*, counts.count AS count
+        FROM tournaments, counts
+        WHERE tournaments.id = $id AND counts.id = tournaments.id
         `
         , { id });
+}
+
+export function getRecurringTournaments(): TournamentRow[] {
+    return database.all(
+        `
+        SELECT * FROM tournaments
+        WHERE recurring != 0
+        ORDER BY recurring, time(start_dt)
+        `
+    );
 }

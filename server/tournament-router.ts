@@ -7,7 +7,7 @@ import { WebSocket } from 'ws';
 import Scheduler from './tournament-scheduler';
 import TexasTime from './texas-time';
 import * as db from './tournament-db';
-import Tournament, { State } from './tournament';
+import Tournament, { State, TournamentRow } from './tournament';
 import { Rules } from './core';
 import { expected, makeDebug } from './utility';
 import WsServer from './ws-server';
@@ -81,6 +81,8 @@ function getInvitationFor(user: Express.User): Invitation | undefined {
 router.get('/', async (req, res) => {
     const { user } = req;
     assert(user);
+    const info = db.getUser(user.id);
+    assert(info);
     const today = TexasTime.today();
     const users = db.getUsers();
     delete users[user.id];
@@ -90,7 +92,7 @@ router.get('/', async (req, res) => {
     const invitation = getInvitationFor(user)
     res.json({
         users,
-        you: user.name,
+        you: info,
         tournaments,
         invitation
     });
@@ -249,31 +251,19 @@ router.post('/start-game', express.json(), (req, res) => {
     const { user, body } = req;
     assert(user);
     debug('custom game %j', body);
-    const { partner, left, right, rules } = body;
+    const { partner, left, right } = body;
     const players: string [] = [user.id, partner, left, right].filter((p) => p);
     if (_.uniq(players).length !== players.length) {
         return fail('You have duplicate players');
     }
     const users = new Map<string, Express.User>(players.map((userId) => {
-        const name = db.getUser(userId);
-        if (!name) {
+        const info = db.getUser(userId);
+        if (!info) {
             return fail('Something is wrong with the players');
         }
-        return [userId, {id: userId, name}];
+        return [userId, {id: userId, name: info.name}];
     }));
-    let r: Rules;
-    if (rules === 'default') {
-        r = new Rules();
-    }
-    else {
-        try {
-            r = Rules.fromAny(JSON.stringify(rules));
-        }
-        catch (error) {
-            return fail('The rules are invalid');
-        }
-    }
-    assert(r);
+    const rules = validateRules(body.rules);
 
     if (WsServer.isConnected(user.id)) {
         return fail(`You are already connected, maybe you left a tab open?`);
@@ -292,7 +282,7 @@ router.post('/start-game', express.json(), (req, res) => {
         users.get(right) || null
     ]);
 
-    const room = new GameRoom({rules: r, table});
+    const room = new GameRoom({rules, table});
 
     for (const other of users.values()) {
         if (other.id !== user.id) {
@@ -310,6 +300,192 @@ router.post('/start-game', express.json(), (req, res) => {
 
     res.json({url: room.url});
 });
+
+/**-----------------------------------------------------------------------------
+ * Routes that have to be guarded by user roles after here
+ * -----------------------------------------------------------------------------
+ */
+
+router.use((req: Request, res: Response, next: NextFunction) => {
+    const { user } = req;
+    assert(user);
+    const info = db.getUser(user.id);
+    if (info?.roles.includes('td')) {
+        return next();
+    }
+    return res.sendStatus(403);
+});
+
+router.get('/td', (req, res) => {
+    const tournaments = db.getRecurringTournaments().map((row) => {
+        const t = new Tournament(row);
+        const { recurring } = t;
+        const rules = Rules.fromAny(t.rules);
+        let every = '';
+        switch (recurring) {
+            case 1: every = 'Monday'; break;
+            case 2: every = 'Tuesday'; break;
+            case 3: every = 'Wednesday'; break;
+            case 4: every = 'Thursday'; break;
+            case 5: every = 'Friday'; break;
+            case 6: every = 'Saturday'; break;
+            case 7: every = 'Sunday'; break;
+            case 8: every = 'Every day'; break;
+            case 9: every = 'Weekdays'; break;
+        }
+        return {
+            ...t.toJSON(),
+            every,
+            rules,
+            rulesDesc: rules.parts().join(', '),
+            startTime: t.startTime,
+            openTime: t.openTime,
+            closeTime: t.closeTime
+        };
+    });
+    res.json({tournaments});
+});
+
+function fif(expression: any, message: string) {
+    if (expression) {
+        fail(message);
+    }
+}
+
+function validateEvery(every: string): number {
+    switch (every) {
+        case 'Monday': return 1;
+        case 'Tuesday': return 2;
+        case 'Wednesday': return 3;
+        case 'Thursday': return 4;
+        case 'Friday': return 5;
+        case 'Saturday': return 6;
+        case 'Sunday': return 7;
+        case 'Every day': return 8;
+        case 'Weekdays': return 9;
+    }
+    fail('Invalid recurring days');
+}
+
+const TIME_RX = /^(?<h>\d\d):(?<m>\d\d) [ap]m$/;
+
+function validateTime(time: string): boolean {
+    if (!time) {
+        return false;
+    }
+    const matches = time.match(TIME_RX);
+    if (!matches) {
+        return false;
+    }
+    const { groups } = matches;
+    if (!groups) {
+        return false;
+    }
+    const { h, m } = groups;
+    const hn = parseInt(h, 10);
+    if (!_.isSafeInteger(hn)) {
+        return false;
+    }
+    if (hn < 0 || hn > 12) {
+        return false;
+    }
+    const mn = parseInt(m);
+    if (!_.isSafeInteger(mn)) {
+        return false;
+    }
+    if (mn < 0 || mn > 59) {
+        return false;
+    }
+    return true;
+}
+
+function validateRules(rules: any): Rules {
+    fif(!rules, 'Invalid rules');
+    if (_.isString(rules)) {
+        if (rules === 'default') {
+            return new Rules();
+        }
+        return validateRules(Rules.fromAny(rules));
+    }
+    if (!(rules instanceof Rules)) {
+        if (_.isObject(rules)) {
+            return validateRules(JSON.stringify(rules));
+        }
+        fail('Bad rules');
+    }
+    fif(rules.follow_me_doubles.length === 0, 'Empty follow-me doubles');
+    fif(rules.plunge_max_marks < rules.plunge_min_marks, 'Plunge marks are wrong');
+    fif(rules.nello_doubles.length === 0, 'Empty nello doubles');
+    return rules;
+}
+
+function validateT(t: Record<string, any>) {
+    fif(!_.isSafeInteger(t.id), 'Invalid ID');
+    // TODO: if not 0, see if it exists
+    fif(!t.name, 'Missing a name');
+    fif(![1, 2].includes(t.partner), 'Invalid partner');
+    const recurring = validateEvery(t.every);
+    t.openTime = t.openTime.padStart(8, '0');
+    t.closeTime = t.closeTime.padStart(8, '0');
+    t.startTime = t.startTime.padStart(8, '0');
+    fif(!validateTime(t.openTime), 'Open time must be hh:mm am/pm');
+    fif(!validateTime(t.closeTime), 'Close time must be hh:mm am/pm');
+    fif(!validateTime(t.startTime), 'Start time must be hh:mm am/pm');
+
+    //TODO: fix times. they should be hh:mm in the DB
+
+    const rules = validateRules(t.rules);
+
+    const date = TexasTime.today().dateString;
+
+    const row: TournamentRow = {
+        id: t.id,
+        name: t.name,
+        type: 1,
+        signup_start_dt: `${date} ${t.openTime}`,
+        signup_end_dt:  `${date} ${t.closeTime}`,
+        start_dt:  `${date} ${t.startTime}`,
+        rules: JSON.stringify(rules),
+        partner: t.partner,
+        seed: 1,
+        timezone: 'CST',
+        signup_opened: 0,
+        signup_closed: 0,
+        started: 0,
+        scheduled: 0,
+        finished: 0,
+        ladder_id: null,
+        ladder_name: null,
+        invitation: 0,
+        recurring,
+        invitees: null,
+        prize: null,
+        winners: '',
+        recurring_source: 0,
+        host: t.host || null
+    };
+
+    try {
+        const tt = new Tournament(row); //.saveWith({});
+        // debug('saved', tt.id);
+    }
+    catch (error) {
+        debug('error saving tournament row: %j', row);
+        fail('There was a problem saving the tournament');
+    }
+}
+
+router.post('/td/save', express.json(), (req, res) => {
+    const { body } = req;
+    debug('saving %j', body);
+    validateT(body);
+    res.json({});
+});
+
+/**-----------------------------------------------------------------------------
+ * MUST BE LAST
+ * -----------------------------------------------------------------------------
+ */
 
 router.use((error: any, req: Request, res: Response, next: NextFunction) => {
     if (error instanceof AppError) {

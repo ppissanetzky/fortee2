@@ -6,9 +6,20 @@
       min-width="375"
     >
       <v-toolbar flat color="#0049bd">
-        <v-toolbar-title v-if="you" class="white--text pl-1">
-          <strong>Hi, {{ you }}</strong>
+        <v-toolbar-title v-if="you.name" class="white--text pl-1">
+          <strong>Hi, {{ you.name }}</strong>
         </v-toolbar-title>
+        <v-btn
+          v-if="you?.roles?.includes('td')"
+          outlined
+          small
+          color="white"
+          class="ml-3"
+          @click="td"
+        >
+          TD
+        </v-btn>
+
         <v-spacer />
         <v-btn outlined small color="white" class="mr-3" @click="quickGame()">
           quick game
@@ -199,7 +210,7 @@
 export default {
   data () {
     return {
-      you: undefined,
+      you: {},
       today: [],
       users: [],
       loading: false,
@@ -334,6 +345,9 @@ export default {
       if (this.invitation) {
         window.open(this.invitation.url, '_blank')
       }
+    },
+    td () {
+      window.open('td', '_blank')
     },
     tick () {
       if (!this.interval) {

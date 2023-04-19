@@ -24,9 +24,9 @@ export interface TournamentRow {
     started: number; // 1,
     scheduled: number; // 0,
     finished: number; // 1,
-    ladder_id: number; // 0,
-    ladder_name: string; //  '',
-    lmdtm: string; // '1450003559',
+    ladder_id: number | null; // 0,
+    ladder_name: string | null; //  '',
+    lmdtm?: string; // '1450003559',
     invitation: number; // 1,
     /**
      * 0 if it is not recurring
@@ -35,11 +35,11 @@ export interface TournamentRow {
      * 9 for week days
      */
     recurring: number; // 1,
-    invitees: string; // '',
-    prize: string; // '',
+    invitees: string | null; // '',
+    prize: string | null; // '',
     winners: string; // '',
     recurring_source: number; // 0,
-    host: string; // 'rednsassy'
+    host: string | null; // 'rednsassy'
 }
 
 export const enum State {
@@ -85,16 +85,16 @@ export default class Tournament implements Readonly<TournamentRow> {
     get started(): number { return this.row.started; }
     get scheduled(): number { return this.row.scheduled; }
     get finished(): number { return this.row.finished; }
-    get ladder_id(): number { return this.row.ladder_id; }
-    get ladder_name(): string { return this.row.ladder_name; }
-    get lmdtm(): string { return this.row.lmdtm; }
+    get ladder_id(): number | null { return this.row.ladder_id; }
+    get ladder_name(): string | null { return this.row.ladder_name; }
+    get lmdtm(): string | undefined { return this.row.lmdtm; }
     get invitation(): number { return this.row.invitation; }
     get recurring(): number { return this.row.recurring; }
-    get invitees(): string { return this.row.invitees; }
-    get prize(): string { return this.row.prize; }
+    get invitees(): string | null { return this.row.invitees; }
+    get prize(): string | null { return this.row.prize; }
     get winners(): string { return this.row.winners; }
     get recurring_source(): number { return this.row.recurring_source; }
-    get host(): string { return this.row.host; }
+    get host(): string | null { return this.row.host; }
 
     get state(): State {
         if (this.finished) {
