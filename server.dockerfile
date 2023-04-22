@@ -1,4 +1,4 @@
-FROM node:16.10-slim
+FROM node:18.16-slim
 
 # This is where the application lives
 WORKDIR /home/node/app
