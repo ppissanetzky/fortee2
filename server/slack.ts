@@ -249,7 +249,8 @@ function loadRulesFrom(view: ViewOutput): Rules {
 }
 
 function getRoomUrl(room: GameRoom): string {
-    return `${config.FT2_SERVER_BASE_URL}/slack/game/${room.token}`
+    const to = encodeURIComponent(`/play/${room.token}`);
+    return `/slack/redirect?to=${to}`;
 }
 
 async function createInvitation(

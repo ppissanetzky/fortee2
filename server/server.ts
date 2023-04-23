@@ -177,6 +177,8 @@ app.get('/discord/authenticated',
     passport.authenticate('oauth2', {keepSessionInfo: true}),
     redirectFromSession);
 
+/** Generic redirect to the 'to' query parameter after Slack auth */
+
 app.get('/slack/redirect', 
     (req, res, next) => {
         const { to } = req.query;
@@ -185,13 +187,6 @@ app.get('/slack/redirect',
         }
         redirectTo(to, req, res, next);
     },
-    slack.authenticate
-)
-
-/** The entry point for a Slack game link */
-
-app.get('/slack/game/:token',
-    (req, res, next) => redirectTo(`/play/${req.params.token}`, req, res, next),
     slack.authenticate);
 
 app.get('/slack/authenticated',
