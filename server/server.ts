@@ -2,6 +2,8 @@
 import fs from 'node:fs';
 import assert from 'node:assert';
 
+import _ from 'lodash';
+
 import express, { NextFunction, Request, Response } from 'express';
 
 import config from './config';
@@ -60,27 +62,14 @@ app.use(passport.authenticate('session'));
 
 //-----------------------------------------------------------------------------
 
-if (!config.PRODUCTION) {
-    app.use((req, res, next) => {
-        if (!req.isAuthenticated()) {
-            return req.login({id: 'pablo', name: 'pablo'}, () => next());
-        }
-        next();
-    });
-}
-
-//-----------------------------------------------------------------------------
-// Everything under /au has to be authenticated, even the static pages
-//-----------------------------------------------------------------------------
-
-app.use('/au', async (req, res, next) => {
-    if (req.isAuthenticated()) {
-        return next();
-    }
-    req.session.redirect = req.originalUrl;
-    await saveSession(req);
-    slack.authenticate(req, res);
-});
+// if (!config.PRODUCTION) {
+//     app.use((req, res, next) => {
+//         if (!req.isAuthenticated()) {
+//             return req.login({id: 'pablo', name: 'pablo'}, () => next());
+//         }
+//         next();
+//     });
+// }
 
 //-----------------------------------------------------------------------------
 
@@ -161,6 +150,7 @@ async function redirectTo(uri: string, req: Request, res: Response, next: NextFu
     }
     req.session.redirect = uri;
     await saveSession(req);
+    debug('saved redirect "%s"', uri);
     next();
 }
 
@@ -173,6 +163,7 @@ async function redirectFromSession(req: Request, res: Response) {
     }
     delete req.session.redirect;
     await saveSession(req);
+    debug('redirecting to "%s"', redirect);
     res.redirect(redirect);
 }
 
@@ -185,6 +176,17 @@ app.get('/discord/game/:token',
 app.get('/discord/authenticated',
     passport.authenticate('oauth2', {keepSessionInfo: true}),
     redirectFromSession);
+
+app.get('/slack/redirect', 
+    (req, res, next) => {
+        const { to } = req.query;
+        if (!(to && _.isString(to))) {
+            return res.sendStatus(400);
+        }
+        redirectTo(to, req, res, next);
+    },
+    slack.authenticate
+)
 
 /** The entry point for a Slack game link */
 

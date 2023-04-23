@@ -222,50 +222,59 @@ export default {
     }
   },
   async fetch () {
-    const {
-      users,
-      tournaments,
-      you,
-      invitation
-    } = await this.$axios.$get('/api/tournaments')
-    this.users = Object.keys(users).map(key => ({ value: key, text: users[key] }))
-    for (const t of tournaments) {
-      t.newPartner = t.partner
-    }
-    this.today = tournaments
-    this.you = you
-    this.invitation = invitation
+    try {
+      const {
+        users,
+        tournaments,
+        you,
+        invitation
+      } = await this.$axios.$get('/api/tournaments')
+      this.users = Object.keys(users).map(key => ({ value: key, text: users[key] }))
+      for (const t of tournaments) {
+        t.newPartner = t.partner
+      }
+      this.today = tournaments
+      this.you = you
+      this.invitation = invitation
 
-    this.tick()
+      this.tick()
 
-    let url = `wss://${window.location.hostname}/api/tournaments/tws`
-    if (process.env.NUXT_ENV_DEV) {
-      url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
-    }
-    this.ws = new WebSocket(url)
-    this.ws.onmessage = (event) => {
-      const message = JSON.parse(event.data)
-      if (message) {
-        const {
-          tournament,
-          drop,
-          tomorrow,
-          invitation
-        } = message
+      let url = `wss://${window.location.hostname}/api/tournaments/tws`
+      if (process.env.NUXT_ENV_DEV) {
+        url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
+      }
+      this.ws = new WebSocket(url)
+      this.ws.onmessage = (event) => {
+        const message = JSON.parse(event.data)
+        if (message) {
+          const {
+            tournament,
+            drop,
+            tomorrow,
+            invitation
+          } = message
 
-        if (tournament) {
-          this.updateTournament(tournament)
-        } else if (drop === 'invitation') {
-          this.invitation = undefined
-        } else if (drop) {
-          this.dropTournament(drop)
-        } else if (tomorrow) {
-          history.go()
-        } else if (invitation) {
-          this.invitation = invitation
+          if (tournament) {
+            this.updateTournament(tournament)
+          } else if (drop === 'invitation') {
+            this.invitation = undefined
+          } else if (drop) {
+            this.dropTournament(drop)
+          } else if (tomorrow) {
+            history.go()
+          } else if (invitation) {
+            this.invitation = invitation
+          }
         }
       }
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        const url = `/slack/redirect?to=${encodeURIComponent(window.location)}`
+        return window.open(url, '_top')
+      }
+      throw error;
     }
+    
   },
   methods: {
     nameOf (id) {
