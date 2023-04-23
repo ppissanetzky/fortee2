@@ -11,6 +11,7 @@ import { makeDebug } from './utility';
 import { AnnounceBye, SummonTable, TournamentOver } from './tournament-driver';
 import { startRoomConversation } from './slack';
 import GameRoom from './game-room';
+import ms from 'ms';
 
 const debug = makeDebug('slack-t-msngr');
 
@@ -150,6 +151,7 @@ export default class SlackTournamentMessenger {
         }
         debug('looking at %d messages', messages.length);
         const { tourneys } = this.scheduler;
+        let toDelete = Promise.resolve();
         for (const message of messages) {
             if (message.metadata?.event_type === 'tournament') {
                 const { ts, thread_ts } = message;
@@ -157,9 +159,13 @@ export default class SlackTournamentMessenger {
                 if (ts && payload) {
                     const id: number = payload.id;
                     if (!tourneys.has(id)) {
-                        await this.app.client.chat.delete({
-                            channel: this.channel,
-                            ts
+                        /** Delete them out of band with a delay so we don't get rate limited */
+                        toDelete = toDelete.then(async () => {
+                            await this.app.client.chat.delete({
+                                channel: this.channel,
+                                ts
+                            });
+                            await new Promise((resolve) => setTimeout(resolve, ms('5s')));
                         });
                     }
                     else {
