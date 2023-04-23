@@ -76,9 +76,9 @@ export default class SlackTournamentMessenger {
 
         this.scheduler
             .on('signupOpen', (t) => ready.then(() => this.signupOpen(t)))
-            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)));
+            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
+            .on('canceled', (t) => ready.then(() => this.canceled(t)))
             // .on('signupClosed', (t) => ready.then(() => this.signupClosed(t)))
-            // .on('canceled', (t) => ready.then(() => this.canceled(t)))
             // .on('started', (t) => ready.then(() => this.started(t)))
             // .on('registered', (event) => ready.then(() => this.registered(event)))
             // .on('unregistered', (event) => ready.then(() => this.unregistered(event)))
@@ -294,14 +294,22 @@ export default class SlackTournamentMessenger {
     }
 
     private async canceled(t: Tournament) {
-        const text =
-              `:trophy: *${t.name}* has been canceled :face_holding_back_tears:`;
-        const message = messageWithMetadata(t,
-            Message({channel: this.channel})
-                .text(text)
-                .blocks(Section().text(text))
-                .buildToObject());
-        this.postMessage(t, message);
+        const thread = this.threads.get(t.id);
+        if (thread?.ts) {
+            this.app.client.chat.delete({
+                channel: this.channel, 
+                ts: thread.ts
+            });    
+            this.threads.delete(t.id);
+        }
+        // const text =
+        //       `:trophy: *${t.name}* has been canceled :face_holding_back_tears:`;
+        // const message = messageWithMetadata(t,
+        //     Message({channel: this.channel})
+        //         .text(text)
+        //         .blocks(Section().text(text))
+        //         .buildToObject());
+        // this.postMessage(t, message);
     }
 
     private async started(t: Tournament) {
