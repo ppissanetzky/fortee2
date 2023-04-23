@@ -77,8 +77,8 @@ export default class SlackTournamentMessenger {
         this.scheduler
             .on('signupOpen', (t) => ready.then(() => this.signupOpen(t)))
             .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
-            .on('canceled', (t) => ready.then(() => this.canceled(t)))
-            // .on('signupClosed', (t) => ready.then(() => this.signupClosed(t)))
+            .on('signupClosed', (t) => ready.then(() => this.deleteThread(t.id)));
+            // .on('canceled', (t) => ready.then(() => this.deleteThread(t.id)))
             // .on('started', (t) => ready.then(() => this.started(t)))
             // .on('registered', (event) => ready.then(() => this.registered(event)))
             // .on('unregistered', (event) => ready.then(() => this.unregistered(event)))
@@ -104,6 +104,17 @@ export default class SlackTournamentMessenger {
         // this.app.action('register-partner-action', async ({ack}) => ack());
 
         debug('attached');
+    }
+
+    private async deleteThread(id: number) {
+        const thread = this.threads.get(id);
+        if (thread?.ts) {
+            await this.app.client.chat.delete({
+                channel: this.channel, 
+                ts: thread.ts
+            });    
+            this.threads.delete(id);
+        }
     }
 
     private async findThreads(): Promise<void> {
@@ -146,7 +157,10 @@ export default class SlackTournamentMessenger {
                 if (ts && payload) {
                     const id: number = payload.id;
                     if (!tourneys.has(id)) {
-                        debug('thread is for old tourney', ts, id, message.text);
+                        await this.app.client.chat.delete({
+                            channel: this.channel,
+                            ts
+                        });
                     }
                     else {
                         this.threads.set(id, {ts, thread_ts});
@@ -294,14 +308,6 @@ export default class SlackTournamentMessenger {
     }
 
     private async canceled(t: Tournament) {
-        const thread = this.threads.get(t.id);
-        if (thread?.ts) {
-            this.app.client.chat.delete({
-                channel: this.channel, 
-                ts: thread.ts
-            });    
-            this.threads.delete(t.id);
-        }
         // const text =
         //       `:trophy: *${t.name}* has been canceled :face_holding_back_tears:`;
         // const message = messageWithMetadata(t,
