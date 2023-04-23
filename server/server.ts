@@ -62,14 +62,14 @@ app.use(passport.authenticate('session'));
 
 //-----------------------------------------------------------------------------
 
-// if (!config.PRODUCTION) {
-//     app.use((req, res, next) => {
-//         if (!req.isAuthenticated()) {
-//             return req.login({id: 'pablo', name: 'pablo'}, () => next());
-//         }
-//         next();
-//     });
-// }
+if (!config.PRODUCTION) {
+    app.use((req, res, next) => {
+        if (!req.isAuthenticated()) {
+            return req.login({id: 'pablo', name: 'pablo'}, () => next());
+        }
+        next();
+    });
+}
 
 //-----------------------------------------------------------------------------
 

@@ -218,7 +218,8 @@ export default {
       menu: false,
       invitation: undefined,
       interval: undefined,
-      ticks: {}
+      ticks: {},
+      reconnectS: 1
     }
   },
   async fetch () {
@@ -238,35 +239,8 @@ export default {
       this.invitation = invitation
 
       this.tick()
+      this.connect()
 
-      let url = `wss://${window.location.hostname}/api/tournaments/tws`
-      if (process.env.NUXT_ENV_DEV) {
-        url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
-      }
-      this.ws = new WebSocket(url)
-      this.ws.onmessage = (event) => {
-        const message = JSON.parse(event.data)
-        if (message) {
-          const {
-            tournament,
-            drop,
-            tomorrow,
-            invitation
-          } = message
-
-          if (tournament) {
-            this.updateTournament(tournament)
-          } else if (drop === 'invitation') {
-            this.invitation = undefined
-          } else if (drop) {
-            this.dropTournament(drop)
-          } else if (tomorrow) {
-            history.go()
-          } else if (invitation) {
-            this.invitation = invitation
-          }
-        }
-      }
     } catch (error) {
       if (error?.response?.status === 401) {
         const url = `/slack/redirect?to=${encodeURIComponent(window.location)}`
@@ -277,6 +251,52 @@ export default {
     
   },
   methods: {
+    connect () {
+      let url = `wss://${window.location.hostname}/api/tournaments/tws`
+      if (process.env.NUXT_ENV_DEV) {
+        url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
+      }      
+      console.log('connecting...');
+      this.ws = new WebSocket(url)
+      this.ws.onopen = () => {
+        console.log('connected');
+        this.reconnectS = 1
+      
+        this.ws.onmessage = (event) => {
+          const message = JSON.parse(event.data)
+          if (message) {
+            const {
+              tournament,
+              drop,
+              tomorrow,
+              invitation
+            } = message
+
+            if (tournament) {
+              this.updateTournament(tournament)
+            } else if (drop === 'invitation') {
+              this.invitation = undefined
+            } else if (drop) {
+              this.dropTournament(drop)
+            } else if (tomorrow) {
+              history.go()
+            } else if (invitation) {
+              this.invitation = invitation
+            }
+          }
+        }
+      }
+      this.ws.onerror = () => {
+        console.log('ws error')
+        this.ws.close()
+      }
+      this.ws.onclose = () => {
+        console.log('ws close')
+        this.ws = undefined
+        setTimeout(() => this.connect(), this.reconnectS * 1000)
+        this.reconnectS *= 2
+      }
+    },
     nameOf (id) {
       const item = this.users.find(({ value }) => value === id)
       return item?.text
