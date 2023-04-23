@@ -356,7 +356,7 @@ export default {
       }
     },
     td () {
-      window.open('td', '_blank')
+      window.open('/au/td', '_blank')
     },
     tick () {
       if (!this.interval) {
