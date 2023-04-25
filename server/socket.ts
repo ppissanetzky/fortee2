@@ -7,6 +7,8 @@ import type { IncomingMessages } from './incoming-messages';
 import Dispatcher from './dispatcher';
 import { stringify, parse } from './json';
 import GameRoom from './game-room';
+import { NextFunction, Request, Response } from 'express';
+import WsServer from './ws-server';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -23,8 +25,43 @@ interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessage
 
 export default class Socket extends Dispatcher<IncomingMessages> {
 
-    static connected(name: string, ws: WebSocket, gameRoomToken: string): Socket {
-        return new Socket(name, ws, gameRoomToken);
+    static isConnected(userId: string): boolean {
+        return this.connected.has(userId);
+    }
+
+    private static connected = new Set<string>();
+
+    static upgrade() {
+        return async (req: Request, res: Response, next: NextFunction) => {
+            const user = req.user;
+            if (!user) {
+                return res.sendStatus(401);
+            }
+
+            const debug = makeDebug('socket').extend(user.name);
+
+            const { gameRoomToken } = req.session;
+            if (!gameRoomToken) {
+                debug('missing grt');
+                return res.sendStatus(400);
+            }
+
+            if (this.connected.has(user.id)) {
+                debug(`user %j already connected`, user);
+                return res.sendStatus(403);
+            }
+
+            try {
+                const [ws] = await WsServer.get().upgrade(req);
+                this.connected.add(user.id);
+                ws.once('close', () => this.connected.delete(user.id));
+                /** Create a socket for it */
+                new Socket(user.name, ws, gameRoomToken);
+            }
+            catch (error) {
+                next(error);
+            }
+        }
     }
 
     public readonly name: string;

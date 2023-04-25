@@ -2,7 +2,6 @@ import assert from 'node:assert';
 
 import _ from 'lodash';
 import express, { NextFunction, Request, Response } from 'express';
-import { WebSocket } from 'ws';
 
 import Scheduler from './tournament-scheduler';
 import TexasTime from './texas-time';
@@ -10,12 +9,11 @@ import * as db from './tournament-db';
 import Tournament, { State, TournamentRow } from './tournament';
 import { Rules } from './core';
 import { expected, makeDebug } from './utility';
-import WsServer from './ws-server';
 import { TableBuilder } from './table-helper';
 import GameRoom, { Invitation } from './game-room';
 import type { Status } from './tournament-driver';
 import PushServer from './push-server';
-import ms from 'ms';
+import Socket from './socket';
 
 const debug = makeDebug('t-router');
 const ps = new PushServer();
@@ -197,10 +195,7 @@ router.get('/dropout/:id', (req, res) => {
     }
 });
 
-router.get('/tws', async (req, res, next) => {
-    const [ws, user] = await WsServer.get().upgrade(req);
-    ps.connected(user.id, user.name, ws);
-});
+router.get('/tws', ps.upgrade());
 
 function pushUpdate(id: number) {
     const row = db.getTournament(id);
@@ -256,7 +251,7 @@ router.post('/start-game', express.json(), (req, res) => {
     }));
     const rules = validateRules(body.rules);
 
-    if (WsServer.isConnected(user.id)) {
+    if (Socket.isConnected(user.id)) {
         return fail(`You are already connected, maybe you left a tab open?`);
     }
 

@@ -6,6 +6,8 @@ import { WebSocket } from 'ws';
 import { makeDebug } from './utility';
 import type { TournamentUpdate } from './tournament-router';
 import type { Invitation } from './game-room';
+import { NextFunction, Request, Response } from 'express';
+import WsServer from './ws-server';
 
 interface PushMessages {
     /** Sends an object with all users online, key is id, value is name */
@@ -44,6 +46,18 @@ export default class PushServer {
 
     private connections = new Map<string, Connection>();
 
+    public upgrade() {
+        return async (req: Request, res: Response, next: NextFunction) => {
+            try {
+                const [ws, user] = await WsServer.get().upgrade(req);
+                this.connected(user.id, user.name, ws);
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+    }
+
     public has(id: string): boolean {
         return this.connections.has(id);
     }
@@ -59,7 +73,7 @@ export default class PushServer {
         }
     }
 
-    public connected(id: string, name: string, ws: WebSocket) {
+    private connected(id: string, name: string, ws: WebSocket) {
 
         this.debug('connected', id, name);
 

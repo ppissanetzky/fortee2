@@ -240,7 +240,7 @@ export default {
 
       this.tick()
       this.connect()
-      // this.startPings()
+      this.startPings()
     } catch (error) {
       if (error?.response?.status === 401) {
         const url = `/slack/redirect?to=${encodeURIComponent(window.location)}`
@@ -251,39 +251,32 @@ export default {
   },
   methods: {
     startPings () {
+      // send a ping message (not a WS ping)
       setInterval(() => {
         if (this.ws) {
           this.ws.send(JSON.stringify({
-            ping: new Date().toISOString()
+            ping: `c:${new Date().toISOString()}`
           }))
         }
-      }, 60000)
+      }, 3 * 60000)
     },
     connect () {
       let url = `wss://${window.location.hostname}/api/tournaments/tws`
       if (process.env.NUXT_ENV_DEV) {
         url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
       }
-      console.log('connecting...')
       const ws = new WebSocket(url)
       ws.onopen = () => {
-        console.log('connected')
         this.reconnectS = 1
         this.ws = ws
         this.ws.onmessage = (event) => {
-          console.log('message', event)
           const { type, message } = JSON.parse(event.data)
           if (type) {
             this.onMessage(type, message)
           }
         }
       }
-      // ws.onerror = (event) => {
-      //   console.log('ws error', event)
-      //   ws.close()
-      // }
       ws.onclose = (event) => {
-        console.log('ws close', event)
         this.ws = undefined
         setTimeout(() => this.connect(), this.reconnectS * 1000)
         this.reconnectS *= 2

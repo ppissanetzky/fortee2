@@ -18,6 +18,7 @@ import { TableBuilder, User } from './table-helper';
 import { HttpServer } from './http-server';
 import passport from 'passport';
 import tournamentRouter from './tournament-router';
+import Socket from './socket';
 
 const debug = makeDebug('server');
 
@@ -237,12 +238,14 @@ app.get('/play/:token', async (req, res) => {
 
 HttpServer.create(app);
 
-/** Create the WebSocket server */
-
-WsServer.create(app);
-
 /** Connect to Slack */
 
 connectToSlack();
+
+/** Where the game room sockets connect */
+
+app.get('/ws', Socket.upgrade());
+
+/** The tournaments router */
 
 app.use('/api/tournaments', tournamentRouter);
