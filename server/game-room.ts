@@ -67,6 +67,7 @@ export interface GameRoomOptions {
 }
 
 export interface Invitation {
+    id: number;
     text: string;
     url: string;
 }
@@ -193,6 +194,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     get invitation(): Invitation {
         return {
+            id: this.id,
             text: `${this.host} invited you to play a game`,
             url: this.url
         }

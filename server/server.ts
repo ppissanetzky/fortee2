@@ -179,7 +179,7 @@ app.get('/discord/authenticated',
 
 /** Generic redirect to the 'to' query parameter after Slack auth */
 
-app.get('/slack/redirect', 
+app.get('/slack/redirect',
     (req, res, next) => {
         const { to } = req.query;
         if (!(to && _.isString(to))) {
@@ -203,7 +203,7 @@ app.use((req, res, next) => {
         return next();
     }
     debug('unauthenticated', req.url);
-    return res.sendStatus(401);
+    res.sendStatus(401);
 });
 
 /**

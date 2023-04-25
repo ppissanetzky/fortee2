@@ -61,45 +61,33 @@ export default class WsServer {
          * This is where the WebSocket upgrade starts
          */
 
-        app.get('/ws', async (req, res, next) => {
+        app.get('/ws', async (req, res) => {
             const user = req.user;
             if (!user) {
-                return next(status(401));
+                return res.sendStatus(401);
             }
 
             const { gameRoomToken } = req.session;
             if (!gameRoomToken) {
                 this.debug('missing grt');
-                return next(status(400));
+                return res.sendStatus(400);
             }
 
             this.debug('upgrade %j', user);
             if (this.connected.has(user.id)) {
                 this.debug(`user %j already connected`, user);
-                return next(status(403));
+                return res.sendStatus(403);
             }
 
-            try {
-                const ws = await this.upgrade(req);
-                const user = expected(req.user);
-                this.connected.add(user.id);
-                // Create a socket for it
-                Socket.connected(user.name, ws, expected(req.session.gameRoomToken))
-                    .gone.then(() => this.connected.delete(user.id));
-            }
-            catch (error) {
-                next(error);
-            }
+            const [ws] = await this.upgrade(req);
+            this.connected.add(user.id);
+            /** Create a socket for it */
+            Socket.connected(user.name, ws, gameRoomToken)
+                .gone.then(() => this.connected.delete(user.id));
         });
     }
 
-    public async upgrade(req: Request): Promise<WebSocket> {
-        /** Make sure it is an upgrade */
-        const headers = ['connection', 'upgrade'].map((name) =>
-            req.get(name)?.toLowerCase()).join();
-        if (headers !== 'upgrade,websocket') {
-            throw status(400);
-        }
+    public async upgrade(req: Request): Promise<[WebSocket, Express.User]> {
         const { user } = req;
         if (!user) {
             throw status(401);
@@ -121,7 +109,7 @@ export default class WsServer {
             // All good
             this.debug('accepted %j', user);
             this.setupPings(user.name, ws);
-            return ws;
+            return [ws, user];
         }
         catch (error) {
             this.debug('upgrade failed :', error instanceof Error
@@ -130,10 +118,10 @@ export default class WsServer {
         }
     }
 
-    private setupPings(name: string, ws: WebSocket) {
+    public setupPings(name: string, ws: WebSocket) {
         const debug = this.debug.extend(name);
         const interval = setInterval(() => {
-            const data = `s:${makeToken(4, 'hex')}`;
+            const data = `s:${new Date().toISOString()}`;
             debug('-> ping', data);
             ws.ping(data);
         }, ms(config.FT2_PING_INTERVAL));

@@ -27,6 +27,11 @@ export class HttpServer {
             });
         }
 
+        /** Node 18 is busted. Without this, the WS upgrades time out */
+
+        server.requestTimeout = 0;
+        server.headersTimeout = 0;
+
         /** Graceful shutdown for Docker */
 
         process.on('SIGTERM', () => {
