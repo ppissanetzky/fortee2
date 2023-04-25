@@ -240,61 +240,67 @@ export default {
 
       this.tick()
       this.connect()
-
+      this.startPings()
     } catch (error) {
       if (error?.response?.status === 401) {
         const url = `/slack/redirect?to=${encodeURIComponent(window.location)}`
         return window.open(url, '_top')
       }
-      throw error;
+      throw error
     }
-    
   },
   methods: {
+    startPings () {
+      // send a ping message (not a WS ping)
+      setInterval(() => {
+        if (this.ws) {
+          this.ws.send(JSON.stringify({
+            ping: `c:${new Date().toISOString()}`
+          }))
+        }
+      }, 3 * 60000)
+    },
     connect () {
       let url = `wss://${window.location.hostname}/api/tournaments/tws`
       if (process.env.NUXT_ENV_DEV) {
         url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
-      }      
-      console.log('connecting...');
-      this.ws = new WebSocket(url)
-      this.ws.onopen = () => {
-        console.log('connected');
+      }
+      const ws = new WebSocket(url)
+      ws.onopen = () => {
         this.reconnectS = 1
-      
+        this.ws = ws
         this.ws.onmessage = (event) => {
-          const message = JSON.parse(event.data)
-          if (message) {
-            const {
-              tournament,
-              drop,
-              tomorrow,
-              invitation
-            } = message
-
-            if (tournament) {
-              this.updateTournament(tournament)
-            } else if (drop === 'invitation') {
-              this.invitation = undefined
-            } else if (drop) {
-              this.dropTournament(drop)
-            } else if (tomorrow) {
-              history.go()
-            } else if (invitation) {
-              this.invitation = invitation
-            }
+          const { type, message } = JSON.parse(event.data)
+          if (type) {
+            this.onMessage(type, message)
           }
         }
       }
-      this.ws.onerror = () => {
-        console.log('ws error')
-        this.ws.close()
-      }
-      this.ws.onclose = () => {
-        console.log('ws close')
+      ws.onclose = (event) => {
         this.ws = undefined
         setTimeout(() => this.connect(), this.reconnectS * 1000)
         this.reconnectS *= 2
+      }
+    },
+    onMessage (type, message) {
+      switch (type) {
+        case 'online':
+          break
+        case 'tournament':
+          this.updateTournament(message)
+          break
+        case 'drop':
+          this.dropTournament(message)
+          break
+        case 'invitation':
+          this.invitation = message
+          break
+        case 'dropInvitation':
+          this.invitation = undefined
+          break
+        case 'tomorrow':
+          history.go()
+          break
       }
     },
     nameOf (id) {

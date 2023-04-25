@@ -18,6 +18,7 @@ import { TableBuilder, User } from './table-helper';
 import { HttpServer } from './http-server';
 import passport from 'passport';
 import tournamentRouter from './tournament-router';
+import Socket from './socket';
 
 const debug = makeDebug('server');
 
@@ -179,7 +180,7 @@ app.get('/discord/authenticated',
 
 /** Generic redirect to the 'to' query parameter after Slack auth */
 
-app.get('/slack/redirect', 
+app.get('/slack/redirect',
     (req, res, next) => {
         const { to } = req.query;
         if (!(to && _.isString(to))) {
@@ -203,7 +204,7 @@ app.use((req, res, next) => {
         return next();
     }
     debug('unauthenticated', req.url);
-    return res.sendStatus(401);
+    res.sendStatus(401);
 });
 
 /**
@@ -237,12 +238,14 @@ app.get('/play/:token', async (req, res) => {
 
 HttpServer.create(app);
 
-/** Create the WebSocket server */
-
-WsServer.create(app);
-
 /** Connect to Slack */
 
 connectToSlack();
+
+/** Where the game room sockets connect */
+
+app.get('/ws', Socket.upgrade());
+
+/** The tournaments router */
 
 app.use('/api/tournaments', tournamentRouter);

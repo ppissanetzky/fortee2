@@ -1,12 +1,14 @@
-import assert from 'node:assert';
-
-import type { Express, Request } from 'express';
+import type { Request } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import ms from 'ms';
 
-import { expected, makeDebug, makeToken } from './utility';
-import Socket from './socket';
+import { makeDebug } from './utility';
 import config from './config';
+
+/**
+ * This is an exception that Express treats as an HTTP error because it has
+ * a 'status' property
+ */
 
 class StatusError extends Error {
     constructor(public readonly status: number) {
@@ -22,19 +24,11 @@ function status(status: number) {
 
 export default class WsServer {
 
-    static create(app: Express) {
-        assert(!this.instance);
-        this.instance = new WsServer(app);
-    }
-
     static get(): WsServer {
-        const { instance } = this;
-        assert(instance);
-        return instance;
-    }
-
-    static isConnected(userId: string): boolean {
-        return this.get().connected.has(userId);
+        if (!this.instance) {
+            this.instance = new WsServer();
+        }
+        return this.instance;
     }
 
     private static instance?: WsServer;
@@ -43,63 +37,15 @@ export default class WsServer {
 
     private readonly wss: WebSocketServer;
 
-    /**
-     * A set of all the connected user IDs - not names. So we can make
-     * sure the same ID is only connected once.
-     */
-
-    private readonly connected = new Set<string>();
-
-    private constructor(app: Express) {
+    private constructor() {
         // From https://github.com/websockets/ws/blob/master/examples/express-session-parse/index.js
         this.wss = new WebSocketServer({
             clientTracking: false,
             noServer: true
         });
-
-        /**
-         * This is where the WebSocket upgrade starts
-         */
-
-        app.get('/ws', async (req, res, next) => {
-            const user = req.user;
-            if (!user) {
-                return next(status(401));
-            }
-
-            const { gameRoomToken } = req.session;
-            if (!gameRoomToken) {
-                this.debug('missing grt');
-                return next(status(400));
-            }
-
-            this.debug('upgrade %j', user);
-            if (this.connected.has(user.id)) {
-                this.debug(`user %j already connected`, user);
-                return next(status(403));
-            }
-
-            try {
-                const ws = await this.upgrade(req);
-                const user = expected(req.user);
-                this.connected.add(user.id);
-                // Create a socket for it
-                Socket.connected(user.name, ws, expected(req.session.gameRoomToken))
-                    .gone.then(() => this.connected.delete(user.id));
-            }
-            catch (error) {
-                next(error);
-            }
-        });
     }
 
-    public async upgrade(req: Request): Promise<WebSocket> {
-        /** Make sure it is an upgrade */
-        const headers = ['connection', 'upgrade'].map((name) =>
-            req.get(name)?.toLowerCase()).join();
-        if (headers !== 'upgrade,websocket') {
-            throw status(400);
-        }
+    public async upgrade(req: Request): Promise<[WebSocket, Express.User]> {
         const { user } = req;
         if (!user) {
             throw status(401);
@@ -108,20 +54,33 @@ export default class WsServer {
         if (!(id && name)) {
             throw status(401);
         }
-        // Upgrade to a ws
+        /** A bug in WS, if the header is not present, it throws a type error */
+        if (!req.headers.upgrade) {
+            throw status(400);
+        }
+        /** Upgrade */
         try {
             const ws = await new Promise<WebSocket>((resolve, reject) => {
+                const { socket } = req;
                 const head = Buffer.alloc(0);
-                this.wss.once('wsClientError', reject);
-                this.wss.handleUpgrade(req, req.socket, head, (ws) => {
-                    this.wss.off('wsClientError', reject);
+                /**
+                 * If the upgrade fails for some reason, the callback is never
+                 * invoked and, instead, the server closes the socket.
+                 * The 'finish' event is the only indication. If it succeeds,
+                 * the callback is invoked, so we remove the 'finish' listener
+                 */
+
+                socket.once('finish', reject);
+
+                this.wss.handleUpgrade(req, socket, head, (ws) => {
+                    socket.off('finish', reject);
                     resolve(ws);
                 });
             });
             // All good
             this.debug('accepted %j', user);
             this.setupPings(user.name, ws);
-            return ws;
+            return [ws, user];
         }
         catch (error) {
             this.debug('upgrade failed :', error instanceof Error
@@ -133,7 +92,7 @@ export default class WsServer {
     private setupPings(name: string, ws: WebSocket) {
         const debug = this.debug.extend(name);
         const interval = setInterval(() => {
-            const data = `s:${makeToken(4, 'hex')}`;
+            const data = `s:${new Date().toISOString()}`;
             debug('-> ping', data);
             ws.ping(data);
         }, ms(config.FT2_PING_INTERVAL));
@@ -154,6 +113,9 @@ export default class WsServer {
                     pong: message.ping
                 }));
             }
+        });
+        ws.on('error', (error) => {
+            debug('error', error);
         });
     }
 }

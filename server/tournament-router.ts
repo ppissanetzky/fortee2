@@ -2,7 +2,6 @@ import assert from 'node:assert';
 
 import _ from 'lodash';
 import express, { NextFunction, Request, Response } from 'express';
-import { WebSocket } from 'ws';
 
 import Scheduler from './tournament-scheduler';
 import TexasTime from './texas-time';
@@ -10,12 +9,14 @@ import * as db from './tournament-db';
 import Tournament, { State, TournamentRow } from './tournament';
 import { Rules } from './core';
 import { expected, makeDebug } from './utility';
-import WsServer from './ws-server';
-import { TableBuilder, User } from './table-helper';
+import { TableBuilder } from './table-helper';
 import GameRoom, { Invitation } from './game-room';
-import { get } from 'node:https';
+import type { Status } from './tournament-driver';
+import PushServer from './push-server';
+import Socket from './socket';
 
 const debug = makeDebug('t-router');
+const ps = new PushServer();
 
 const router = express.Router();
 
@@ -37,10 +38,40 @@ const scheduler = Scheduler.get();
 
 type Signups = Map<number, string | null>;
 
-function externalT(user: Express.User, signups: Signups, row: db.TournamentRowWithCount) {
+export interface TournamentUpdate extends Partial<Status> {
+    id: number;
+    name: string;
+    startTime: string;
+    utcStartTime: number;
+    openTime: string;
+    closeTime: string;
+    utcCloseTime: number;
+    choosePartner: boolean;
+    rules: string[];
+    /** How many players are signed up for this one */
+    count: number;
+    /** The state of the tourney, only one will be true */
+    open: boolean;
+    wts: boolean;
+    playing: boolean;
+    canceled: boolean;
+    done: boolean;
+    later: boolean;
+    /** The winners */
+    winners?: string[];
+    /** Player specific */
+    signedUp: boolean;
+    partner: string | null;
+}
+
+function tournamentUpdate(
+    userId: string,
+    signups: Signups,
+    row: db.TournamentRowWithCount) : TournamentUpdate
+{
     const t = new Tournament(row);
     const driver = Scheduler.driver(t.id);
-    const status = driver?.statusFor(user.id) || {};
+    const status = driver?.statusFor(userId) || {};
     return {
         id: t.id,
         name: t.name,
@@ -88,7 +119,7 @@ router.get('/', async (req, res) => {
     delete users[user.id];
     const signups = db.getSignupsForUser(today, user.id)
     const tournaments = db.getTournaments(today, 4)
-        .map((row) => externalT(user, signups, row));
+        .map((row) => tournamentUpdate(user.id, signups, row));
     const invitation = getInvitationFor(user)
     res.json({
         users,
@@ -122,7 +153,7 @@ router.get('/signup/:id/:partner', (req, res) => {
         db.addSignup(t.id, user.id, partner);
 
         const signups = new Map<number, string | null>([[t.id, partner]]);
-        res.json({tournament: externalT(user, signups,
+        res.json({tournament: tournamentUpdate(user.id, signups,
             expected(db.getTournament(id)))});
     }
     catch (error) {
@@ -153,7 +184,7 @@ router.get('/dropout/:id', (req, res) => {
         db.deleteSignup(id, user.id);
 
         const signups = new Map();
-        res.json({tournament: externalT(user, signups,
+        res.json({tournament: tournamentUpdate(user.id, signups,
             expected(db.getTournament(id)))});
     }
     catch (error) {
@@ -164,31 +195,7 @@ router.get('/dropout/:id', (req, res) => {
     }
 });
 
-const sockets = new Map<WebSocket, Express.User>();
-
-function socketsFor(userId: string): WebSocket[] | undefined {
-    const result: WebSocket[] = [];
-    for (const [ws, user] of sockets.entries()) {
-        if (user.id === userId) {
-            result.push(ws);
-        }
-    }
-    if (result.length > 0) {
-        return result;
-    }
-}
-
-router.get('/tws', async (req, res, next) => {
-    try {
-        const ws = await WsServer.get().upgrade(req);
-        const user = expected(req.user);
-        sockets.set(ws, user);
-        ws.once('close', () => sockets.delete(ws));
-    }
-    catch (error) {
-        next(error);
-    }
-});
+router.get('/tws', ps.upgrade());
 
 function pushUpdate(id: number) {
     const row = db.getTournament(id);
@@ -197,35 +204,14 @@ function pushUpdate(id: number) {
         return;
     }
     const allSignups = db.getSignups(id);
-    for (const [ws, user] of sockets.entries()) {
+    ps.forEach('tournament', (userId: string) => {
         const signups = new Map<number, string | null>();
-        if (allSignups.has(user.id)) {
-            signups.set(id, allSignups.get(user.id) || null);
+        const partner = allSignups.get(userId);
+        if (!_.isUndefined(partner)) {
+            signups.set(id, partner);
         }
-        const tournament = externalT(user, signups, row);
-        debug('push update', id, 'to', user.id, user.name);
-        ws.send(JSON.stringify({tournament}));
-    }
-}
-
-function push(thing: Record<string, any>) {
-    debug('push %j', thing);
-    for (const ws of sockets.keys()) {
-        ws.send(JSON.stringify(thing));
-    }
-}
-
-function pushToUser(user: Express.User, thing: Record<string, any>): boolean {
-    const sockets = socketsFor(user.id);
-    if (sockets) {
-        const message = JSON.stringify(thing);
-        sockets.forEach((ws) => {
-            debug('push to %s %j', user.name, thing);
-            ws.send(message);
-        });
-        return true;
-    }
-    return false;
+        return tournamentUpdate(userId, signups, row);
+    });
 }
 
 scheduler.on('registered', ({t}) => pushUpdate(t.id));
@@ -238,8 +224,8 @@ scheduler.on('started', ({id}) => pushUpdate(id));
 scheduler.on('gameOver', ({t}) => pushUpdate(t.id));
 scheduler.on('tournamentOver', ({t}) => pushUpdate(t.id));
 
-scheduler.on('dropped', (id) => push({drop: id}));
-scheduler.on('newDay', () => push({tomorrow: 1}));
+scheduler.on('dropped', (id) => ps.pushToAll('drop', id));
+scheduler.on('newDay', () => ps.pushToAll('tomorrow', undefined));
 
 // TODO: these could be sent only to the interested parties
 
@@ -265,12 +251,12 @@ router.post('/start-game', express.json(), (req, res) => {
     }));
     const rules = validateRules(body.rules);
 
-    if (WsServer.isConnected(user.id)) {
+    if (Socket.isConnected(user.id)) {
         return fail(`You are already connected, maybe you left a tab open?`);
     }
 
     for (const user of users.values()) {
-        if (!socketsFor(user.id)) {
+        if (!ps.has(user.id)) {
             return fail(`${user.name} is not here, ask them to come to this site`);
         }
     }
@@ -284,18 +270,10 @@ router.post('/start-game', express.json(), (req, res) => {
 
     const room = new GameRoom({rules, table});
 
-    for (const other of users.values()) {
-        if (other.id !== user.id) {
-            pushToUser(other, {
-                invitation: room.invitation
-            });
-        }
-    }
+    ps.pushToMany(table.otherIds, 'invitation', room.invitation);
 
     room.gone.then(() => {
-        for (const other of users.values()) {
-            pushToUser(other, {drop: 'invitation'});
-        }
+        ps.pushToMany(table.ids, 'dropInvitation', room.id);
     });
 
     res.json({url: room.url});
