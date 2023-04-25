@@ -65,14 +65,15 @@ export default class WsServer {
                 const head = Buffer.alloc(0);
                 /**
                  * If the upgrade fails for some reason, the callback is never
-                 * invoked and, instead, the server closes the socket. This is
-                 * the only indication
+                 * invoked and, instead, the server closes the socket.
+                 * The 'finish' event is the only indication. If it succeeds,
+                 * the callback is invoked, so we remove the 'finish' listener
                  */
-                const finish = () => reject(new Error('Upgrade failed'));
-                socket.on('finish', () => finish);
+
+                socket.once('finish', reject);
 
                 this.wss.handleUpgrade(req, socket, head, (ws) => {
-                    socket.off('finish', finish);
+                    socket.off('finish', reject);
                     resolve(ws);
                 });
             });
