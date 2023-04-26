@@ -382,7 +382,7 @@ export default {
       }
     },
     td () {
-      window.open('/au/td', '_blank')
+      window.open('/td', '_blank')
     },
     tick () {
       if (!this.interval) {

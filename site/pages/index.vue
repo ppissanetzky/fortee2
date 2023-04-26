@@ -10,7 +10,7 @@
         color="#0049bd"
         class="mr-6"
         height="40"
-        @click="$router.push('/au/tournaments')"
+        @click="$router.push('/main')"
       >
         PLAY
       </v-btn>

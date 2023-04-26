@@ -111,9 +111,9 @@ export default class SlackTournamentMessenger {
         const thread = this.threads.get(id);
         if (thread?.ts) {
             await this.app.client.chat.delete({
-                channel: this.channel, 
+                channel: this.channel,
                 ts: thread.ts
-            });    
+            });
             this.threads.delete(id);
         }
     }
@@ -273,7 +273,7 @@ export default class SlackTournamentMessenger {
     private async signupOpen(t: Tournament) {
         const text =
               `:trophy: *${t.name}* starts at ${t.startTime}\n`
-            + '> <https://fortee2.com/au/tournaments|Click here to sign up>';
+            + '> <https://fortee2.com/main|Click here to sign up>';
         const message = messageWithMetadata(t,
             Message({channel: this.channel})
                 .text(text)
