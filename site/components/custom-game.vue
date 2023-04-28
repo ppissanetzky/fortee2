@@ -2,7 +2,7 @@
   <v-card>
     <v-toolbar flat color="#8fa5b7">
       <v-toolbar-title class="white--text pl-1">
-        <strong>Custom game</strong>
+        <strong>Start a game</strong>
       </v-toolbar-title>
     </v-toolbar>
     <div class="px-2">
@@ -69,6 +69,7 @@ export default {
   },
   data () {
     return {
+      dialog: false,
       loading: false,
       error: undefined,
 
@@ -101,7 +102,7 @@ export default {
             this.error = undefined
           }, 5000)
         } else if (url) {
-          window.open(url, '_self')
+          window.open(url, '_blank')
         }
       } finally {
         this.loading = false

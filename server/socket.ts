@@ -56,7 +56,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 this.connected.add(user.id);
                 ws.once('close', () => this.connected.delete(user.id));
                 /** Create a socket for it */
-                new Socket(user.name, ws, gameRoomToken);
+                new Socket(user.id, user.name, ws, gameRoomToken);
             }
             catch (error) {
                 next(error);
@@ -64,6 +64,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         }
     }
 
+    public readonly userId: string;
     public readonly name: string;
 
     /**
@@ -89,8 +90,9 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     private readonly debug = makeDebug('socket');
     private readonly ws: WebSocket;
 
-    private constructor(name: string, ws: WebSocket, gameRoomToken: string) {
+    private constructor(userId: string, name: string, ws: WebSocket, gameRoomToken: string) {
         super();
+        this.userId = userId;
         this.name = name;
         this.debug = this.debug.extend(name);
         this.ws = ws;

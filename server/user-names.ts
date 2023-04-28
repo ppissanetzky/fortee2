@@ -48,7 +48,7 @@ export default class UserNames {
         debug('saved "%s" "%s"', id, name);
     }
 
-    static async get(id?: string): Promise<string | void> {
+    static async get(id?: string | null): Promise<string | void> {
         if (!id) {
             return;
         }

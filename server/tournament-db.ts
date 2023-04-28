@@ -1,7 +1,7 @@
 import _ from 'lodash';
 
 import { Database, Params } from './db';
-import { TournamentRow } from './tournament';
+import type { TournamentRow, Signups } from './tournament';
 import TexasTime from './texas-time';
 
 export interface TournamentRowWithCount extends TournamentRow {
@@ -9,6 +9,7 @@ export interface TournamentRowWithCount extends TournamentRow {
 }
 
 export interface UserInfo {
+    id: string;
     name: string;
     prefs: Record<string, any>;
     roles: string[];
@@ -28,7 +29,7 @@ export function run(query: string, params?: Params) {
     return database.run(query, params);
 }
 
-export function getSignups(id: number): Map<string, string | null> {
+export function getSignups(id: number): Signups {
     return new Map(database
         .all('SELECT user, partner FROM signups WHERE id = $id', { id })
         .map(({user, partner}) => [user, partner]));
@@ -81,6 +82,7 @@ export function getTournaments(date: TexasTime, limit: number): TournamentRowWit
         FROM tournaments, counts
         WHERE
             date(start_dt) = date($date)
+            AND time(start_dt) >= time($date, '-10 minutes')
             AND recurring = 0
             AND (finished = 0
                 OR (finished = 1 AND datetime('now') < datetime(lmdtm, '+10 minutes'))
@@ -120,6 +122,7 @@ export function getUser(id: string): UserInfo | undefined {
         'SELECT name, roles, prefs FROM users WHERE id = $id', { id });
     if (row) {
         return {
+            id,
             name: row.name,
             prefs: row.prefs ? JSON.parse(row.prefs) : {},
             roles: row.roles ? row.roles.split(',') : []

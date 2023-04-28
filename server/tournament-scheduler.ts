@@ -70,7 +70,7 @@ interface SchedulerEvents extends TournamentDriverEvents {
     registered: {
         t: Tournament;
         user: string;
-        partner?: string;
+        partner?: string | null;
     },
     unregistered: {
         t: Tournament;
@@ -306,7 +306,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         }
     }
 
-    public register(id: number, user: string, partner = ''): [Tournament, boolean] {
+    public register(id: number, user: string, partner: string | null): [Tournament, boolean] {
         assert(user);
         const t = this.tourneys.get(id);
         assert(t, `Invalid tournament ${id}`);
@@ -328,12 +328,12 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         }
 
         /** Check to see if it already exists */
-        if (db.signupExists(id, user, partner)) {
+        if (t.isSignedUpWith(user, partner)) {
             return [t, false];
         }
 
         /** In the DB */
-        db.addSignup(id, user, partner);
+        t.register(user, partner);
 
         /** To prime the user names database */
         UserNames.get(user);
@@ -353,7 +353,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup not open for ${id}`);
         assert(t.isSignedUp(user), `Not signed up for ${id}`);
-        if (!db.deleteSignup(id, user)) {
+        if (!t.unregister(user)) {
             return [t, false];
         }
         this.emit('unregistered', {

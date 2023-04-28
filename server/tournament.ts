@@ -1,4 +1,6 @@
 
+import _ from 'lodash';
+
 import TexasTime from './texas-time';
 import * as db from './tournament-db';
 
@@ -58,12 +60,19 @@ export const enum State {
     LATER    = 'later',
 }
 
+export type Signups = Map<string, string | null>;
+
 export default class Tournament implements Readonly<TournamentRow> {
 
     private row: TournamentRow;
 
+    #signups?: Signups;
+
+    public readonly utcStartTime: number;
+
     constructor(row: TournamentRow) {
         this.row = row;
+        this.utcStartTime = TexasTime.toUTC(this.row.start_dt);
     }
 
     toJSON() {
@@ -114,10 +123,6 @@ export default class Tournament implements Readonly<TournamentRow> {
 
     get utcCloseTime(): number {
         return TexasTime.toUTC(this.signup_end_dt);
-    }
-
-    get utcStartTime(): number {
-        return TexasTime.toUTC(this.start_dt);
     }
 
     get minutesTilOpen(): number {
@@ -219,12 +224,32 @@ export default class Tournament implements Readonly<TournamentRow> {
         return this;
     }
 
-    signups() {
-        return db.getSignups(this.id);
+    get signups(): Signups {
+        if (!this.#signups) {
+            this.#signups = db.getSignups(this.id);
+        }
+        return this.#signups;
     }
 
-    isSignedUp(user: string) {
-        return db.isSignedUp(this.id, user);
+    register(userId: string, partner?: string | null): void {
+        db.addSignup(this.id, userId, partner);
+        this.signups.set(userId, partner || null);
     }
 
+    unregister(userId: string): boolean {
+        db.deleteSignup(this.id, userId);
+        return this.signups.delete(userId);
+    }
+
+    isSignedUpWith(userId: string, partner: string | null): boolean {
+        const existing = this.signups.get(userId);
+        if (_.isUndefined(existing)) {
+            return false;
+        }
+        return existing === (partner || null);
+    }
+
+    isSignedUp(userId: string): boolean {
+        return this.signups.has(userId);
+    }
 }

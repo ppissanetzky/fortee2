@@ -4,10 +4,11 @@ import _ from 'lodash';
 import { WebSocket } from 'ws';
 
 import { makeDebug } from './utility';
-import type { TournamentUpdate } from './tournament-router';
+import type { TableUpdate, TournamentUpdate } from './tournament-pusher';
 import type { Invitation } from './game-room';
 import { NextFunction, Request, Response } from 'express';
 import WsServer from './ws-server';
+import Dispatcher from './dispatcher';
 
 interface PushMessages {
     /** Sends an object with all users online, key is id, value is name */
@@ -16,18 +17,11 @@ interface PushMessages {
     /** A tournament update */
     tournament: TournamentUpdate;
 
-    /** A tournament got dropped from the lineup */
-    drop: number;
+    /** An updated list of tournaments */
+    tournaments: TournamentUpdate[];
 
-    /** A new day is upon us */
-    tomorrow: undefined;
-
-    /** A game room invitation */
-    invitation: Invitation;
-
-    /** A room invitation is gone */
-    dropInvitation: number;
-
+    /** Table status, empty, t, hosting or invited */
+    table: TableUpdate;
 }
 
 interface Connection {
@@ -40,7 +34,12 @@ type Key = keyof PushMessages;
 
 type ForEachCallback<T extends Key> = (id: string) => PushMessages[T] | undefined;
 
-export default class PushServer {
+interface PushServerEvents {
+    /** The user ID of a new connection */
+    connected: string;
+}
+
+export default class PushServer extends Dispatcher<PushServerEvents> {
 
     private debug = makeDebug('push');
 
@@ -97,6 +96,8 @@ export default class PushServer {
             this.connections.set(id, { id, name, sockets: new Set([ws]) });
             this.pushOnline();
         }
+
+        this.emit('connected', id);
     }
 
     private pushOnline() {
@@ -111,7 +112,7 @@ export default class PushServer {
     public pushToAll<T extends Key>(type: T, message: PushMessages[T]) {
         const payload = JSON.stringify({ type, message });
         for (const c of this.connections.values()) {
-            this.debug('push', c.id, c.name, type);
+            this.debug('=>', c.id, c.name, type);
             for (const ws of c.sockets.values()) {
                 ws.send(payload);
             }
@@ -125,7 +126,7 @@ export default class PushServer {
         const list = ids.map((id) => this.connections.get(id));
         for (const c of list) {
             if (c) {
-                this.debug('push', c.id, c.name, type);
+                this.debug('=>', c.id, c.name, type);
                 for (const ws of c.sockets.values()) {
                     ws.send(payload);
                 }
@@ -143,7 +144,7 @@ export default class PushServer {
         for (const c of this.connections.values()) {
             const message = cb(c.id);
             if (message) {
-                this.debug('push', c.id, c.name, type);
+                this.debug('=>', c.id, c.name, type);
                 const payload = JSON.stringify({type, message});
                 for (const ws of c.sockets.values()) {
                     ws.send(payload);
@@ -151,5 +152,4 @@ export default class PushServer {
             }
         }
     }
-
 }

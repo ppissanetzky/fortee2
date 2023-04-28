@@ -398,7 +398,7 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
 
     private pickTeams(): [Team[], string | undefined] {
         /** Get the signups in a map of user/partner and shuffle it */
-        const signups = new Map(_.shuffle(Array.from(this.t.signups().entries())));
+        const signups = new Map(_.shuffle(Array.from(this.t.signups.entries())));
 
         /** No one signed up, we're done */
         if (signups.size === 0) {

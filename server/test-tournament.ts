@@ -49,7 +49,7 @@ for (let i = 0; i < 1; i++) {
     signups.push(`P${i}`);
 }
 
-t.signups = () => new Map(signups.map((n) => s(n)));
+//t.signups = () => new Map(signups.map((n) => s(n)));
 
 for (const id of signups) {
     UserNames.put(id, id);

@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import _ from 'lodash';
+import GameRoom from './game-room';
 
 interface Position {
     me: number;
@@ -84,7 +85,7 @@ type Name = string;
 
 export interface User {
     id: UserId;
-    name?: Name;
+    name: Name;
 }
 
 type Table = (User | null)[];
@@ -222,5 +223,10 @@ export class TableBuilder {
             }
         }
         return null;
+    }
+
+    users(): User[] {
+        return this.table.filter((user) =>
+            user && !GameRoom.isBot(user.id)) as User[];
     }
 }

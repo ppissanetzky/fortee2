@@ -51,6 +51,13 @@ export interface OutgoingGameRoomMessages {
     leftGameRoom: RoomUpdate & {
         name: string;
     }
+
+    /** A user declined the invitation */
+
+    declined: {
+        id: string;
+        name: string;
+    }
 }
 
 export interface StartingGame {

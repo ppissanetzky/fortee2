@@ -9,7 +9,6 @@ import Tournament from './tournament';
 import Scheduler from './tournament-scheduler';
 import { makeDebug } from './utility';
 import { AnnounceBye, SummonTable, TournamentOver } from './tournament-driver';
-import { startRoomConversation } from './slack';
 import GameRoom from './game-room';
 import ms from 'ms';
 
@@ -354,13 +353,13 @@ export default class SlackTournamentMessenger {
         if (partner) {
             text += ` with <@${partner}>`;
         }
-        text += `\nWe have ${t.signups().size}`;
+        text += `\nWe have ${t.signups.size}`;
         this.postThreadReply(t, text);
     }
 
     private async unregistered({t, user}: {t: Tournament, user: string}) {
         let text = `<@${user}> dropped out`;
-        text += `\nWe have ${t.signups().size || 'no one'}`;
+        text += `\nWe have ${t.signups.size || 'no one'}`;
         this.postThreadReply(t, text);
     }
 
@@ -370,11 +369,11 @@ export default class SlackTournamentMessenger {
         this.postThreadReply(t, text);
     }
 
-    private async summonTable(event: SummonTable) {
-        const { t, round, room } = event;
-        const text = `It's time for round ${round} of *${t.name}*!`;
-        startRoomConversation(room, text);
-    }
+    // private async summonTable(event: SummonTable) {
+    //     const { t, round, room } = event;
+    //     const text = `It's time for round ${round} of *${t.name}*!`;
+    //     startRoomConversation(room, text);
+    // }
 
     private async tournamentOver(event: TournamentOver) {
         const { t, winners } = event;

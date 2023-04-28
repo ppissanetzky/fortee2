@@ -2,6 +2,8 @@
   <div class="ma-3">
     <v-card
       color="#0049bd"
+      tile
+      flat
       class="mb-3"
       min-width="375"
     >
@@ -21,30 +23,10 @@
         </v-btn>
 
         <v-spacer />
-        <v-btn outlined small color="white" class="mr-3" @click="quickGame()">
-          quick game
-        </v-btn>
-        <v-menu
-          v-model="menu"
-          :close-on-content-click="false"
-        >
-          <template #activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              outlined
-              small
-              color="white"
-              class="mr-9"
-              v-on="on"
-            >
-              custom game
-            </v-btn>
-          </template>
-          <custom-game :users="users" />
-        </v-menu>
         <v-img contain max-width="300" src="/logo.png" />
       </v-toolbar>
     </v-card>
+    <!-- OLD -->
     <v-card
       v-if="invitation"
       outlined
@@ -68,9 +50,88 @@
       </v-card-title>
     </v-card>
     <div>
+      <v-card flat tile outlined class="mb-3">
+        <div v-if="!table.status">
+          <v-card-title class="ml-0">
+            Play with bots or invite others to play
+            <v-spacer />
+            <v-btn
+              outlined
+              color="#0049bd"
+              @click="dialog = true"
+            >
+              start a game
+            </v-btn>
+          </v-card-title>
+        </div>
+        <div v-else-if="table.status === 't'">
+          <v-card-title class="ml-0">
+            Your tournament table is ready
+            <v-spacer />
+            <v-btn
+              outlined
+              color="#0049bd"
+              @click="openUrl(table.url)"
+            >
+              play
+            </v-btn>
+          </v-card-title>
+        </div>
+        <div v-else-if="table.status === 'hosting'">
+          <v-card-title class="ml-0">
+            You started a game {{ tableWith() }}
+            <v-spacer />
+            <v-btn
+              outlined
+              color="red"
+              @click="decline"
+            >
+              close
+            </v-btn>
+          </v-card-title>
+        </div>
+        <div v-else-if="table.status === 'invited'">
+          <v-card-title class="ml-0">
+            You've been invited to play {{ tableWith() }}
+            <v-spacer />
+            <v-btn
+              outlined
+              color="#0049bd"
+              class="mr-2"
+              @click="openUrl(table.url)"
+            >
+              play
+            </v-btn>
+            <v-btn
+              outlined
+              color="red"
+              @click="decline"
+            >
+              decline
+            </v-btn>
+          </v-card-title>
+        </div>
+      </v-card>
+
+      <v-card v-if="users.length > 0" flat tile outlined class="mb-3">
+        <v-card-title class="ml-0 mt-2">
+          <v-chip
+            v-for="name in users.map(({text}) => text).sort()"
+            :key="name"
+            label
+            color="green darken-3"
+            class="mr-2 mb-2 white--text"
+          >
+            {{ name }}
+          </v-chip>
+        </v-card-title>
+      </v-card>
       <v-card
         v-for="t in today"
         :key="t.id"
+        tile
+        flat
+        outlined
         min-width="375"
         color="#c0d4e5"
         class="mb-3"
@@ -80,9 +141,9 @@
           <v-icon color="black" class="pr-2">
             mdi-trophy
           </v-icon>
-          <h2>{{ t.name }}</h2>
+          <h3>{{ t.name }}</h3>
           <v-spacer />
-          <h2>{{ t.startTime }}</h2>
+          <h3>{{ t.startTime }}</h3>
         </v-toolbar>
 
         <!-- RULES AND INDICATOR -->
@@ -184,7 +245,7 @@
             You drew a <strong>bye</strong>, please wait for your first game
           </span>
           <span v-else-if="t.hasRoom">
-            Your partner is <strong>{{ partner(t) }}</strong>
+            Your partner is <strong>{{ partnerIn(t) }}</strong>
             and you're playing against
             <strong>{{ others(t)[0] }}</strong> and
             <strong>{{ others(t)[1] }}</strong>
@@ -196,7 +257,7 @@
             color="green"
             class="mr-2"
             height="40"
-            @click="goToTable(t.url)"
+            @click="openUrl(t.url)"
           >
             go to your table
           </v-btn>
@@ -204,18 +265,106 @@
         <v-sheet v-if="t.open || (t.isOn && t.signedUp)" height="12" />
       </v-card>
     </div>
+    <!-- THE DIALOG TO START A GAME -->
+    <v-dialog v-model="dialog">
+      <v-card>
+        <v-toolbar flat color="#8fa5b7">
+          <v-toolbar-title class="white--text pl-1">
+            <strong>Start a game</strong>
+          </v-toolbar-title>
+          <v-spacer />
+          <v-btn small icon color="white" class="mr-1" @click="dialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <div class="px-2">
+          <div class="pa-3">
+            Choose other players to invite, or leave them blank to play with bots
+          </div>
+          <v-card-actions>
+            <v-select
+              v-model="left"
+              dense
+              hide-details
+              outlined
+              label="left"
+              :items="users"
+              clearable
+              class="mr-2"
+            />
+            <v-select
+              v-model="partner"
+              dense
+              hide-details
+              outlined
+              label="partner"
+              :items="users"
+              clearable
+              class="mr-2"
+            />
+            <v-select
+              v-model="right"
+              dense
+              hide-details
+              outlined
+              label="right"
+              :items="users"
+              clearable
+            />
+          </v-card-actions>
+          <Rules v-model="rules" />
+          <v-card-actions class="py-6">
+            <div class="red--text">
+              <strong>{{ error }}</strong>
+            </div>
+            <v-spacer />
+            <v-btn
+              outlined
+              color="#0049bd"
+              :disabled="!!error"
+              :loading="loading"
+              @click="play"
+            >
+              play
+            </v-btn>
+          </v-card-actions>
+        </div>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 <script>
+function format (t) {
+  const ms = t - Date.now()
+  if (ms > 0) {
+    const time = {
+      h: Math.floor(ms / 3600000) % 24,
+      m: Math.floor(ms / 60000) % 60,
+      s: Math.floor(ms / 1000) % 60
+    }
+    return Object.entries(time)
+      .filter(val => val[1] !== 0)
+      .map(([key, val]) => `${val}${key}`)
+      .join(' ')
+  }
+}
 export default {
   data () {
     return {
       you: {},
       today: [],
       users: [],
+      table: {},
+      // For the play dialog
+      dialog: false,
+      error: undefined,
+      partner: undefined,
+      left: undefined,
+      right: undefined,
+      rules: undefined,
+      // Other
       loading: false,
       ws: undefined,
-      menu: false,
       invitation: undefined,
       interval: undefined,
       ticks: {},
@@ -224,23 +373,10 @@ export default {
   },
   async fetch () {
     try {
-      const {
-        users,
-        tournaments,
-        you,
-        invitation
-      } = await this.$axios.$get('/api/tournaments')
-      this.users = Object.keys(users).map(key => ({ value: key, text: users[key] }))
-      for (const t of tournaments) {
-        t.newPartner = t.partner
-      }
-      this.today = tournaments
-      this.you = you
-      this.invitation = invitation
-
-      this.tick()
+      this.you = await this.$axios.$get('/api/tournaments/me')
       this.connect()
       this.startPings()
+      this.tick()
     } catch (error) {
       if (error?.response?.status === 401) {
         const url = `/slack/redirect?to=${encodeURIComponent(window.location)}`
@@ -279,27 +415,24 @@ export default {
       ws.onclose = (event) => {
         this.ws = undefined
         setTimeout(() => this.connect(), this.reconnectS * 1000)
-        this.reconnectS *= 2
+        this.reconnectS = Math.min(this.reconnectS * 2, 20)
       }
     },
     onMessage (type, message) {
       switch (type) {
         case 'online':
+          this.users = Object.keys(message)
+            .filter(key => key !== this.you.id)
+            .map(key => ({ value: key, text: message[key] }))
+          break
+        case 'tournaments':
+          this.today = message
           break
         case 'tournament':
           this.updateTournament(message)
           break
-        case 'drop':
-          this.dropTournament(message)
-          break
-        case 'invitation':
-          this.invitation = message
-          break
-        case 'dropInvitation':
-          this.invitation = undefined
-          break
-        case 'tomorrow':
-          history.go()
+        case 'table':
+          this.table = message
           break
       }
     },
@@ -307,28 +440,72 @@ export default {
       const item = this.users.find(({ value }) => value === id)
       return item?.text
     },
+    tableWith () {
+      const w = this.table.with
+      if (!w) {
+        return ''
+      } else if (w.length === 0) {
+        return 'with bots'
+      }
+      return w.reduce((result, { name }, index) => {
+        if (index === 0) {
+          result += name
+        } else if (index === w.length - 1) {
+          result += ' and ' + name
+        } else {
+          result += ', ' + name
+        }
+        return result
+      }, 'with ')
+    },
     async signUp (t) {
       const { id, newPartner } = t
       this.loading = true
       const url = `/api/tournaments/signup/${id}/${newPartner || 'null'}`
-      const { error, tournament } = await this.$axios.$get(url)
+      const { error } = await this.$axios.$get(url)
       if (error) {
         //
-      } else {
-        this.updateTournament(tournament)
       }
       this.loading = false
     },
     async dropOut (id) {
       this.loading = true
       const url = `/api/tournaments/dropout/${id}`
-      const { error, tournament } = await this.$axios.$get(url)
+      const { error } = await this.$axios.$get(url)
       if (error) {
         //
-      } else {
-        this.updateTournament(tournament)
       }
       this.loading = false
+    },
+    async play () {
+      this.loading = true
+      try {
+        const body = {
+          partner: this.partner || null,
+          left: this.left || null,
+          right: this.right || null,
+          rules: this.rules
+        }
+        const { url, error } = await this.$axios
+          .$post('/api/tournaments/start-game', body)
+        if (error) {
+          this.error = error
+          setTimeout(() => {
+            this.error = undefined
+          }, 5000)
+        } else if (url) {
+          this.dialog = false
+          window.open(url, '_blank')
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+    decline () {
+      if (this.table.token) {
+        const url = `/api/tournaments/decline/${this.table.token}`
+        this.$axios.$get(url)
+      }
     },
     updateTournament (tournament) {
       if (!tournament) {
@@ -348,10 +525,10 @@ export default {
       }
       this.today.splice(i, 1)
     },
-    goToTable (url) {
+    openUrl (url) {
       window.open(url, '_blank')
     },
-    partner (t) {
+    partnerIn (t) {
       const { positions } = t
       if (positions && this.you) {
         const i = positions.indexOf(this.you)
@@ -387,21 +564,6 @@ export default {
     tick () {
       if (!this.interval) {
         this.interval = setInterval(() => this.tick(), 1000)
-      }
-      const now = Date.now()
-      const format = (t) => {
-        const ms = t - now
-        if (ms > 0) {
-          const time = {
-            h: Math.floor(ms / 3600000) % 24,
-            m: Math.floor(ms / 60000) % 60,
-            s: Math.floor(ms / 1000) % 60
-          }
-          return Object.entries(time)
-            .filter(val => val[1] !== 0)
-            .map(([key, val]) => `${val}${key}`)
-            .join(' ')
-        }
       }
       this.ticks = this.today.reduce((result, t) => {
         result[t.id] = {

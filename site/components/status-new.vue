@@ -63,7 +63,7 @@ export default {
 
   computed: {
     thinking () {
-      return this.value && (
+      return this.value && !this.value.over && (
         !this.value.connected ||
         this.value.waitingForBid ||
         this.value.waitingForTrump ||

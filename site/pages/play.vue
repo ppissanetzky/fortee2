@@ -305,6 +305,7 @@ export default {
       bots: [],
       connected: [],
       paused: false,
+      over: false,
       waitingForBid: undefined,
       bids: {},
       bidWinner: undefined,
@@ -336,6 +337,7 @@ export default {
       if (event.reason === 'host-close') {
         this.choiceTitle = 'The host has closed the game'
         this.paused = true
+        this.over = true
       }
     }
     ws.onerror = (event) => {
@@ -454,6 +456,14 @@ export default {
             }
             this.connected = message.connected
           }
+          break
+
+        case 'declined':
+          this.choiceTitle = `${message.name} declined the invitation to play, the game is over`
+          this.ws = undefined
+          this.paused = true
+          this.over = true
+          this.connected = []
           break
 
         case 'startingHand':
@@ -618,6 +628,7 @@ export default {
           this.ws.close(1000, 'game-error')
           this.ws = undefined
           this.paused = true
+          this.over = true
           this.connected = []
           break
       }
@@ -640,6 +651,7 @@ export default {
       }
       return {
         name,
+        over: this.over,
         connected: this.connected.includes(name),
         bot: this.bots.includes(name),
         waitingForBid: this.waitingForBid === name,
