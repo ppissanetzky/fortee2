@@ -9,36 +9,8 @@ const getSignups = jest.spyOn(db, 'getSignups');
 
 import Tournament from '../tournament';
 import TournamentDriver, { Team } from '../tournament-driver';
-import exp from 'constants';
 
 describe('team counts', () => {
-    const tournament = new Tournament({
-        id: 1,
-        name: ``,
-        type: 1,
-        signup_start_dt: '',
-        signup_end_dt: '',
-        start_dt: '',
-        rules: '',
-        partner: 1,
-        seed: 0,
-        timezone: 'CST',
-        signup_opened: 0,
-        signup_closed: 0,
-        started: 0,
-        scheduled: 0,
-        finished: 0,
-        ladder_id: 0,
-        ladder_name: '',
-        lmdtm: '',
-        invitation: 0,
-        recurring: 0,
-        invitees: '',
-        prize: '',
-        winners: '',
-        recurring_source: 0,
-        host: ''
-    });
 
     test.each([
         /** player count, resulting number of teams, player dropped */
@@ -57,6 +29,33 @@ describe('team counts', () => {
         expect(signups).toHaveLength(count);
         expect(_.uniq(signups)).toHaveLength(count);
         getSignups.mockReturnValueOnce(new Map(signups.map((item) => [item, null])));
+        const tournament = new Tournament({
+            id: 1,
+            name: ``,
+            type: 1,
+            signup_start_dt: '',
+            signup_end_dt: '',
+            start_dt: '1970-01-01 00:00',
+            rules: '',
+            partner: 1,
+            seed: 0,
+            timezone: 'CST',
+            signup_opened: 0,
+            signup_closed: 0,
+            started: 0,
+            scheduled: 0,
+            finished: 0,
+            ladder_id: 0,
+            ladder_name: '',
+            lmdtm: '',
+            invitation: 0,
+            recurring: 0,
+            invitees: '',
+            prize: '',
+            winners: '',
+            recurring_source: 0,
+            host: ''
+        });
         const driver = new TournamentDriver(tournament);
         expect(driver.teams).toHaveLength(teams);
         expect(driver.dropped).toEqual(dropped);
@@ -69,34 +68,6 @@ describe('team counts', () => {
 });
 
 describe('partner matching', () => {
-
-    const tournament = new Tournament({
-        id: 1,
-        name: ``,
-        type: 1,
-        signup_start_dt: '',
-        signup_end_dt: '',
-        start_dt: '',
-        rules: '',
-        partner: 2,
-        seed: 0,
-        timezone: 'CST',
-        signup_opened: 0,
-        signup_closed: 0,
-        started: 0,
-        scheduled: 0,
-        finished: 0,
-        ladder_id: 0,
-        ladder_name: '',
-        lmdtm: '',
-        invitation: 0,
-        recurring: 0,
-        invitees: '',
-        prize: '',
-        winners: '',
-        recurring_source: 0,
-        host: ''
-    });
 
     type Signup = [string, string | null];
     type Pair = [string, string];
@@ -128,6 +99,33 @@ describe('partner matching', () => {
 
     ])('match', (signups: Signup[], pairs: Pair[]) => {
         getSignups.mockReturnValueOnce(new Map(signups));
+        const tournament = new Tournament({
+            id: 1,
+            name: ``,
+            type: 1,
+            signup_start_dt: '',
+            signup_end_dt: '',
+            start_dt: '1970-01-01 00:00',
+            rules: '',
+            partner: 2,
+            seed: 0,
+            timezone: 'CST',
+            signup_opened: 0,
+            signup_closed: 0,
+            started: 0,
+            scheduled: 0,
+            finished: 0,
+            ladder_id: 0,
+            ladder_name: '',
+            lmdtm: '',
+            invitation: 0,
+            recurring: 0,
+            invitees: '',
+            prize: '',
+            winners: '',
+            recurring_source: 0,
+            host: ''
+        });
         const { teams } = new TournamentDriver(tournament);
         expect(teams).toHaveLength(pairs.length);
         expect(teams.map(({users}) => users.sort())).toEqual(pairs);
@@ -136,33 +134,35 @@ describe('partner matching', () => {
 
 describe('brackets', () => {
 
-    const tournament = new Tournament({
-        id: 1,
-        name: ``,
-        type: 1,
-        signup_start_dt: '',
-        signup_end_dt: '',
-        start_dt: '',
-        rules: '',
-        partner: 1,
-        seed: 0,
-        timezone: 'CST',
-        signup_opened: 0,
-        signup_closed: 0,
-        started: 0,
-        scheduled: 0,
-        finished: 0,
-        ladder_id: 0,
-        ladder_name: '',
-        lmdtm: '',
-        invitation: 0,
-        recurring: 0,
-        invitees: '',
-        prize: '',
-        winners: '',
-        recurring_source: 0,
-        host: ''
-    });
+    function createTournament() {
+        return new Tournament({
+            id: 1,
+            name: ``,
+            type: 1,
+            signup_start_dt: '',
+            signup_end_dt: '',
+            start_dt: '1970-01-01 00:00',
+            rules: '',
+            partner: 1,
+            seed: 0,
+            timezone: 'CST',
+            signup_opened: 0,
+            signup_closed: 0,
+            started: 0,
+            scheduled: 0,
+            finished: 0,
+            ladder_id: 0,
+            ladder_name: '',
+            lmdtm: '',
+            invitation: 0,
+            recurring: 0,
+            invitees: '',
+            prize: '',
+            winners: '',
+            recurring_source: 0,
+            host: ''
+        });
+    }
 
     const signups = (count: number): Map<string, string | null> => {
         const result = new Map();
@@ -176,6 +176,7 @@ describe('brackets', () => {
 
     test('returns empty with no signups', () => {
         getSignups.mockReturnValueOnce(new Map());
+        const tournament = createTournament();
         const { games, rounds } = new TournamentDriver(tournament);
         expect(games.size).toBe(0);
         expect(rounds).toHaveLength(0);
@@ -183,6 +184,7 @@ describe('brackets', () => {
 
     test('validate 4 teams', () => {
         getSignups.mockReturnValueOnce(signups(8));
+        const tournament = createTournament();
         const { games, rounds } = new TournamentDriver(tournament);
         expect(games.size).toBe(3);
         expect(rounds).toHaveLength(2);
@@ -211,6 +213,7 @@ describe('brackets', () => {
 
     test('validate 5 teams', () => {
         getSignups.mockReturnValueOnce(signups(10));
+        const tournament = createTournament();
         const { games, rounds } = new TournamentDriver(tournament);
         expect(games.size).toBe(7);
         expect(rounds).toHaveLength(3);
