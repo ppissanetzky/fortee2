@@ -1,12 +1,8 @@
-import assert from 'node:assert';
-
-import _ from 'lodash';
 import { WebSocket } from 'ws';
+import { NextFunction, Request, Response } from 'express';
 
 import { makeDebug } from './utility';
 import type { TableUpdate, TournamentUpdate } from './tournament-pusher';
-import type { Invitation } from './game-room';
-import { NextFunction, Request, Response } from 'express';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 
@@ -91,22 +87,27 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         if (existing) {
             existing.name = name;
             existing.sockets.add(ws);
+            this.pushOnline(id);
         }
         else {
             this.connections.set(id, { id, name, sockets: new Set([ws]) });
             this.pushOnline();
         }
-
         this.emit('connected', id);
     }
 
-    private pushOnline() {
+    private pushOnline(userId?: string) {
         const message: Record<string, string> = {};
         for (const c of this.connections.values()) {
             message[c.id] = c.name;
         }
         this.debug('online %j', message);
-        this.pushToAll('online', message);
+        if (userId) {
+            this.pushToOne(userId, 'online', message);
+        }
+        else {
+            this.pushToAll('online', message);
+        }
     }
 
     public pushToAll<T extends Key>(type: T, message: PushMessages[T]) {
