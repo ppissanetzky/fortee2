@@ -17,7 +17,7 @@
           small
           color="white"
           class="ml-3"
-          @click="td"
+          @click="openUrl('/td')"
         >
           TD
         </v-btn>
@@ -25,29 +25,6 @@
         <v-spacer />
         <v-img contain max-width="300" src="/logo.png" />
       </v-toolbar>
-    </v-card>
-    <!-- OLD -->
-    <v-card
-      v-if="invitation"
-      outlined
-      class="mb-3"
-      min-width="375"
-      style="border-color: #ff3600; border-width: 2px;"
-    >
-      <v-card-title>
-        <v-icon color="black" class="pr-2">
-          mdi-play-circle
-        </v-icon>
-        {{ invitation.text }}
-        <v-spacer />
-        <v-btn
-          outlined
-          small
-          @click="openInvitation"
-        >
-          play
-        </v-btn>
-      </v-card-title>
     </v-card>
     <div>
       <v-card flat tile outlined class="mb-3">
@@ -365,7 +342,6 @@ export default {
       // Other
       loading: false,
       ws: undefined,
-      invitation: undefined,
       interval: undefined,
       ticks: {},
       reconnectS: 1
@@ -518,13 +494,6 @@ export default {
       tournament.newPartner = tournament.partner
       this.today.splice(i, 1, tournament)
     },
-    dropTournament (id) {
-      const i = this.today.findIndex(t => t.id === id)
-      if (i < 0) {
-        return
-      }
-      this.today.splice(i, 1)
-    },
     openUrl (url) {
       window.open(url, '_blank')
     },
@@ -545,21 +514,6 @@ export default {
     },
     connected (t, name) {
       return false
-    },
-    async quickGame () {
-      const { url /* , error */ } = await this.$axios
-        .$post('/api/tournaments/start-game', { rules: 'default' })
-      if (url) {
-        window.open(url, '_blank')
-      }
-    },
-    openInvitation () {
-      if (this.invitation) {
-        window.open(this.invitation.url, '_blank')
-      }
-    },
-    td () {
-      window.open('/td', '_blank')
     },
     tick () {
       if (!this.interval) {

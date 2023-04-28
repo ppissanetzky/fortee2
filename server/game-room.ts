@@ -66,12 +66,6 @@ export interface GameRoomOptions {
     tournament?: Tournament;
 }
 
-export interface Invitation {
-    id: number;
-    text: string;
-    url: string;
-}
-
 interface GlobalGameRoomEvents {
     created: GameRoom;
     closed: GameRoom;
@@ -203,14 +197,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     get url(): string {
         return `${config.FT2_SERVER_BASE_URL}/play/${this.token}`;
-    }
-
-    get invitation(): Invitation {
-        return {
-            id: this.id,
-            text: `${this.host} invited you to play a game`,
-            url: this.url
-        }
     }
 
     get size(): number {
