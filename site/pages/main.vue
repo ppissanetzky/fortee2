@@ -8,7 +8,7 @@
       min-width="375"
     >
       <v-toolbar flat color="#0049bd">
-        <v-toolbar-title v-if="you.name" class="white--text pl-1">
+        <v-toolbar-title v-if="you.name" class="white--text">
           <strong>Hi, {{ you.name }}</strong>
         </v-toolbar-title>
         <v-btn
@@ -27,7 +27,7 @@
       </v-toolbar>
     </v-card>
     <div>
-      <v-card flat tile outlined class="mb-3">
+      <v-card flat tile class="mb-3">
         <div v-if="!table.status">
           <v-card-title class="ml-0">
             Play with bots or invite others to play
@@ -90,19 +90,63 @@
         </div>
       </v-card>
 
-      <v-card v-if="users.length > 0" flat tile outlined class="mb-3">
-        <v-card-title class="ml-0 mt-2">
+      <v-card tile flat class="mb-3" color="grey lighten-3">
+        <v-card-title>
+          Lobby
+          <v-spacer />
+          <span v-if="users.length" class="caption">{{ users.length }} online</span>
+          <span v-else class="caption">No one else online</span>
+        </v-card-title>
+        <div v-if="users.length" class="mx-3">
           <v-chip
             v-for="name in users.map(({text}) => text).sort()"
             :key="name"
             label
-            color="green darken-3"
-            class="mr-2 mb-2 white--text"
+            class="mr-1 mb-1"
           >
             {{ name }}
+            <!-- <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
+              <strong style="color: #78909C;">{{ m.title }}</strong>
+            </v-chip> -->
           </v-chip>
-        </v-card-title>
+        </div>
+        <v-divider class="my-3" />
+        <div class="mx-3 mb-3 pb-3">
+          <v-card
+            id="chat-box"
+            height="216"
+            flat
+            tile
+            class="overflow-y-auto pt-1"
+          >
+            <div v-for="m in messages" :key="m.id" class="mb-1 mx-3">
+              <div>
+                <strong>{{ m.name }}</strong>
+                <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
+                  <strong style="color: #78909C;">{{ m.title }}</strong>
+                </v-chip>
+                <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
+              </div>
+              <div>{{ m.text }}</div>
+            </div>
+          </v-card>
+          <v-form @submit.prevent="() => void 0" @submit="chat">
+            <v-text-field
+              v-model="message"
+              color="#0049bd"
+              dense
+              solo
+              clearable
+              placeholder="Send a message..."
+              hide-details
+              append-icon="mdi-send"
+              class="mt-3"
+              @click:append="chat"
+            />
+          </v-form>
+        </div>
       </v-card>
+
       <v-card
         v-for="t in today"
         :key="t.id"
@@ -325,6 +369,9 @@ function format (t) {
       .join(' ')
   }
 }
+const dtFormat = new Intl.DateTimeFormat(undefined, {
+  timeStyle: 'short'
+})
 export default {
   data () {
     return {
@@ -332,6 +379,8 @@ export default {
       today: [],
       users: [],
       table: {},
+      messages: [],
+      message: undefined,
       // For the play dialog
       dialog: false,
       error: undefined,
@@ -409,6 +458,14 @@ export default {
           break
         case 'table':
           this.table = message
+          break
+        case 'chat':
+          this.messages.push(message)
+          this.scrollChat()
+          break
+        case 'chatHistory':
+          this.messages = message
+          this.scrollChat()
           break
       }
     },
@@ -526,6 +583,22 @@ export default {
         }
         return result
       }, {})
+    },
+    formatTime (t) {
+      return dtFormat.format(new Date(t)).toLocaleLowerCase()
+    },
+    chat () {
+      const { message, ws } = this
+      if (message && ws) {
+        ws.send(JSON.stringify({ type: 'chat', message }))
+        this.message = undefined
+      }
+    },
+    scrollChat () {
+      setTimeout(() => {
+        const box = document.getElementById('chat-box')
+        box.scrollTop = box.scrollHeight
+      }, 0)
     }
   }
 }

@@ -54,6 +54,12 @@ const variables: Record<string, string> = {
     FT2_PING_CLOSE_TIMEOUT: '',
 
     /**
+     * How long to keep chat history - a string that 'ms' can understand
+     */
+
+    FT2_CHAT_HISTORY: '24h',
+
+    /**
      * The session secret
      */
 

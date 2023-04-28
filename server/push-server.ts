@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 
 import { makeDebug } from './utility';
 import type { TableUpdate, TournamentUpdate } from './tournament-pusher';
+import type { Message } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 
@@ -18,6 +19,12 @@ interface PushMessages {
 
     /** Table status, empty, t, hosting or invited */
     table: TableUpdate;
+
+    /** A chat message */
+    chat: Message;
+
+    /** Chat history */
+    chatHistory: Message[];
 }
 
 interface Connection {
@@ -31,8 +38,14 @@ type Key = keyof PushMessages;
 type ForEachCallback<T extends Key> = (id: string) => PushMessages[T] | undefined;
 
 interface PushServerEvents {
-    /** The user ID of a new connection */
-    connected: string;
+    /** The user ID and WS for a new connection */
+    connected: {
+        userId: string;
+        ws: WebSocket;
+    }
+
+    /** The user ID when their last connection is closed */
+    disconnected: string;
 }
 
 export default class PushServer extends Dispatcher<PushServerEvents> {
@@ -64,6 +77,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
             if (existing.sockets.size === 0) {
                 this.connections.delete(id);
                 this.pushOnline();
+                this.emit('disconnected', id);
             }
         }
     }
@@ -93,7 +107,10 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
             this.connections.set(id, { id, name, sockets: new Set([ws]) });
             this.pushOnline();
         }
-        this.emit('connected', id);
+        this.emit('connected', {
+            userId: id,
+            ws
+        });
     }
 
     private pushOnline(userId?: string) {

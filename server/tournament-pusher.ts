@@ -10,6 +10,7 @@ import Tournament, { State } from './tournament';
 import { Status } from './driver';
 import GameRoom from './game-room';
 import { User } from './table-helper';
+import Chatter from './chatter';
 
 const debug = makeDebug('pusha-t');
 
@@ -52,11 +53,15 @@ export default class TournamentPusher {
 
     private readonly scheduler = Scheduler.get();
 
+    private readonly chatter: Chatter
+
     public readonly ps = new PushServer();
 
     constructor() {
+        this.chatter = new Chatter(this.ps);
+
         /** When a new socket connects, we send some initial info */
-        this.ps.on('connected', (userId) => this.connected(userId));
+        this.ps.on('connected', ({userId}) => this.connected(userId));
 
         /** When something happens in a game room, we update that user */
         GameRoom.events
@@ -131,8 +136,8 @@ export default class TournamentPusher {
 
     private nextTourneys(): Tournament[] {
         const tourneys = Array.from(this.scheduler.tourneys.values());
-        /** We only send the next 4 to keep the clutter down */
-        return _.sortBy(tourneys, 'utcStartTime').slice(0, 4);
+        /** We only send the next 3 to keep the clutter down */
+        return _.sortBy(tourneys, 'utcStartTime').slice(0, 3);
     }
 
     /** A user just connected */
