@@ -12,6 +12,7 @@ import Socket from './socket';
 import TournamentPusher from './tournament-pusher';
 import tdRouter from './td-router';
 import { fail, fif, fa, validateRules, AppError } from './validate';
+import UserNames from './user-names';
 
 const debug = makeDebug('t-router');
 
@@ -33,8 +34,13 @@ router.get('/tws', pusher.ps.upgrade());
 router.get('/me', async (req, res) => {
     const { user } = req;
     assert(user);
-    const you = db.getUser(user.id);
-    assert(you);
+    let you = db.getUser(user.id);
+    if (!you) {
+        /** The user has been authenticated, but is not in our database yet */
+        UserNames.put(user.id, user.name);
+        you = db.getUser(user.id);
+        assert(you);
+    }
     debug('you %j', you);
     res.json(you);
 });
