@@ -107,38 +107,33 @@ export default class GameDriver {
     private async run(): Promise<SaveWithMetadata> {
         const started = Date.now();
         this.lastTime = started;
-        let done = false;
-        const idle = new Promise<void>((resolve, reject) => {
-            if (this.maxIdleMs === 0) {
-                return resolve();
+
+        const save = await new Promise<Save>((resolve, reject) => {
+            let interval: NodeJS.Timer;
+            if (this.maxIdleMs > 0) {
+                interval = setInterval(() => {
+                    const time = Date.now() - this.lastTime;
+                    if (time > this.maxIdleMs) {
+                        clearInterval(interval);
+                        reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
+                    }
+                }, ms('30s'));
             }
-            const interval = setInterval(() => {
-                if (done) {
-                    clearInterval(interval);
-                    return resolve();
-                }
-                const time = Date.now() - this.lastTime;
-                if (time > this.maxIdleMs) {
-                    clearInterval(interval);
-                    reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
-                }
-            }, ms('30s'));
-        });
-        try {
-            const [save] = await Promise.all([this.next(), idle]);
-            const ended = Date.now();
-            const bots = this.players.filter(({human}) =>
-                !human).map(({name}) => name);
-            return {
-                ...save,
-                started,
-                ended,
-                bots
+            const finished = (save: Save) => {
+                clearInterval(interval);
+                resolve(save);
             };
-        }
-        finally {
-            done = true;
-        }
+            this.next().then(finished, reject);
+        });
+        const ended = Date.now();
+        const bots = this.players.filter(({human}) => !human)
+            .map(({name}) => name);
+        return {
+            ...save,
+            started,
+            ended,
+            bots
+        };
     }
 
     private all(cb: Callback): void {
