@@ -76,6 +76,9 @@ export default class Chatter {
     }
 
     private purgeHistory() {
+        if (this.history.length === 0) {
+            return;
+        }
         /** The first message to keep */
         const first = Date.now() - ms(config.FT2_CHAT_HISTORY);
         const index = this.history.findIndex(({t}) => t >= first);
