@@ -564,7 +564,7 @@ export default {
     others (t) {
       const { positions } = t
       if (positions) {
-        const us = [this.you, this.partner(t)]
+        const us = [this.you, this.partnerIn(t)]
         return positions.filter(name => !us.includes(name))
       }
       return []
