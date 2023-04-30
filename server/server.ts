@@ -7,7 +7,6 @@ import _ from 'lodash';
 import express, { NextFunction, Request, Response } from 'express';
 
 import config from './config';
-import WsServer from './ws-server';
 import { expected, makeDebug } from './utility';
 import setupAuthentication from './authentication';
 import connectToSlack from './slack';
@@ -42,17 +41,40 @@ app.use(express.json({limit: '20kb'}));
 
 //-----------------------------------------------------------------------------
 
-app.use((req, res, next) => {
-    debug('%s %s %j', req.method, req.url, req.headers);
-    res.once('finish', () => {
-        debug(req.method, req.url, res.statusCode);
-    });
-    next();
-});
+if (fs.existsSync('./site')) {
+    app.use(express.static('./site'));
+}
+else {
+    debug('Not serving static site');
+}
 
 //-----------------------------------------------------------------------------
 
 setupAuthentication(app);
+
+//-----------------------------------------------------------------------------
+
+app.use((req, res, next) => {
+    debug('%s %s %s %j %s %j',
+        req.method,
+        req.socket.remoteAddress,
+        req.url,
+        req.headers,
+        req.session?.id,
+        req.session);
+
+    res.once('finish', () => {
+        debug('%s %s %s %d %j %s %j',
+        req.method,
+        req.socket.remoteAddress,
+        req.url,
+        res.statusCode,
+        res.getHeaders(),
+        req.session?.id,
+        req.session);
+    });
+    next();
+});
 
 /**
  * This one takes the user from
@@ -70,15 +92,6 @@ if (!config.PRODUCTION) {
         }
         next();
     });
-}
-
-//-----------------------------------------------------------------------------
-
-if (fs.existsSync('./site')) {
-    app.use(express.static('./site'));
-}
-else {
-    debug('Not serving static site');
 }
 
 //-----------------------------------------------------------------------------
