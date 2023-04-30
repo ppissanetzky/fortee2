@@ -105,9 +105,6 @@
             class="mr-1 mb-1"
           >
             {{ name }}
-            <!-- <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
-              <strong style="color: #78909C;">{{ m.title }}</strong>
-            </v-chip> -->
           </v-chip>
         </div>
         <v-divider class="my-3" />
@@ -223,7 +220,7 @@
             outlined
             label="PARTNER"
             class="mr-2"
-            :items="users"
+            :items="otherUsers"
             clearable
           />
           <v-btn
@@ -309,7 +306,7 @@
               hide-details
               outlined
               label="left"
-              :items="users"
+              :items="otherUsers"
               clearable
               class="mr-2"
             />
@@ -319,7 +316,7 @@
               hide-details
               outlined
               label="partner"
-              :items="users"
+              :items="otherUsers"
               clearable
               class="mr-2"
             />
@@ -329,7 +326,7 @@
               hide-details
               outlined
               label="right"
-              :items="users"
+              :items="otherUsers"
               clearable
             />
           </v-card-actions>
@@ -410,6 +407,11 @@ export default {
       throw error
     }
   },
+  computed: {
+    otherUsers () {
+      return this.users.filter(({ value }) => value !== this.you.id)
+    }
+  },
   methods: {
     startPings () {
       // send a ping message (not a WS ping)
@@ -447,7 +449,6 @@ export default {
       switch (type) {
         case 'online':
           this.users = Object.keys(message)
-            .filter(key => key !== this.you.id)
             .map(key => ({ value: key, text: message[key] }))
           break
         case 'tournaments':
@@ -556,15 +557,15 @@ export default {
     },
     partnerIn (t) {
       const { positions } = t
-      if (positions && this.you) {
-        const i = positions.indexOf(this.you)
+      if (positions && this.you.name) {
+        const i = positions.indexOf(this.you.name)
         return positions[[2, 3, 0, 1][i]]
       }
     },
     others (t) {
       const { positions } = t
-      if (positions) {
-        const us = [this.you, this.partnerIn(t)]
+      if (positions && this.you.name) {
+        const us = [this.you.name, this.partnerIn(t)]
         return positions.filter(name => !us.includes(name))
       }
       return []
