@@ -251,6 +251,19 @@
             {{ t.count || 'No one' }} signed up
           </span>
         </v-toolbar>
+        <v-card v-if="(t.open || t.wts) && t.signups.length > 0" flat>
+          <v-card-text class="pb-0">
+            <v-chip
+              v-for="s in signupsFor(t)"
+              :key="s"
+              label
+              class="mr-1 mb-1 white--text"
+              color="green"
+            >
+              {{ s }}
+            </v-chip>
+          </v-card-text>
+        </v-card>
         <!-- ONCE THE TOURNAMENT IS PLAYING -->
         <v-toolbar v-if="t.isOn && t.signedUp" flat>
           <span v-if="!t.inTourney">
@@ -491,6 +504,9 @@ export default {
         }
         return result
       }, 'with ')
+    },
+    signupsFor (t) {
+      return t.signups.map(([s, p]) => `${s}${p ? '/' + p : ''}`)
     },
     async signUp (t) {
       const { id, newPartner } = t

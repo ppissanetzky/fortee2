@@ -11,8 +11,11 @@ import { Status } from './driver';
 import GameRoom from './game-room';
 import { User } from './table-helper';
 import Chatter from './chatter';
+import UserNames from './user-names';
 
 const debug = makeDebug('pusha-t');
+
+type Signup = [string, string | null];
 
 export interface TournamentUpdate extends Partial<Status> {
     id: number;
@@ -24,6 +27,7 @@ export interface TournamentUpdate extends Partial<Status> {
     utcCloseTime: number;
     choosePartner: boolean;
     rules: string[];
+    signups: Signup[];
     /** How many players are signed up for this one */
     count: number;
     /** The state of the tourney, only one will be true */
@@ -89,6 +93,11 @@ export default class TournamentPusher {
     private updateFor(t: Tournament, userId: string): TournamentUpdate {
         const driver = Scheduler.driver(t.id);
         const status = driver?.statusFor(userId) || {};
+        const signups = Array.from(t.signups.entries()).map(([s, p]) => {
+            const result: Signup = [UserNames.exists(s), p ? UserNames.exists(p) : null];
+            return result;
+        });
+
         return {
             id: t.id,
             name: t.name,
@@ -99,6 +108,7 @@ export default class TournamentPusher {
             utcCloseTime: t.utcCloseTime,
             choosePartner: t.choosePartner,
             rules: Rules.fromAny(t.rules).parts(),
+            signups,
             /** How many players are signed up for this one */
             count: t.signups.size,
             /** The state of the tourney, only one will be true */
