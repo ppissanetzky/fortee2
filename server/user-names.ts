@@ -48,6 +48,11 @@ export default class UserNames {
         debug('saved "%s" "%s"', id, name);
     }
 
+    static exists(id: string): string {
+        const row = db.first(SELECT, { id }) as Row;
+        return row?.name || '<unknown>';
+    }
+
     static async get(id?: string | null): Promise<string | void> {
         if (!id) {
             return;
