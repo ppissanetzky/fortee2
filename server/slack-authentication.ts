@@ -114,8 +114,8 @@ export async function authenticated(req: Request, res: Response, next: NextFunct
         next();
     }
     catch (error) {
-        res.sendStatus(401);
+        debug('error in authenticated', error, req.session);
         req.logout({keepSessionInfo: false}, () => undefined);
-        throw error;
+        res.sendStatus(401);
     }
 }
