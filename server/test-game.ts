@@ -13,7 +13,7 @@ import ProductionBot from './production-bot';
 import { printSave } from './core/save-game';
 
 const auto = process.argv[2] === 'auto';
-let count = parseInt(process.argv[3] || '1', 10);
+//let count = parseInt(process.argv[3] || '1', 10);
 
 async function play(): Promise<void> {
 
@@ -83,34 +83,34 @@ async function play(): Promise<void> {
     //     new Bot(undefined, true).with(Pass),
     // ];
 
-    return GameDriver.start(rules, players, 0).then((save) => {
-        let made = 0;
-        let total = 0;
-        let stuck = 0;
-        save.hands.forEach((hand, index) => {
-            console.log(index, hand.made);
-            if (!hand.stuck) {
-                total += 1;
-                if (hand.made) {
-                    made += 1;
-                }
-            }
-            else {
-                stuck += 1;
-            }
-        });
-        console.log('hands', save.hands.length, 'stuck', stuck,
-            'made', made, '/', total, '=', 100 * (made / total));
+//     return GameDriver.start(rules, players, 0).then((save) => {
+//         let made = 0;
+//         let total = 0;
+//         let stuck = 0;
+//         save.hands.forEach((hand, index) => {
+//             console.log(index, hand.made);
+//             if (!hand.stuck) {
+//                 total += 1;
+//                 if (hand.made) {
+//                     made += 1;
+//                 }
+//             }
+//             else {
+//                 stuck += 1;
+//             }
+//         });
+//         console.log('hands', save.hands.length, 'stuck', stuck,
+//             'made', made, '/', total, '=', 100 * (made / total));
 
-        if (!auto) {
-//            console.log('\n', JSON.stringify(save, null, undefined));
-//            printSave(save);
-        }
-        else if (count--) {
-            console.log(count);
-            return play();
-        }
-    });
+//         if (!auto) {
+// //            console.log('\n', JSON.stringify(save, null, undefined));
+// //            printSave(save);
+//         }
+//         else if (count--) {
+//             console.log(count);
+//             return play();
+//         }
+//     });
 }
 
 play();

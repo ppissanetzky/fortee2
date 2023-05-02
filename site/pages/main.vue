@@ -251,6 +251,7 @@
             {{ t.count || 'No one' }} signed up
           </span>
         </v-toolbar>
+        <!-- THE LIST OF PEOPLE SIGNED UP WHILE IT'S OPEN OR WTS -->
         <v-card v-if="(t.open || t.wts) && t.signups.length > 0" flat>
           <v-card-text class="pb-0">
             <v-chip
@@ -293,7 +294,87 @@
             go to your table
           </v-btn>
         </v-toolbar>
-        <v-sheet v-if="t.open || (t.isOn && t.signedUp)" height="12" />
+        <v-card v-if="(t.playing || t.done) && t.games" flat tile class="mt-3 pb-1">
+          <v-row>
+            <v-col v-for="(round, n) in t.games" :key="n" cols="auto">
+              <div>
+                <h5 class="text-center">
+                  ROUND {{ n + 1 }}
+                </h5>
+              </div>
+              <div class="d-flex fill-height flex-column justify-space-around">
+                <div v-for="game in round" :key="game.id">
+                  <v-card
+                    flat
+                    tile
+                    class="ml-3 my-1"
+                    outlined
+                    color="#8fa5b7"
+                  >
+                    <v-toolbar
+                      flat
+                      height="28"
+                      :color="game.started && ! game.finished ? 'green' : '#8fa5b7'"
+                      class="white--text caption"
+                    >
+                      <span>
+                        {{ game.id }}
+                      </span>
+                      <v-spacer />
+                      <span v-if="game.finished">finished</span>
+                      <div v-else-if="game.room">
+                        <span v-if="game.room.state === 'waiting'">waiting for players</span>
+                        <span v-if="game.room.state === 'playing'">playing</span>
+                        <span v-if="game.room.state === 'paused'">paused</span>
+                      </div>
+                      <span v-else>waiting</span>
+                    </v-toolbar>
+                    <v-sheet class="py-2">
+                      <v-chip v-if="!game.us && !game.them" label class="mx-4" color="#00000000">
+                        Waiting for winners
+                      </v-chip>
+                      <div v-else>
+                        <v-toolbar
+                          v-for="team in ['us', 'them']"
+                          :key="team"
+                          flat
+                          height="40"
+                        >
+                          <v-chip v-if="!game[team]" label color="grey lighten-4">
+                            waiting for winners
+                          </v-chip>
+                          <v-chip v-else-if="game[team] === 'bye'" label color="grey lighten-2">
+                            bye
+                          </v-chip>
+                          <div v-else>
+                            <v-chip
+                              v-for="i in [0, 1]"
+                              :key="i"
+                              label
+                              :color="chipColor(game, team, i)"
+                              class="mr-1"
+                            >
+                              {{ game[team][i] }}
+                              <v-icon v-if="icon(game, team, i)" right small :color="icon(game, team, i)">
+                                mdi-circle
+                              </v-icon>
+                            </v-chip>
+                          </div>
+                          <v-spacer />
+                          <h3 v-if="game.room" class="ml-5">
+                            {{ game.room[team].marks }}
+                          </h3>
+                        </v-toolbar>
+                      </div>
+                    </v-sheet>
+                  </v-card>
+                </div>
+              </div>
+            </v-col>
+          </v-row>
+        </v-card>
+        <!-- JUST A SPACER -->
+        <v-sheet v-if="t.open || t.wts || t.playing || t.done" height="12" class="pt-6" />
       </v-card>
     </div>
     <!-- THE DIALOG TO START A GAME -->
@@ -473,6 +554,12 @@ export default {
         case 'table':
           this.table = message
           break
+        case 'user':
+          this.updateStatus(message)
+          break
+        case 'game':
+          this.updateGame(message)
+          break
         case 'chat':
           this.messages.push(message)
           this.scrollChat()
@@ -568,6 +655,29 @@ export default {
       tournament.newPartner = tournament.partner
       this.today.splice(i, 1, tournament)
     },
+    updateStatus (status) {
+      const t = this.today.find(({ id }) => id === status.id)
+      if (t) {
+        this.updateTournament({ ...t, ...status })
+      }
+    },
+    updateGame (game) {
+      const t = this.today.find(({ id }) => id === game.tid)
+      if (!t) {
+        return
+      }
+      if (!t.games) {
+        return
+      }
+      const round = t.games[game.round - 1]
+      if (!round) {
+        return
+      }
+      const index = round.findIndex(other => other.id === game.id)
+      if (index >= 0) {
+        round.splice(index, 1, game)
+      }
+    },
     openUrl (url) {
       window.open(url, '_blank')
     },
@@ -585,6 +695,24 @@ export default {
         return positions.filter(name => !us.includes(name))
       }
       return []
+    },
+    chipColor (game, team, i) {
+      if (game.room) {
+        if (game.finished) {
+          const other = team === 'us' ? 'them' : 'us'
+          if (game.room[team].marks > game.room[other].marks) {
+            return 'secondary'
+          }
+        }
+      } else if (game.finished) {
+        return 'secondary'
+      }
+      return 'grey lighten-2'
+    },
+    icon (game, team, i) {
+      if (!game.finished && game.room) {
+        return game.room[team].team[i].connected ? 'green' : 'red'
+      }
     },
     connected (t, name) {
       return false

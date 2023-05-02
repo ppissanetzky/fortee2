@@ -88,6 +88,10 @@ app.use(passport.authenticate('session'));
 if (!config.PRODUCTION) {
     app.use((req, res, next) => {
         if (!req.isAuthenticated()) {
+            const bot = req.header('x-ft2-bot');
+            if (bot) {
+                return req.login({id: bot, name: bot}, () => next());
+            }
             return req.login({id: 'pablo', name: 'pablo'}, () => next());
         }
         next();

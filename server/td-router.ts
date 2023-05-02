@@ -7,6 +7,7 @@ import Tournament from './tournament';
 import { Rules } from './core';
 import { makeDebug } from './utility';
 import { validateTournament } from './validate';
+import Scheduler from './tournament-scheduler';
 
 const debug = makeDebug('td-router');
 
@@ -66,5 +67,10 @@ router.post('/save', express.json(), (req, res) => {
     debug('validated %j', t.toJSON());
     // TODO: actually save it
     res.json({});
+});
+
+router.get('/reload', (req, res) => {
+    Scheduler.get().reload();
+    res.sendStatus(200);
 });
 

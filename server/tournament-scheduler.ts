@@ -77,7 +77,24 @@ interface SchedulerEvents extends TournamentDriverEvents {
         user: string;
     },
     dropped: number,
-    newDay: undefined,
+    reload: undefined
+}
+
+class TimeoutSet {
+
+    private readonly set = new Set<NodeJS.Timeout>();
+
+    add(cb: () => void, m: number) {
+        this.set.add(setTimeout(cb, m));
+    }
+
+    clear() {
+        for (const t of this.set.values()) {
+            clearTimeout(t);
+        }
+        this.set.clear();
+    }
+
 }
 
 export default class Scheduler extends Dispatcher<SchedulerEvents> {
@@ -89,19 +106,22 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         return this.instance;
     }
 
-    public static driver(id: number): TournamentDriver | undefined {
-        return this.get().drivers.get(id);
-    }
-
     private static instance?: Scheduler;
 
-    public readonly tourneys = new Map<number, Tournament>();
+    private readonly timeouts = new TimeoutSet();
 
-    public readonly drivers = new Map<number, TournamentDriver>();
+    public readonly tourneys = new Map<number, Tournament>();
 
     private constructor() {
         super();
         this.loadToday();
+    }
+
+    public reload() {
+        this.timeouts.clear();
+        this.tourneys.clear();
+        this.loadToday();
+        this.emit('reload', undefined);
     }
 
     private loadToday(): void {
@@ -125,18 +145,15 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
 
         const now = TexasTime.today();
         for (const t of this.tourneys.values()) {
-            const ms = Math.max(100, now.msUntil(TexasTime.parse(t.signup_start_dt)));
-            debug('signup in', ms, 'for', t.id, t.signup_start_dt, t.name);
-            setTimeout(() => this.openSignup(t), ms);
+            const m = Math.max(100, now.msUntil(TexasTime.parse(t.signup_start_dt)));
+            debug('signup in', ms(m), 'for', t.id, t.signup_start_dt, t.name);
+            this.timeouts.add(() => this.openSignup(t), m);
         }
 
         const tomorrow = TexasTime.midnight();
-        const m = now.msUntil(tomorrow) + 30000;
-        debug('tomorrow', tomorrow.toString(), 'in', m);
-        setTimeout(() => {
-            this.loadToday();
-            this.emit('newDay', undefined);
-        }, m);
+        const m = now.msUntil(tomorrow) + ms('30s');
+        debug('tomorrow', tomorrow.toString(), 'in', ms(m));
+        this.timeouts.add(() => this.reload(), m);
     }
 
     /**
@@ -227,9 +244,9 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         }
 
         const now = TexasTime.today();
-        const ms = Math.max(100, now.msUntil(TexasTime.parse(t.signup_end_dt)));
-        setTimeout(() => this.closeSignup(t), ms);
-        debug('signup close in', ms, t.id, t.signup_end_dt, t.name);
+        const m = Math.max(100, now.msUntil(TexasTime.parse(t.signup_end_dt)));
+        this.timeouts.add(() => this.closeSignup(t), m);
+        debug('signup close in', ms(m), t.id, t.signup_end_dt, t.name);
     }
 
     private closeSignup(t: Tournament) {
@@ -250,17 +267,17 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             });
             debug('canceled', id, t.start_dt, t.name);
             this.emit('canceled', t);
-            setTimeout(() => {
+            this.timeouts.add(() => {
                 this.tourneys.delete(id);
                 this.emit('dropped', id);
-            }, ms('10m'));
+            }, ms('5m'));
             return;
         }
 
         const now = TexasTime.today();
         const m = Math.max(100, now.msUntil(TexasTime.parse(t.start_dt)));
-        debug('start in', m, t.id, t.signup_end_dt, t.name);
-        setTimeout(() => this.start(driver), m);
+        debug('start in', ms(m), t.id, t.signup_end_dt, t.name);
+        this.timeouts.add(() => this.start(driver), m);
     }
 
     private async start(driver: TournamentDriver) {
@@ -271,7 +288,8 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             scheduled: 1,
             started: 1
         });
-        this.drivers.set(id, driver);
+        t.driver = driver;
+
         debug('started', id, t.start_dt, t.name);
         this.emit('started', t);
 
@@ -286,6 +304,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             });
             this.emit('tournamentOver', event)
         });
+        driver.on('gameUpdate', (event) => this.emit('gameUpdate', event));
 
         try {
             await driver.run();
@@ -297,10 +316,9 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             t.saveWith({
                 finished: 1,
             });
-            /** Keep them around for 10 minutes */
-            setTimeout(() => {
+            /** Keep the tourney around for a few minutes */
+            this.timeouts.add(() => {
                 this.tourneys.delete(id);
-                this.drivers.delete(id);
                 this.emit('dropped', id);
             }, ms('10m'));
         }

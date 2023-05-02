@@ -46,10 +46,15 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(400);
             }
 
+            debug('connected %j', Array.from(this.connected));
+
             if (this.connected.has(user.id)) {
                 debug(`user %j already connected`, user);
                 return res.sendStatus(403);
             }
+
+            req.session.gameRoomToken = undefined;
+            req.session.save(() => void 0);
 
             try {
                 const [ws] = await WsServer.get().upgrade(req);
@@ -202,6 +207,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     }
 
     close(reason: string) {
-        this.ws.close(1000, reason);
+        switch (this.ws.readyState) {
+            case this.ws.OPEN:
+            case this.ws.CONNECTING:
+                this.ws.close(4000, reason);
+        }
     }
 }

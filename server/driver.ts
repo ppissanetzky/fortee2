@@ -4,6 +4,7 @@ import { Bid, Bone, Trump, Rules, Game, STEP, Team } from './core';
 import type Player from './player';
 import saveGame, { type Save } from './core/save-game';
 import ms from 'ms';
+import Dispatcher from './dispatcher';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -71,27 +72,21 @@ export interface SaveWithMetadata extends Save {
 
 export class TimeOutError extends Error {}
 
-export default class GameDriver {
+export interface GameDriverEvents {
+    endOfHand: Status;
+}
 
-    /**
-     * Starts a new game and resolves when the game is over.
-     *
-     */
-
-    static async start(rules: Rules, players: Player[], maxIdleMs: number): Promise<SaveWithMetadata> {
-        const driver = new GameDriver(rules, players, maxIdleMs);
-        return driver.run();
-    }
+export default class GameDriver extends Dispatcher<GameDriverEvents> {
 
     private readonly players: Player[];
-
     private readonly game: Game;
-
     private readonly maxIdleMs: number;
+    private ran = false;
 
     private lastTime = 0;
 
-    private constructor(rules: Rules, players: Player[], maxIdleMs: number) {
+    public constructor(rules: Rules, players: Player[], maxIdleMs: number) {
+        super();
         assert(players.length === 4, 'Too few players');
         this.players = players;
         this.maxIdleMs = maxIdleMs;
@@ -104,36 +99,43 @@ export default class GameDriver {
         this.game = new Game(table, rules);
     }
 
-    private async run(): Promise<SaveWithMetadata> {
-        const started = Date.now();
-        this.lastTime = started;
+    public async run(): Promise<SaveWithMetadata> {
+        assert(!this.ran);
+        this.ran = true;
+        try {
+            const started = Date.now();
+            this.lastTime = started;
 
-        const save = await new Promise<Save>((resolve, reject) => {
-            let interval: NodeJS.Timer;
-            if (this.maxIdleMs > 0) {
-                interval = setInterval(() => {
-                    const time = Date.now() - this.lastTime;
-                    if (time > this.maxIdleMs) {
-                        clearInterval(interval);
-                        reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
-                    }
-                }, ms('30s'));
-            }
-            const finished = (save: Save) => {
-                clearInterval(interval);
-                resolve(save);
+            const save = await new Promise<Save>((resolve, reject) => {
+                let interval: NodeJS.Timer;
+                if (this.maxIdleMs > 0) {
+                    interval = setInterval(() => {
+                        const time = Date.now() - this.lastTime;
+                        if (time > this.maxIdleMs) {
+                            clearInterval(interval);
+                            reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
+                        }
+                    }, ms('30s'));
+                }
+                const finished = (save: Save) => {
+                    clearInterval(interval);
+                    resolve(save);
+                };
+                this.next().then(finished, reject);
+            });
+            const ended = Date.now();
+            const bots = this.players.filter(({human}) => !human)
+                .map(({name}) => name);
+            return {
+                ...save,
+                started,
+                ended,
+                bots
             };
-            this.next().then(finished, reject);
-        });
-        const ended = Date.now();
-        const bots = this.players.filter(({human}) => !human)
-            .map(({name}) => name);
-        return {
-            ...save,
-            started,
-            ended,
-            bots
-        };
+        }
+        finally {
+            this.emitter.removeAllListeners();
+        }
     }
 
     private all(cb: Callback): void {
@@ -222,8 +224,10 @@ export default class GameDriver {
                         assert(winner, 'Missing winner');
                         const made = result.bid_made;
                         this.game.finish_hand(result);
+                        const status = new Status(this.game);
+                        this.emit('endOfHand', status);
                         await Promise.all(this.players.map((player) =>
-                            player.endOfHand({winner, made, status: new Status(this.game)})));
+                            player.endOfHand({winner, made, status})));
                     }
                 }
                 break;

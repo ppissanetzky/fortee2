@@ -9,6 +9,11 @@ function convert(tt: string | TexasTime): TexasTime {
     return _.isString(tt) ? TexasTime.parse(tt) : tt;
 }
 
+const SHORT_FORMAT = 'yyyy-LL-dd HH:mm';
+const LONG_FORMAT = 'yyyy-LL-dd HH:mm:ss';
+
+const TZ = 'US/Central';
+
 /**
  * Wraps around a date that is always US/Central, just so I won't
  * make mistakes.
@@ -16,10 +21,15 @@ function convert(tt: string | TexasTime): TexasTime {
 
 export default class TexasTime {
 
-    /** This one parses the tournament dates that look like 2023-03-13 22:30 */
+    /**
+     * This one parses the tournament dates that look like 2023-03-13 22:30
+     * It also supports seconds, for testing
+     */
 
     static parse(date: string): TexasTime {
-        const parsed = parse(date, 'yyyy-LL-dd HH:mm', new Date());
+        const format = date.length === SHORT_FORMAT.length ?
+            SHORT_FORMAT : LONG_FORMAT;
+        const parsed = parse(date, format, new Date());
         assert(!isNaN(parsed.getTime()), `Invalid date "${date}"`);
         return new TexasTime(parsed);
     }
@@ -27,7 +37,7 @@ export default class TexasTime {
     /** The current date in TX time */
 
     static today(): TexasTime {
-        return new TexasTime(utcToZonedTime(Date.now(), 'US/Central'));
+        return new TexasTime(utcToZonedTime(Date.now(), TZ));
     }
 
     static midnight(): TexasTime {
@@ -38,7 +48,7 @@ export default class TexasTime {
 
     static toUTC(date: string): number {
         const t = TexasTime.parse(date);
-        return zonedTimeToUtc(t.date, 'US/Central').getTime();
+        return zonedTimeToUtc(t.date, TZ).getTime();
     }
 
     public readonly date: Date;
@@ -47,8 +57,8 @@ export default class TexasTime {
         this.date = new Date(date);
     }
 
-    toString(): string {
-        return format(this.date, 'yyyy-LL-dd HH:mm');
+    toString(withSeconds = false): string {
+        return format(this.date, withSeconds ? LONG_FORMAT : SHORT_FORMAT);
     }
 
     get dateString(): string {

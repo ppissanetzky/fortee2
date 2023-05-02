@@ -9,7 +9,7 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata, TimeOutError } from './driver';
+import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
@@ -23,25 +23,48 @@ const enum State {
      * Before the game starts
      */
 
-    WAITING,
+    WAITING = 'waiting',
 
     /**
      * The game is going and all players are connected
      */
 
-    PLAYING,
+    PLAYING = 'playing',
 
     /**
      * When a player disconnects, the game is paused
      */
 
-    PAUSED,
+    PAUSED = 'paused',
 
     /**
      * Once the game is over
      */
 
-    OVER,
+    OVER = 'over',
+}
+
+/** Should be JSON-able */
+
+export interface UserStatus {
+    name: string;
+    connected: boolean;
+}
+
+/** Should be JSON-able */
+
+export interface TeamStatus {
+    marks: number;
+    team: UserStatus[];
+}
+
+/** Should be JSON-able */
+
+export interface GameRoomStatus {
+    id: number;
+    state: string;
+    us: TeamStatus;
+    them: TeamStatus;
 }
 
 export interface GameRoomEvents {
@@ -52,6 +75,7 @@ export interface GameRoomEvents {
     gameStarted: void;
     gamePaused: void;
     gameResumed: void;
+    endOfHand: Status;
     gameOver: {
         bots: number;
         save: SaveHelper;
@@ -119,6 +143,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private state: State = State.WAITING;
 
+    private gameStatus?: Status;
+
     private readonly debug = makeDebug('game-room');
 
     public readonly options: GameRoomOptions;
@@ -155,8 +181,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.once('gameOver', listener);
         });
 
-        GameRoom.events.emit('created', this);
-
         this.positions = table.table.map((user) => {
             if (user) {
                 const name = expected(user.name);
@@ -175,6 +199,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
         assert(this.positions.every((name) => name), 'Positions are wrong');
         this.debug('positions %j', this.positions);
+
+        GameRoom.events.emit('created', this);
 
         if (!tournament) {
             setTimeout(() => {
@@ -221,6 +247,32 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 return true;
         }
         return false;
+    }
+
+    /** The user IDs that have sockets */
+
+    get connected(): string[] {
+        return Array.from(this.sockets.values()).map(({userId}) => userId);
+    }
+
+    get status(): GameRoomStatus {
+        const team = (indices: number[]) => indices.map((i) => {
+            const name = this.positions[i];
+            const connected = this.sockets.has(name);
+            return { name, connected };
+        });
+        return {
+            id: this.id,
+            state: this.state,
+            us: {
+                marks: this.gameStatus?.US.marks || 0,
+                team: team([0, 2])
+            },
+            them: {
+                marks: this.gameStatus?.THEM.marks || 0,
+                team: team([1, 3])
+            }
+        }
     }
 
     /** Allows an invited user to decline the invitation */
@@ -281,8 +333,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 return bot;
             });
             // Start'er up
-            const save = await GameDriver.start(
-                this.rules, this.players, ms(config.FT2_GAME_EXPIRY));
+            const driver = new GameDriver(this.rules, this.players,
+                    ms(config.FT2_GAME_EXPIRY));
+
+            driver.on('endOfHand', (status) => {
+                this.gameStatus = status;
+                this.emit('endOfHand', status);
+            });
+
+            const save = await driver.run();
 
             this.saveGame(save);
 
@@ -328,6 +387,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             if (this.options.tournament) {
                 this.all((socket) => socket.close('no-replay'));
             }
+
+            this.emitter.removeAllListeners();
 
             /** Notify the world that it is closed */
 
@@ -442,15 +503,27 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
     }
 
-    private expire(reason = '') {
+    public expire(reason = '') {
         if (GameRoom.rooms.has(this.token)) {
             this.state = State.OVER;
             this.debug('expired with reason "%s" for %j', reason, this.table);
             GameRoom.rooms.delete(this.token);
             this.emit('expired', undefined);
             this.all((socket) => socket.close(reason))
+            this.emitter.removeAllListeners();
             GameRoom.events.emit('closed', this);
         }
     }
 }
 
+const debug = makeDebug('game-room');
+
+GameRoom.events.on('created', (room) => {
+    debug('created', room.id, 'for', room.positions,
+        'have', GameRoom.rooms.size);
+});
+
+GameRoom.events.on('closed', (room) => {
+    debug('closed', room.id, 'for', room.positions,
+        'have', GameRoom.rooms.size);
+});

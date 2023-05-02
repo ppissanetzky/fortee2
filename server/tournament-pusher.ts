@@ -1,5 +1,3 @@
-import assert from 'node:assert';
-
 import _ from 'lodash';
 
 import { Rules } from './core';
@@ -7,7 +5,7 @@ import Scheduler from './tournament-scheduler';
 import PushServer from './push-server';
 import { makeDebug } from './utility';
 import Tournament, { State } from './tournament';
-import { Status } from './driver';
+import { GameStatus, Status } from './tournament-driver';
 import GameRoom from './game-room';
 import { User } from './table-helper';
 import Chatter from './chatter';
@@ -17,7 +15,7 @@ const debug = makeDebug('pusha-t');
 
 type Signup = [string, string | null];
 
-export interface TournamentUpdate extends Partial<Status> {
+export interface TournamentUpdate {
     id: number;
     name: string;
     startTime: string;
@@ -37,11 +35,54 @@ export interface TournamentUpdate extends Partial<Status> {
     canceled: boolean;
     done: boolean;
     later: boolean;
-    /** The winners */
-    winners?: string[];
-    /** Player specific */
+    /** The games when the tournament runs */
+    games: null | GameStatus[][];
+}
+
+function makeTournamentUpdate(t: Tournament): TournamentUpdate {
+    const games = t.driver?.gameStatus || null;
+    const signups = Array.from(t.signups.entries()).map(([s, p]) =>
+        [UserNames.exists(s), p ? UserNames.exists(p) : null] as Signup);
+
+    return {
+        id: t.id,
+        name: t.name,
+        startTime: t.startTime,
+        utcStartTime: t.utcStartTime,
+        openTime: t.openTime,
+        closeTime: t.closeTime,
+        utcCloseTime: t.utcCloseTime,
+        choosePartner: t.choosePartner,
+        rules: Rules.fromAny(t.rules).parts(),
+        signups,
+        /** How many players are signed up for this one */
+        count: t.signups.size,
+        /** The state of the tourney, only one will be true */
+        open: t.state === State.OPEN,
+        wts: t.state === State.WTS,
+        playing: t.state === State.PLAYING,
+        canceled: t.state === State.CANCELED,
+        done: t.state === State.DONE,
+        later: t.state === State.LATER,
+        games
+    };
+}
+
+export interface UserUpdate extends Partial<Status> {
+    id: number;
     signedUp: boolean;
     partner: string | null;
+}
+
+function makeUserUpdate(t: Tournament, userId: string): UserUpdate {
+    const status = t.driver?.statusFor(userId) || {};
+    return {
+        id: t.id,
+        signedUp: t.isSignedUp(userId),
+        partner: t.signups.get(userId) || null,
+        /** Status from the tournament driver once it starts */
+        ...status
+    };
 }
 
 type TableStatus = 't' | 'hosting' | 'invited';
@@ -50,6 +91,7 @@ export interface TableUpdate {
     status?: TableStatus;
     url?: string;
     with?: User[];
+    tid?: number;
     token?: string;
 }
 
@@ -82,60 +124,23 @@ export default class TournamentPusher {
             .on('started', (t) => this.updateAll(t))
             .on('gameOver', ({t}) => this.updateAll(t))
             .on('tournamentOver', ({t}) => this.updateAll(t))
+            .on('gameUpdate', (status) => this.ps.pushToAll('game', status))
 
+            .on('reload', () => this.refresh())
             .on('dropped', () => this.refresh())
-            .on('newDay', () => this.refresh())
 
             .on('summonTable', ({t, room}) => this.updateSome(t, room.table.ids))
             .on('announceBye', ({t, user}) => this.updateOne(t, user));
     }
 
-    private updateFor(t: Tournament, userId: string): TournamentUpdate {
-        const driver = Scheduler.driver(t.id);
-        const status = driver?.statusFor(userId) || {};
-        const signups = Array.from(t.signups.entries()).map(([s, p]) => {
-            const result: Signup = [UserNames.exists(s), p ? UserNames.exists(p) : null];
-            return result;
-        });
-
-        return {
-            id: t.id,
-            name: t.name,
-            startTime: t.startTime,
-            utcStartTime: t.utcStartTime,
-            openTime: t.openTime,
-            closeTime: t.closeTime,
-            utcCloseTime: t.utcCloseTime,
-            choosePartner: t.choosePartner,
-            rules: Rules.fromAny(t.rules).parts(),
-            signups,
-            /** How many players are signed up for this one */
-            count: t.signups.size,
-            /** The state of the tourney, only one will be true */
-            open: t.state === State.OPEN,
-            wts: t.state === State.WTS,
-            playing: t.state === State.PLAYING,
-            canceled: t.state === State.CANCELED,
-            done: t.state === State.DONE,
-            later: t.state === State.LATER,
-            /** The winners */
-            winners: t.winners?.split(',') || undefined,
-            /** Player specific */
-            signedUp: t.isSignedUp(userId),
-            partner: t.signups.get(userId) || null,
-            /** Status from the tournament driver once it starts */
-            ...status
-        };
-    }
-
     private updateAll(t: Tournament) {
-        this.ps.forEach('tournament', (userId) =>
-            this.updateFor(t, userId));
+        this.ps.pushToAll('tournament', makeTournamentUpdate(t));
+        this.ps.forEach('user', (userId) => makeUserUpdate(t, userId));
     }
 
     private updateOne(t: Tournament, userId: string) {
-        const update = this.updateFor(t, userId);
-        this.ps.pushToOne(userId, 'tournament', update);
+        this.ps.pushToOne(userId, 'tournament', makeTournamentUpdate(t));
+        this.ps.pushToOne(userId, 'user', makeUserUpdate(t, userId));
     }
 
     private updateSome(t: Tournament, userIds: string[]) {
@@ -153,18 +158,18 @@ export default class TournamentPusher {
     /** A user just connected */
 
     private connected(userId: string) {
-        const updates = this.nextTourneys()
-            .map((t) => this.updateFor(t, userId));
+        const tourneys = this.nextTourneys();
+        const updates = tourneys.map((t) => makeTournamentUpdate(t));
         this.ps.pushToOne(userId, 'tournaments', updates);
+        tourneys.forEach((t) =>
+            this.ps.pushToOne(userId, 'user', makeUserUpdate(t, userId)));
         this.pushTable(userId);
     }
 
     /** A new day, or a tournament dropped off the list */
 
     private refresh() {
-        const tourneys = this.nextTourneys();
-        this.ps.forEach('tournaments', (userId) =>
-             tourneys.map((t) => this.updateFor(t, userId)));
+        this.ps.userIds.forEach((userId) => this.connected(userId));
     }
 
     private pushTable(userId: string) {
@@ -189,6 +194,7 @@ export default class TournamentPusher {
                 result.status = status;
                 result.url = room.url;
                 result.token = room.token;
+                result.tid = room.t?.id;
                 result.with = room.table.users()
                     .filter((user) => user.id !== userId);
                 return true;

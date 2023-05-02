@@ -2,10 +2,11 @@ import { WebSocket } from 'ws';
 import { NextFunction, Request, Response } from 'express';
 
 import { makeDebug } from './utility';
-import type { TableUpdate, TournamentUpdate } from './tournament-pusher';
+import type { TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
 import type { Message } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
+import type { GameStatus } from './tournament-driver';
 
 interface PushMessages {
     /** Sends an object with all users online, key is id, value is name */
@@ -16,6 +17,12 @@ interface PushMessages {
 
     /** An updated list of tournaments */
     tournaments: TournamentUpdate[];
+
+    /** An update specific to a user for a tournament */
+    user: UserUpdate;
+
+    /** Status update for one game */
+    game: GameStatus;
 
     /** Table status, empty, t, hosting or invited */
     table: TableUpdate;
@@ -68,6 +75,10 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
 
     public has(id: string): boolean {
         return this.connections.has(id);
+    }
+
+    get userIds(): string [] {
+        return Array.from(this.connections.keys());
     }
 
     private disconnected(id: string, name: string, ws: WebSocket) {

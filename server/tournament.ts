@@ -3,6 +3,7 @@ import _ from 'lodash';
 
 import TexasTime from './texas-time';
 import * as db from './tournament-db';
+import type TournamenDriver from './tournament-driver';
 
 /** A row from the database */
 
@@ -69,6 +70,8 @@ export default class Tournament implements Readonly<TournamentRow> {
     #signups?: Signups;
 
     public readonly utcStartTime: number;
+
+    public driver?: TournamenDriver;
 
     constructor(row: TournamentRow) {
         this.row = row;

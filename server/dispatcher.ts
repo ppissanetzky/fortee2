@@ -3,7 +3,7 @@ import EventEmitter from 'node:events';
 
 export default class Dispatcher<T extends object> {
 
-    private readonly emitter: EventEmitter;
+    protected readonly emitter: EventEmitter;
 
     constructor() {
         this.emitter = new EventEmitter();
