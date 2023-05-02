@@ -90,7 +90,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
      * are waiting for a reply.
      */
 
-    private readonly outstanding: any[] = [];
+    public readonly outstanding: any[] = [];
 
     private readonly debug = makeDebug('socket');
     private readonly ws: WebSocket;

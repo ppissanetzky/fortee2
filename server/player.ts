@@ -15,6 +15,7 @@ type PlayerHandler = {
 export default interface Player extends PlayerHandler {
 
     readonly name: string;
+    readonly id: string;
 
     readonly human: boolean;
 

@@ -74,6 +74,8 @@ export class TimeOutError extends Error {}
 
 export interface GameDriverEvents {
     endOfHand: Status;
+    /** Idle ms */
+    idle: number;
 }
 
 export default class GameDriver extends Dispatcher<GameDriverEvents> {
@@ -109,13 +111,22 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
             const save = await new Promise<Save>((resolve, reject) => {
                 let interval: NodeJS.Timer;
                 if (this.maxIdleMs > 0) {
+                    const tick = ms('10s')
                     interval = setInterval(() => {
                         const time = Date.now() - this.lastTime;
                         if (time > this.maxIdleMs) {
                             clearInterval(interval);
+                            this.emit('idle', time);
                             reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
                         }
-                    }, ms('30s'));
+                        else if (time >= tick) {
+                            this.emit('idle', time);
+                            this.all((player) => player.gameIdle({
+                                idle: ms(time),
+                                expiresIn: ms(this.maxIdleMs - time)
+                            }));
+                        }
+                    }, tick);
                 }
                 const finished = (save: Save) => {
                     clearInterval(interval);

@@ -22,7 +22,7 @@ export default class Bot extends BasePlayer {
     }
 
     constructor(name = getNextBotName(), fastAF = false) {
-        super(name);
+        super(`:bot:${name}`, name);
         this.fastAF = fastAF;
     }
 

@@ -188,6 +188,9 @@
           <span v-else-if="t.winners">
             Won by <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>
           </span>
+          <v-chip v-else-if="t.done" label color="red" class="white--text">
+            failed
+          </v-chip>
         </v-toolbar>
         <!-- <v-divider /> -->
 
@@ -314,7 +317,7 @@
                     <v-toolbar
                       flat
                       height="28"
-                      :color="game.started && ! game.finished ? 'green' : '#8fa5b7'"
+                      :color="gameColor(game)"
                       class="white--text caption"
                     >
                       <span>
@@ -324,8 +327,10 @@
                       <span v-if="game.finished">finished</span>
                       <div v-else-if="game.room">
                         <span v-if="game.room.state === 'waiting'">waiting for players</span>
-                        <span v-if="game.room.state === 'playing'">playing</span>
-                        <span v-if="game.room.state === 'paused'">paused</span>
+                        <span v-else-if="game.room.state === 'playing' && game.room.idle">idle</span>
+                        <span v-else-if="game.room.state === 'playing'">playing</span>
+                        <span v-else-if="game.room.state === 'paused'">paused</span>
+                        <span v-else>expired</span>
                       </div>
                       <span v-else>waiting</span>
                     </v-toolbar>
@@ -711,8 +716,32 @@ export default {
     },
     icon (game, team, i) {
       if (!game.finished && game.room) {
-        return game.room[team].team[i].connected ? 'green' : 'red'
+        const status = game.room[team].team[i]
+        if (!status.connected) {
+          return 'red'
+        } else if (game.room.idle && status.outstanding > 0) {
+          return 'orange'
+        }
+        return 'green'
       }
+    },
+    gameColor (game) {
+      if (game.room) {
+        const { state, idle } = game.room
+        if (state === 'waiting' || state === 'paused') {
+          return 'orange'
+        }
+        if (state === 'playing' && idle) {
+          return 'orange'
+        }
+        if (state === 'playing') {
+          return 'green'
+        }
+        if (state === 'over' && idle) {
+          return 'red'
+        }
+      }
+      return '#8fa5b7'
     },
     connected (t, name) {
       return false

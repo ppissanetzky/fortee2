@@ -310,12 +310,13 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             await driver.run();
         }
         catch (error) {
+            t.saveWith({finished: 1});
             this.emit('failed', t);
         }
         finally {
-            t.saveWith({
-                finished: 1,
-            });
+            if (!t.finished) {
+                t.saveWith({finished: 1});
+            }
             /** Keep the tourney around for a few minutes */
             this.timeouts.add(() => {
                 this.tourneys.delete(id);

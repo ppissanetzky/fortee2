@@ -9,7 +9,7 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status } from './driver';
+import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status, GameDriverEvents } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
@@ -47,8 +47,11 @@ const enum State {
 /** Should be JSON-able */
 
 export interface UserStatus {
+    id: string;
     name: string;
     connected: boolean;
+    /** How many outstanding socket messages for this user */
+    outstanding: number;
 }
 
 /** Should be JSON-able */
@@ -63,11 +66,12 @@ export interface TeamStatus {
 export interface GameRoomStatus {
     id: number;
     state: string;
+    idle: number;
     us: TeamStatus;
     them: TeamStatus;
 }
 
-export interface GameRoomEvents {
+export interface GameRoomEvents extends GameDriverEvents {
     /** The user ID that just joined, could happen many times */
     userJoined: string;
     /** The user ID that disconnected, could happen many times */
@@ -75,13 +79,13 @@ export interface GameRoomEvents {
     gameStarted: void;
     gamePaused: void;
     gameResumed: void;
-    endOfHand: Status;
     gameOver: {
         bots: number;
         save: SaveHelper;
     },
     gameError: unknown;
-    expired: void;
+    expired: GameRoomStatus;
+    closed: undefined;
 }
 
 export interface GameRoomOptions {
@@ -145,6 +149,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private gameStatus?: Status;
 
+    private gameIdle?: number;
+
     private readonly debug = makeDebug('game-room');
 
     public readonly options: GameRoomOptions;
@@ -160,7 +166,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     constructor(options: GameRoomOptions) {
         super();
         this.options = options;
-        const { rules, table, tournament } = options;
+        const { rules, table } = options;
         this.table = table;
         this.host = expected(expected(table.host).name);
         GameRoom.rooms.set(this.token, this);
@@ -181,7 +187,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.once('gameOver', listener);
         });
 
-        this.positions = table.table.map((user) => {
+        this.positions = table.table.map((user, index) => {
             if (user) {
                 const name = expected(user.name);
                 if (GameRoom.isBot(user.id)) {
@@ -193,6 +199,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 return name;
             }
             const bot = new ProductionBot();
+            table.table[index] = {
+                id: bot.id,
+                name: bot.name
+            };
             this.bots.set(bot.name, bot);
             return bot.name;
         });
@@ -202,13 +212,16 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
         GameRoom.events.emit('created', this);
 
-        if (!tournament) {
-            setTimeout(() => {
-                if (!this.started) {
-                    this.expire();
-                }
-            }, ms(config.FT2_SLACK_INVITATION_EXPIRY))
-        }
+        this.once('closed', () => {
+            GameRoom.events.emit('closed', this);
+            this.emitter.removeAllListeners();
+        });
+
+        setTimeout(() => {
+            if (!this.started) {
+                this.expire();
+            }
+        }, ms(config.FT2_GAME_EXPIRY))
 
         /** If the room is just bots, start it now */
         if (this.bots.size === 4) {
@@ -258,12 +271,16 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     get status(): GameRoomStatus {
         const team = (indices: number[]) => indices.map((i) => {
             const name = this.positions[i];
-            const connected = this.sockets.has(name);
-            return { name, connected };
+            const id = expected(this.table.idFor(name));
+            const socket = this.sockets.get(name);
+            const connected = Boolean(socket);
+            const outstanding = socket?.outstanding.length || 0;
+            return { id, name, connected, outstanding };
         });
         return {
             id: this.id,
             state: this.state,
+            idle: this.gameIdle || 0,
             us: {
                 marks: this.gameStatus?.US.marks || 0,
                 team: team([0, 2])
@@ -338,7 +355,13 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
             driver.on('endOfHand', (status) => {
                 this.gameStatus = status;
+                this.gameIdle = 0;
                 this.emit('endOfHand', status);
+            });
+
+            driver.on('idle', (time) => {
+                this.gameIdle = time;
+                this.emit('idle', time);
             });
 
             const save = await driver.run();
@@ -355,13 +378,13 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
             if (error instanceof TimeOutError) {
                 this.debug('game expired', error.message);
+                this.emit('expired', this.status);
                 this.all((socket) => socket.send('gameError', {error: 'expired'}));
-                this.emit('expired', undefined);
             }
             else {
                 this.debug('game error', error);
-                this.all((socket) => socket.send('gameError', {}));
                 this.emit('gameError', error);
+                this.all((socket) => socket.send('gameError', {}));
             }
         }
         finally {
@@ -386,13 +409,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
             if (this.options.tournament) {
                 this.all((socket) => socket.close('no-replay'));
+                this.sockets.clear();
             }
 
-            this.emitter.removeAllListeners();
-
-            /** Notify the world that it is closed */
-
-            GameRoom.events.emit('closed', this);
+            this.emit('closed', undefined);
         }
     }
 
@@ -503,15 +523,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
     }
 
-    public expire(reason = '') {
+    private expire(reason = '') {
         if (GameRoom.rooms.has(this.token)) {
             this.state = State.OVER;
             this.debug('expired with reason "%s" for %j', reason, this.table);
             GameRoom.rooms.delete(this.token);
-            this.emit('expired', undefined);
-            this.all((socket) => socket.close(reason))
-            this.emitter.removeAllListeners();
-            GameRoom.events.emit('closed', this);
+            this.emit('expired', this.status);
+            this.all((socket) => socket.close(reason));
+            this.sockets.clear();
+            this.emit('closed', undefined);
         }
     }
 }

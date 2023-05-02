@@ -28,6 +28,13 @@ async function delay(m: number) {
 
 // let N = 1;
 
+interface Options {
+    noShow?: boolean;
+    connectDelay?: number;
+    noReply?: boolean;
+    playDelay?: number;
+}
+
 class Client {
 
     private name: string;
@@ -36,15 +43,18 @@ class Client {
     private headers: Record<string, string>;
     private ws?: WebSocket;
     private tourney?: TournamentUpdate;
+    private options: Options;
 
-    constructor(tid: number) {
-        this.name = nextBotName();
+    constructor(tid: number, options: Options) {
         this.tid = tid;
+        this.options = options;
+        this.name = nextBotName();
         this.debug = makeDebug(this.name);
         this.debug.enabled = true;
         this.headers = {
             ['x-ft2-bot']: this.name
         }
+        this.debug('%j', options);
     }
 
     private json(url: string) {
@@ -106,25 +116,35 @@ class Client {
 
     async join(t: TableUpdate) {
         if (t.status === 't' && t.tid === this.tid) {
+            if (this.options.noShow) {
+                return;
+            }
             const response = await fetch(`${URL}/play/${t.token}`, {
                 headers: this.headers,
                 redirect: 'manual'
             });
             assert(response.status === 302);
-            // await delay(_.random(3000, 20000));
+            if (this.options.connectDelay) {
+                await delay(this.options.connectDelay);
+            }
             const cookie = response.headers.get('set-cookie');
             assert(cookie);
             const ws = new WebSocket(`ws://localhost:${PORT}/ws`, {
                 headers: {cookie}
             });
             const send = async (type: string, message: any, ack?: number) => {
-                // await delay(_.random(500, 1000));
                 ws.send(JSON.stringify({ack, type, message}));
             }
             ws.once('open', () => {
                 this.debug('connected');
-                ws.on('message', (data) => {
+                if (this.options.noReply) {
+                    return;
+                }
+                ws.on('message', async (data) => {
                     const { ack, type, message } = JSON.parse(data.toString());
+                    if (ack && this.options.playDelay) {
+                        await delay(this.options.playDelay);
+                    }
                     switch (type) {
                         case 'startingHand':
                             return send('readyToStartHand', null, ack);
@@ -192,7 +212,13 @@ class Client {
     });
 
     for (let i = 0; i < 8; ++i) {
-        new Client(t.id).connect();
+        const options: Options = {
+            connectDelay: _.random(1000, 5000)
+        };
+        if (i == 1) {
+            options.noReply = true;
+        }
+        new Client(t.id, options).connect();
         await delay(50);
     }
 })()

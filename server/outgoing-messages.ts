@@ -123,6 +123,11 @@ export interface GameError {
     error?: string;
 }
 
+export interface GameIdle {
+    idle: string;
+    expiresIn: string;
+}
+
 export interface GameMessages {
     /**
      * The table, sent once when the game is started
@@ -232,7 +237,11 @@ export interface GameMessages {
      * any more
      */
 
-    gameError: GameError
+    gameError: GameError;
+
+    /** The game has been idle and may expire soone */
+
+    gameIdle: GameIdle;
 }
 
 export type OutgoingMessages =

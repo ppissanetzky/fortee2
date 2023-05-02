@@ -11,6 +11,7 @@ import { SaveHelper } from './core/save-game';
 import { expected, makeDebug } from './utility';
 import nextBotName from './bot-names';
 import config from './config';
+import ms from 'ms';
 
 async function user(id: string) {
     const name = GameRoom.isBot(id);
@@ -185,10 +186,17 @@ export class Game {
             });
 
             room.on('endOfHand', () => this.update());
-
-            room.once('expired', () => {
-                debug('room expired for %j', room.positions);
+            room.on('idle', (time) => {
+                debug('room idle for %s : %j', ms(time), room.status);
+                this.update();
             });
+
+            room.once('expired', (status) => {
+                debug('room expired %j', status);
+                this.update();
+            });
+
+            room.once('closed', () => this.update());
 
             room.once('gameStarted', () => {
                 debug('started');

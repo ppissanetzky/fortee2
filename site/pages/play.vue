@@ -631,6 +631,10 @@ export default {
           this.over = true
           this.connected = []
           break
+
+        case 'gameIdle':
+          this.showSnack(`The game has been idle for ${message.idle} and will expire in ${message.expiresIn}`)
+          break
       }
     },
     bidForTeam (team) {

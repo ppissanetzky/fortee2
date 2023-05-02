@@ -9,7 +9,7 @@ import type { BidSubmitted, EndOfHand, EndOfTrick, GameOver,
 export default class PromptPlayer extends BasePlayer {
 
     constructor(name = '') {
-        super(name || 'you');
+        super(name || 'you', name || 'you');
     }
 
     protected async choose(message: string, choices: (Bid | Bone | Trump)[]): Promise<string> {

@@ -4,6 +4,7 @@ import type Player from './player';
 import type { Bid , Bone, Team, Trump, Rules } from './core';
 import type { Status } from './driver';
 import Socket from './socket';
+import { GameError, GameIdle } from './outgoing-messages';
 
 interface ThingWithName {
     from?: string;
@@ -20,6 +21,10 @@ export default class RemotePlayer implements Player {
 
     constructor(socket: Socket) {
         this.socket = socket;
+    }
+
+    get id(): string {
+        return this.socket.userId;
     }
 
     get name(): string {
@@ -138,8 +143,12 @@ export default class RemotePlayer implements Player {
         this.socket.send('gameOver', msg);
     }
 
-    gameError(msg: any): void {
+    gameError(msg: GameError): void {
         this.socket.send('gameError', msg);
+    }
+
+    gameIdle(msg: GameIdle): void {
+        this.socket.send('gameIdle', msg);
     }
 
 }

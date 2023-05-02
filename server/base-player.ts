@@ -1,7 +1,7 @@
 import type Player from './player';
 import type { Bid , Bone, Trump, Rules } from './core';
 import type {
-    BidSubmitted, Draw, EndOfHand, EndOfTrick, GameOver,
+    BidSubmitted, Draw, EndOfHand, EndOfTrick, GameError, GameIdle, GameOver,
     PlaySubmitted, StartingGame, TrumpSubmitted,
     YourBid, YourCall, YourPlay } from './outgoing-messages';
 
@@ -15,6 +15,7 @@ export class BasePlayer implements Player {
     protected readonly strategies: Strategies = new Strategies();
 
     public readonly name: string;
+    public readonly id: string;
 
     public rules?: Rules;
     public table?: TableHelper;
@@ -25,7 +26,8 @@ export class BasePlayer implements Player {
     public trick: PlaySubmitted[] = [];
     public pile: PlaySubmitted[][] = [];
 
-    constructor(name: string) {
+    constructor(id: string, name: string) {
+        this.id = id;
         this.name = name;
     }
 
@@ -109,7 +111,11 @@ export class BasePlayer implements Player {
         msg;
     }
 
-    gameError(msg: any): void {
+    gameError(msg: GameError): void {
+        msg;
+    }
+
+    gameIdle(msg: GameIdle): void {
         msg;
     }
 
