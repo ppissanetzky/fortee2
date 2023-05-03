@@ -327,7 +327,7 @@
                       <span v-if="game.finished">finished</span>
                       <div v-else-if="game.room">
                         <span v-if="game.room.state === 'waiting'">waiting for players</span>
-                        <span v-else-if="game.room.state === 'playing' && game.room.idle">idle</span>
+                        <span v-else-if="game.room.state === 'playing' && game.room.idle">stuck</span>
                         <span v-else-if="game.room.state === 'playing'">playing</span>
                         <span v-else-if="game.room.state === 'paused'">paused</span>
                         <span v-else>expired</span>
@@ -366,9 +366,14 @@
                             </v-chip>
                           </div>
                           <v-spacer />
-                          <h3 v-if="game.room" class="ml-5">
-                            {{ game.room[team].marks }}
-                          </h3>
+                          <div class="ml-5">
+                            <h3 v-if="game.disq[team]" class="red--text">
+                              F
+                            </h3>
+                            <h3 v-else-if="game.room">
+                              {{ game.room[team].marks }}
+                            </h3>
+                          </div>
                         </v-toolbar>
                       </div>
                     </v-sheet>
@@ -701,16 +706,25 @@ export default {
       }
       return []
     },
+    marks (game, team) {
+      if (game.disq[team]) {
+        return -3
+      }
+      if (game[team] === 'bye') {
+        return -2
+      }
+      const result = game.room?.[team].marks
+      if (typeof result === 'number') {
+        return result
+      }
+      return -1
+    },
     chipColor (game, team, i) {
-      if (game.room) {
-        if (game.finished) {
-          const other = team === 'us' ? 'them' : 'us'
-          if (game.room[team].marks > game.room[other].marks) {
-            return 'secondary'
-          }
+      if (game.finished) {
+        const other = team === 'us' ? 'them' : 'us'
+        if (this.marks(game, team) > this.marks(game, other)) {
+          return 'secondary'
         }
-      } else if (game.finished) {
-        return 'secondary'
       }
       return 'grey lighten-2'
     },
@@ -726,7 +740,7 @@ export default {
       }
     },
     gameColor (game) {
-      if (game.room) {
+      if (!game.finished && game.room) {
         const { state, idle } = game.room
         if (state === 'waiting' || state === 'paused') {
           return 'orange'

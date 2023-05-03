@@ -213,11 +213,11 @@ class Client {
 
     for (let i = 0; i < 8; ++i) {
         const options: Options = {
-            connectDelay: _.random(1000, 5000)
+            // connectDelay: _.random(1000, 10000),
+            // playDelay: _.random(100, 1000),
+            noShow: true
+            // noReply: _.random(0, 100) < 5,
         };
-        if (i == 1) {
-            options.noReply = true;
-        }
         new Client(t.id, options).connect();
         await delay(50);
     }

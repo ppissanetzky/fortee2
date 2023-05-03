@@ -7,7 +7,6 @@ import UserNames from './user-names';
 import GameRoom, { GameRoomStatus } from './game-room';
 import { TableBuilder } from './table-helper';
 import { Rules } from './core';
-import { SaveHelper } from './core/save-game';
 import { expected, makeDebug } from './utility';
 import nextBotName from './bot-names';
 import config from './config';
@@ -27,12 +26,26 @@ export class Team {
 
     public readonly users: string[];
 
+    public disq = false;
+
     constructor(a: string, b: string) {
         this.users = [a, b];
     }
 
-    get namesOrBye(): 'bye' | string[] {
+    clone(): Team {
         if (this === Team.bye) {
+            return this;
+        }
+        const [a, b] = this.users;
+        return new Team(a, b);
+    }
+
+    get isBye(): boolean {
+        return this === Team.bye;
+    }
+
+    get namesOrBye(): 'bye' | string[] {
+        if (this.isBye) {
             return 'bye';
         }
         return this.users.map((id) => UserNames.exists(id));
@@ -85,6 +98,12 @@ export class Game {
         }
     }
 
+    otherTeam(team: Team): Team {
+        const [result] = _.difference(this.teams, [team]);
+        assert(result);
+        return result;
+    }
+
     get status(): GameStatus {
         return {
             tid: this.driver.t.id,
@@ -92,6 +111,10 @@ export class Game {
             round: this.round,
             us: this.teams[0]?.namesOrBye,
             them: this.teams[1]?.namesOrBye,
+            disq: {
+                us: this.teams[0]?.disq,
+                them: this.teams[1]?.disq,
+            },
             started: this.started,
             finished: this.finished,
             room: this.room?.status
@@ -102,45 +125,112 @@ export class Game {
         this.driver.emit('gameUpdate', this.status);
     }
 
+    gameOver(winners: string[]) {
+        this.driver.emit('gameOver', {
+            t: this.driver.t,
+            round: this.round,
+            winners
+        });
+    }
+
+    tournamentOver(winners: Team): void {
+        assert(!this.next_game);
+        this.finished = true;
+        this.driver.winners = winners.users;
+        this.driver.emit('tournamentOver', {
+            t: this.driver.t,
+            winners
+        });
+        this.update();
+    }
+
+    async advanceTeam(team: Team): Promise<void> {
+        assert(team);
+        assert(this.teams.includes(team));
+        assert(!team.isBye);
+        this.finished = true;
+        const winners = team.users;
+        this.gameOver(winners);
+        const { next_game } = this;
+        if (!next_game) {
+            return this.tournamentOver(team);
+        }
+        next_game.teams.push(team.clone());
+        return next_game.start();
+    }
+
     async start(): Promise<void> {
 
-        const { driver } = this;
+        const { driver, next_game, teams } = this;
 
-        const { bye } = this;
+        let debug = makeDebug('t-game')
+            .extend(`t${driver.t.id}-r${this.round}-g${this.id}`);
 
-        if (bye) {
-            /** Announce the bye */
-            for (const user of bye.users) {
-                if (!GameRoom.isBot(user)) {
-                    driver.emit('announceBye', {
-                        t: driver.t,
-                        round: this.round,
-                        user
-                    });
+        /**
+         * This one is not ready to start, we'll try again when another
+         * game finishes
+         */
+
+        if (teams.length < 2) {
+            debug('waiting for teams');
+            this.update();
+            return Promise.resolve();
+        }
+
+        /** Gather the byes, could be 0, 1 or 2 */
+        const byes = teams.filter((team) => team.isBye);
+
+        debug('has', byes.length, 'byes');
+
+        /** This is the final game and we got here because a bye was advanced */
+        if (!next_game && byes.length > 0) {
+            this.started = true;
+            this.finished = true;
+            /**
+             * This can happen when earlier teams were disqualified
+             * If it is the final game, no one wins, the tourney fails
+             */
+            if (byes.length === 2) {
+                debug('both byes at final game, failing');
+                this.update();
+                throw new Error('No teams made it to the final game');
+            }
+            /** We should not get here with zero byes */
+            debug('one bye at final game');
+            const winners = expected(this.bye);
+            return this.tournamentOver(winners);
+        }
+
+        /**
+         * Now, we know there is a next game and 2 teams, but there could
+         * still be 0, 1 or 2 byes
+         */
+        const other = this.bye;
+        if (other) {
+            assert(next_game);
+
+            /** Announce the bye if there is only one bye */
+            if (!other.isBye) {
+                for (const user of other.users) {
+                    if (!GameRoom.isBot(user)) {
+                        driver.emit('announceBye', {
+                            t: driver.t,
+                            round: this.round,
+                            user
+                        });
+                    }
                 }
             }
 
-            /** Advance this team to the next game */
-            const next_game = expected(this.next_game);
-            next_game.teams.push(bye);
+            /** Advance this team to the next game, note that it could be a bye */
+            next_game.teams.push(other.clone());
             this.started = true;
             this.finished = true;
             this.update();
             return Promise.resolve(next_game.start());
         }
 
-        const { teams } = this;
-
-        /**
-         * This one is not ready to start, we'll try again when another
-         * game finishes
-         */
-        if (teams.length < 2) {
-            /** Update it to show the current team */
-            this.update();
-            return Promise.resolve();
-        }
-
+        /** No byes, we can set-up the game */
         const table = new TableBuilder([
             await user(teams[0].users[0]),
             await user(teams[1].users[0]),
@@ -156,8 +246,7 @@ export class Game {
                 tournament: driver.t
             });
 
-            const debug = makeDebug('t-game')
-                .extend(`t${driver.t.id}-r${this.round}-g${this.id}/${room.id}`);
+            debug = debug.extend(`room-${room.id}`);
 
             debug('starting with %j', table);
 
@@ -194,6 +283,66 @@ export class Game {
             room.once('expired', (status) => {
                 debug('room expired %j', status);
                 this.update();
+                const teams = [
+                    {status: status.us, team: this.teams[0]},
+                    {status: status.them, team: this.teams[1]}
+                ];
+                /** All the teams where every user is connected */
+                const connected = teams.filter(({status: {team}}) =>
+                    team.every(({connected}) => connected)).map(({team}) => team);
+                /**
+                 * Only one team is connected, so we can blame the other one and
+                 * advance this one. The other options are: 1) both teams are
+                 * connected, or neither is connected. We can't make a decision
+                 * based on either of those.
+                 */
+                if (connected.length === 1) {
+                    const [winners] = connected;
+                    this.otherTeam(winners).disq = true;
+                    return resolve(this.advanceTeam(winners));
+                }
+                /** Teams that have no outstanding messages are responsive */
+                const responsive = teams.filter(({status: {team}}) =>
+                    team.every(({outstanding}) => !outstanding)).map(({team}) => team);
+                /** Same as above */
+                if (responsive.length === 1) {
+                    const [winners] = responsive;
+                    this.otherTeam(winners).disq = true;
+                    return resolve(this.advanceTeam(winners));
+                }
+                /** Now, let's look at marks */
+                let leading: Team | undefined = undefined;
+                if (status.us.marks > status.them.marks) {
+                    leading = this.teams[0];
+                } else if (status.them.marks > status.us.marks) {
+                    leading = this.teams[1];
+                }
+                /** If one is leading, we're going to advance that one */
+                if (leading) {
+                    this.otherTeam(leading).disq = true;
+                    return resolve(this.advanceTeam(leading));
+                }
+                /**
+                 * Neither is leading, we're going to advance a bye - both
+                 * teams get disqualified
+                 */
+
+                this.teams.forEach((team) => team.disq = true);
+
+                /** This is the final game, so the tournament has no winners */
+                if (!next_game) {
+                    debug('no winners, both teams in final table disqualified');
+                    this.finished = true;
+                    reject(new Error('Both final teams disqualified'));
+                    this.update();
+                    return;
+                }
+                /** Otherwise, we push a bye for the next game */
+                this.finished = true;
+                this.update();
+                next_game.teams.push(Team.bye);
+                this.gameOver([]);
+                resolve(next_game.start());
             });
 
             room.once('closed', () => this.update());
@@ -212,46 +361,9 @@ export class Game {
             });
 
             room.once('gameOver', ({save}) => {
-                this.finished = true;
-                /** These are the winners, they advance */
-                const [a, b] = save.winnerIndices;
-                const winners = new Team(
-                    expected(table.table[a]).id,
-                    expected(table.table[b]).id);
-                debug('game over %j', winners);
-
-                /** Keep track of the losers */
-                const losers = save.loserIndices.map((i) =>
-                    expected(table.table[i]).id);
-                losers.forEach((loser) => driver.losers.add(loser));
-
-                /** Emit an event */
-                driver.emit('gameOver', {
-                    t: driver.t,
-                    round: this.round,
-                    winners: winners.users,
-                    losers
-                });
-
-                this.update();
-
-                const { next_game } = this;
-                /** The final game is over! */
-                if (!next_game) {
-                    debug('tournament over %j', save.winners);
-                    driver.winners = save.winners;
-                    driver.emit('tournamentOver', {
-                        t: driver.t,
-                        winners,
-                        room,
-                        save
-                    });
-                    return resolve();
-                }
-                /** Otherwise, this team advances */
-                next_game.teams.push(winners);
-                /** Now, try to start the next game */
-                resolve(next_game.start());
+                const team = save.winnerIndices.includes(0)
+                    ? this.teams[0] : this.teams[1];
+                resolve(this.advanceTeam(team));
             });
 
             driver.emit('summonTable', {
@@ -283,6 +395,10 @@ export interface GameStatus {
     us?: 'bye' | string[];
     /** Names in the bracket, undefined if not assigned yet, or 'bye' */
     them?: 'bye' | string[];
+    disq: {
+        us: boolean,
+        them: boolean
+    };
     started: boolean;
     finished: boolean;
     room?: GameRoomStatus;
@@ -293,15 +409,11 @@ export interface GameOver {
     round: number;
     /** User IDs */
     winners: string[];
-    /** User IDs */
-    losers: string[];
 }
 
 export interface TournamentOver {
     t: Tournament;
     winners: Team;
-    save: SaveHelper;
-    room: GameRoom;
 }
 
 export interface TournamentDriverEvents {

@@ -621,7 +621,7 @@ export default {
 
         case 'gameError':
           if (message.error === 'expired') {
-            this.choiceTitle = 'This game expired'
+            this.choiceTitle = 'This game timed out'
           } else {
             this.choiceTitle = 'There was a bug in the game, it cannot continue'
           }
@@ -633,7 +633,7 @@ export default {
           break
 
         case 'gameIdle':
-          this.showSnack(`The game has been idle for ${message.idle} and will expire in ${message.expiresIn}`)
+          this.showSnack(`The game has been idle for ${message.idle} and will time out in ${message.expiresIn}`)
           break
       }
     },
