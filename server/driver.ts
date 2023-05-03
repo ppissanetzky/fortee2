@@ -111,7 +111,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
             const save = await new Promise<Save>((resolve, reject) => {
                 let interval: NodeJS.Timer;
                 if (this.maxIdleMs > 0) {
-                    const tick = ms('10s')
+                    const tick = ms('30s')
                     interval = setInterval(() => {
                         const time = Date.now() - this.lastTime;
                         if (time > this.maxIdleMs) {
