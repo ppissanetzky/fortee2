@@ -275,7 +275,7 @@ export class Game {
             });
 
             room.on('endOfHand', () => this.update());
-            room.on('idle', (time) => {
+            room.on('gameIdle', ({time}) => {
                 debug('room idle for %s : %j', ms(time), room.status);
                 this.update();
             });

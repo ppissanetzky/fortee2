@@ -10,13 +10,15 @@ import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
 import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status, GameDriverEvents, StopError } from './driver';
-import type { RoomUpdate } from './outgoing-messages';
+import type { EndOfHand, GameIdle, RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
 import config from './config';
 import sanitize from 'sanitize-filename';
 import Tournament from './tournament';
+import { WebSocket } from 'ws';
+import { stringify } from './json';
 
 const enum State {
     /**
@@ -69,6 +71,7 @@ export interface GameRoomStatus {
     idle: number;
     us: TeamStatus;
     them: TeamStatus;
+    token: string;
 }
 
 export interface GameRoomEvents extends GameDriverEvents {
@@ -86,6 +89,8 @@ export interface GameRoomEvents extends GameDriverEvents {
     gameError: unknown;
     expired: GameRoomStatus;
     closed: undefined;
+    endOfHand: EndOfHand;
+    gameIdle: GameIdle;
 }
 
 export interface GameRoomOptions {
@@ -157,6 +162,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly gone: Promise<void>;
 
+    private watchers = new Set<WebSocket>();
+
+    private watcherCatchup: string[] = [];
+
     /**
      * A set of user names that have been invited to this room. Always
      * includes the host
@@ -215,6 +224,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.once('closed', () => {
             GameRoom.events.emit('closed', this);
             this.emitter.removeAllListeners();
+            for (const watcher of this.watchers.values()) {
+                watcher.close(4000, 'game-over');
+            }
+            this.watchers.clear();
         });
 
         setTimeout(() => {
@@ -279,6 +292,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         });
         return {
             id: this.id,
+            token: this.token,
             state: this.state,
             idle: this.gameIdle || 0,
             us: {
@@ -321,9 +335,9 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         });
     }
 
-    private roomUpdate(socket: Socket): RoomUpdate {
+    private roomUpdate(target: {name: string}): RoomUpdate {
         return {
-            hosting: this.host === socket.name,
+            hosting: this.host === target.name,
             full: this.full,
             started: this.started,
             paused: this.state === State.PAUSED,
@@ -354,20 +368,36 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             const driver = new GameDriver(this.rules, this.players,
                     ms(config.FT2_GAME_EXPIRY));
 
-            driver.on('endOfHand', (status) => {
-                this.gameStatus = status;
+            driver.on('endOfHand', (msg) => {
+                this.gameStatus = msg.status;
                 this.gameIdle = 0;
-                this.emit('endOfHand', status);
+                this.emit('endOfHand', msg);
             });
 
-            driver.on('idle', (time) => {
-                this.gameIdle = time;
-                this.emit('idle', time);
+            driver.on('gameIdle', (msg) => {
+                this.gameIdle = msg.time;
+                this.emit('gameIdle', msg);
             });
 
             this.once('closed', () => {
                 this.debug('stopping driver');
                 driver.stop();
+            });
+
+            driver.onAll((event) => {
+                try {
+                    const data = stringify(event);
+                    for (const ws of this.watchers.values()) {
+                        ws.send(data);
+                    }
+                    if (event.type === 'endOfHand') {
+                        this.watcherCatchup = [];
+                    }
+                    this.watcherCatchup.push(data);
+                }
+                catch (error) {
+                    /** Ignore */
+                }
             });
 
             const save = await driver.run();
@@ -416,6 +446,22 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
             this.emit('closed', undefined);
         }
+    }
+
+    public addWatcher(user: Express.User, ws: WebSocket) {
+        this.watchers.add(ws);
+        this.debug('added watcher', user.id, user.name);
+        ws.once('close', () => {
+            this.debug('removed watcher', user.id, user.name);
+            this.watchers.delete(ws);
+        });
+        const message: string[] = [
+            stringify({type: 'welcome', message: {youAre: this.host}}),
+            stringify({type: 'youEnteredGameRoom', message: this.roomUpdate(user)}),
+            stringify({type: 'startingGame', message: {desc: this.rules.parts()}}),
+            ...this.watcherCatchup,
+        ];
+        ws.send(JSON.stringify({type: 'catchup', message}));
     }
 
     public async join(socket: Socket) {

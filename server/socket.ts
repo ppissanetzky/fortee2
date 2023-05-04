@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import _ from 'lodash';
 import { WebSocket } from 'ws';
 
@@ -31,6 +32,31 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     }
 
     private static connected = new Set<string>();
+
+    static watch() {
+        return async (req: Request, res: Response, next: NextFunction) => {
+            const { user, params: { token } } = req;
+            assert(user);
+
+            if (!token) {
+                return res.sendStatus(400);
+            }
+
+            const room = GameRoom.rooms.get(token);
+
+            if (!room) {
+                return res.sendStatus(404);
+            }
+
+            try {
+                const [ws] = await WsServer.get().upgrade(req);
+                room.addWatcher(user, ws);
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+    }
 
     static upgrade() {
         return async (req: Request, res: Response, next: NextFunction) => {

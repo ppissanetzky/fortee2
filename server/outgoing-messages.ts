@@ -122,6 +122,7 @@ export interface GameError {
 }
 
 export interface GameIdle {
+    time: number;
     idle: string;
     expiresIn: string;
 }

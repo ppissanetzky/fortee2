@@ -5,6 +5,7 @@ import type Player from './player';
 import saveGame, { type Save } from './core/save-game';
 import ms from 'ms';
 import Dispatcher from './dispatcher';
+import { GameMessages, StartingGame } from './outgoing-messages';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -78,14 +79,11 @@ export class TimeOutError extends Error {}
 export class StopError extends Error {}
 
 export interface GameDriverEvents {
-    endOfHand: Status;
-    /** Idle ms */
-    idle: number;
     /** A message sent to itself when it is stopped by the room */
     stop: undefined;
 }
 
-export default class GameDriver extends Dispatcher<GameDriverEvents> {
+export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessages> {
 
     private readonly players: Player[];
     private readonly game: Game;
@@ -104,11 +102,13 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
         this.players = players;
         this.maxIdleMs = maxIdleMs;
         const table = players.map(({name}) => name);
-        this.all((player) => player.startingGame({
+        const msg: StartingGame = {
             table,
             rules,
             desc: rules.parts()
-        }));
+        };
+        this.all((player) => player.startingGame(msg));
+        this.emit('startingGame', msg);
         this.game = new Game(table, rules);
     }
 
@@ -127,15 +127,21 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
                         const time = Date.now() - this.lastTime;
                         if (time > this.maxIdleMs) {
                             clearInterval(interval);
-                            this.emit('idle', time);
+                            this.emit('gameIdle', {
+                                time,
+                                idle: ms(time),
+                                expiresIn: ms(this.maxIdleMs - time)
+                            });
                             return reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
                         }
                         if (time >= tick) {
-                            this.emit('idle', time);
-                            this.all((player) => player.gameIdle({
+                            const msg = {
+                                time,
                                 idle: ms(time),
                                 expiresIn: ms(this.maxIdleMs - time)
-                            }));
+                            };
+                            this.emit('gameIdle', msg);
+                            this.all((player) => player.gameIdle(msg));
                         }
                     }, tick);
                 }
@@ -197,6 +203,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
         this.lastTime = Date.now();
         switch (this.game.next_step) {
             case STEP.START_HAND: {
+                    this.emit('startingHand', null);
                     await Promise.all(this.players.map((player) =>
                         player.startingHand()));
                     this.game.start_hand();
@@ -207,41 +214,52 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
             case STEP.BID: {
                     const [from, possible] = this.game.get_next_bidder();
                     this.not(from, (player) => player.waitingForBid({from}));
+                    this.emit('waitingForBid', {from});
                     const bid = await this.just(from).bid({possible});
                     const result = this.game.player_bid(from, bid);
                     this.not(from, (player) => player.bidSubmitted({from, bid}));
+                    this.emit('bidSubmitted', {from, bid});
                     if (result === 'BID_RESHUFFLE') {
                         this.all((player) => player.reshuffle(null));
+                        this.emit('reshuffle', null);
                         this.all((player) =>
                             player.draw({bones: this.bones(player.name)}));
                     }
                     else if (result === 'BID_DONE') {
                         const index = this.game.this_hand.high_bidder;
                         const bid = this.game.this_hand.high_bid;
+                        const from = this.players[index].name;
                         this.all((player) =>
-                            player.bidWon({from: this.players[index].name, bid}));
+                            player.bidWon({from, bid}));
+                        this.emit('bidWon', {from, bid});
                     }
                 }
                 break;
             case STEP.TRUMP: {
                     const [from , possible] = this.game.get_trump_caller();
                     this.not(from, (player) => player.waitingForTrump({from}));
+                    this.emit('waitingForTrump', {from});
                     const trump = await this.just(from).call({possible});
                     this.game.player_trump(from, trump);
                     this.all((player) => player.trumpSubmitted({from, trump}));
+                    this.emit('trumpSubmitted', {from, trump});
                 }
                 break;
             case STEP.PLAY: {
                     const [from , possible, all] = this.game.get_next_player();
                     this.not(from, (player) => player.waitingForPlay({from}));
+                    this.emit('waitingForPlay', {from});
                     const bone = await this.just(from).play({possible, all});
                     this.all((player) => player.playSubmitted({from, bone}));
+                    this.emit('playSubmitted', {from, bone});
                     const result = this.game.player_play(from, bone);
                     if (result.trick_over) {
                         const winner = this.game.players[result.trick_winner];
                         const points = result.trick_points;
+                        const status = new Status(this.game);
+                        this.emit('endOfTrick', {winner, points, status});
                         await Promise.all(this.players.map((player) =>
-                            player.endOfTrick({winner, points, status: new Status(this.game)})
+                            player.endOfTrick({winner, points, status})
                         ));
                     }
                     if (result.hand_over) {
@@ -254,7 +272,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
                         const made = result.bid_made;
                         this.game.finish_hand(result);
                         const status = new Status(this.game);
-                        this.emit('endOfHand', status);
+                        this.emit('endOfHand', {winner, made, status});
                         await Promise.all(this.players.map((player) =>
                             player.endOfHand({winner, made, status})));
                     }
@@ -268,6 +286,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
             case STEP.GAME_OVER: {
                     const status = new Status(this.game);
                     this.all((player) => player.gameOver({status}));
+                    this.emit('gameOver', {status});
                     // TODO: What else can we do here?
                     return saveGame(this.game);
                 }

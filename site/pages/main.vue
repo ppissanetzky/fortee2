@@ -325,6 +325,15 @@
                         <span>
                           {{ game.id }}
                         </span>
+                        <v-btn
+                          v-if="game.room && !game.finished"
+                          small
+                          text
+                          color="white"
+                          @click="openUrl(`/play?watch=${game.room.token}`)"
+                        >
+                          watch
+                        </v-btn>
                         <v-spacer />
                         <span v-if="game.finished">finished</span>
                         <div v-else-if="game.room">
@@ -470,8 +479,9 @@ function format (t) {
     return Object.entries(time)
       .filter(val => val[1] !== 0)
       .map(([key, val]) => `${val}${key}`)
-      .join(' ')
+      .join(' ') || 'no time'
   }
+  return 'no time'
 }
 const dtFormat = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short'

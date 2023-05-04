@@ -28,5 +28,10 @@ export default class Dispatcher<T extends object> {
 
     emit<K extends keyof T>(type: K, event: T[K]): void {
         this.emitter.emit(type as string, event);
+        this.emitter.emit('*', {type, message: event});
+    }
+
+    onAll(listener: (event: {type: string, message: any}) => void) {
+        this.emitter.on('*', (event) => listener(event));
     }
 }

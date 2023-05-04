@@ -266,6 +266,8 @@ connectToSlack();
 
 app.get('/ws', Socket.upgrade());
 
+app.get('/watch/:token', Socket.watch());
+
 /** The tournaments router */
 
 app.use('/api/tournaments', tournamentRouter);

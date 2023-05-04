@@ -180,7 +180,10 @@
         <div>
           <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
             <v-spacer />
-            <div v-if="!paused" class="pl-6">
+            <div v-if="watching">
+              <strong>Watching</strong>
+            </div>
+            <div v-else-if="!paused" class="pl-6">
               <v-chip
                 v-for="choice in choices"
                 :key="choice"
@@ -204,7 +207,7 @@
           </v-sheet>
         </div>
         <!-- MY BONES -->
-        <div class="mt-2">
+        <div v-if="!watching" class="mt-2">
           <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-3">
             <v-img
               v-for="n in 4"
@@ -282,15 +285,14 @@ function reviver (key, value) {
   }
   return value
 }
-let queue = Promise.resolve()
-let snackTimeout
-
 export default {
   components: { StatusNew },
   data () {
     return {
       ws: undefined,
       youAre: undefined,
+      // The room token we're watching
+      watching: undefined,
       hosting: undefined,
       rules: undefined,
       teams: {
@@ -330,10 +332,20 @@ export default {
       timed: 0,
       choose: () => undefined,
       possible: undefined,
-      snack: undefined
+      snack: undefined,
+
+      queue: Promise.resolve(),
+      snackTimeout: undefined,
+      catchup: Promise.resolve(),
+      catchingUp: false
+
     }
   },
   fetch () {
+    const { watch } = this.$route.query
+    if (watch) {
+      this.watching = watch
+    }
     this.connect()
   },
   computed: {
@@ -381,9 +393,10 @@ export default {
   mounted () {},
   methods: {
     connect () {
-      let url = `wss://${window.location.hostname}/ws`
+      const path = this.watching ? `watch/${this.watching}` : 'ws'
+      let url = `wss://${window.location.hostname}/${path}`
       if (process.env.NUXT_ENV_DEV) {
-        url = `ws://${window.location.hostname}:4004/ws`
+        url = `ws://${window.location.hostname}:4004/${path}`
       }
       // eslint-disable-next-line no-console
       console.log('connecting...')
@@ -393,8 +406,10 @@ export default {
         console.log('connected')
         this.ws = ws
         this.ws.onmessage = (event) => {
-          const { ack, type, message } = JSON.parse(event.data, reviver)
-          this.handleMessage(type, message, ack)
+          this.catchup = this.catchup.then(() => {
+            const { ack, type, message } = JSON.parse(event.data, reviver)
+            return this.handleMessage(type, message, ack)
+          })
         }
         // Once connected, we will close the socket on an error, which
         // should cause it to reconnect
@@ -452,12 +467,15 @@ export default {
       }
     },
     showSnack (value, seconds) {
+      if (this.catchingUp) {
+        return
+      }
       this.snack = value
-      clearTimeout(snackTimeout)
-      snackTimeout = undefined
+      clearTimeout(this.snackTimeout)
+      this.snackTimeout = undefined
       if (seconds !== Infinity) {
-        snackTimeout = setTimeout(() => {
-          snackTimeout = undefined
+        this.snackTimeout = setTimeout(() => {
+          this.snackTimeout = undefined
           this.snack = undefined
         }, seconds ? seconds * 1000 : 3500)
       }
@@ -515,7 +533,9 @@ export default {
 
         case 'startingHand':
           this.pointTo = [this.youAre]
-          await this.prompt('Ready to start the next hand?', ['Yes'], 5)
+          if (!this.watching) {
+            await this.prompt('Ready to start the next hand?', ['Yes'], 5)
+          }
           this.US.points = undefined
           this.THEM.points = undefined
           this.bids = {}
@@ -671,6 +691,21 @@ export default {
         case 'gameIdle':
           this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
           break
+
+        case 'catchup':
+          if (this.ws && this.ws.onmessage) {
+            this.catchup = this.catchup.then(() => {
+              this.catchingUp = true
+            })
+            this.choiceTitle = undefined
+            for (const data of message) {
+              this.ws.onmessage({ data })
+            }
+            this.catchup = this.catchup.then(() => {
+              this.catchingUp = false
+            })
+          }
+          break
       }
     },
     bidForTeam (team) {
@@ -706,9 +741,12 @@ export default {
       }
     },
     prompt (title, choices, timed) {
+      if (this.catchingUp) {
+        return Promise.resolve()
+      }
       this.choiceTitle = title
       this.choices = choices
-      queue = queue.then(() => new Promise((resolve, reject) => {
+      this.queue = this.queue.then(() => new Promise((resolve, reject) => {
         const total = typeof timed === 'number' ? timed : 10
         let interval
         let seconds = total
@@ -735,9 +773,12 @@ export default {
           resolve(value)
         }
       })).catch(() => undefined)
-      return queue
+      return this.queue
     },
     playBone (bone) {
+      if (this.watching) {
+        return
+      }
       if (this.choices.includes(bone)) {
         this.choose(bone)
       }
