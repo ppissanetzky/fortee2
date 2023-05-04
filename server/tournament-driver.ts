@@ -522,7 +522,7 @@ export class Status {
             const { room } = game;
             if (room) {
                 this.hasRoom = true;
-                this.url = `${config.FT2_SERVER_BASE_URL}/play/${room.token}`
+                this.url = room.url;
                 this.positions = [...room.positions];
             }
         }

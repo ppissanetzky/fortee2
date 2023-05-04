@@ -248,7 +248,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     }
 
     get url(): string {
-        return `${config.FT2_SERVER_BASE_URL}/play/${this.token}`;
+        return `${config.FT2_SITE_BASE_URL}/play?join=${this.token}`;
     }
 
     get size(): number {

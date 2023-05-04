@@ -130,13 +130,11 @@ if (!config.PRODUCTION) {
             nello_allowed: 'FORCE'
         });
         const rules = Rules.fromJson(s);
-        const room = new GameRoom({
+        const {url} = new GameRoom({
             rules: new Rules(),
             table
         });
-        req.session.gameRoomToken = room.token;
-        await saveSession(req);
-        res.redirect(`/play`);
+        res.redirect(url);
     });
     app.get('/api/join/:name', async (req, res) => {
         const name = req.params.name;
@@ -231,27 +229,28 @@ app.use((req, res, next) => {
  */
 
 app.get('/play/:token', async (req, res) => {
-    const { token } = req.params;
-    debug('token', token);
-    if (!token) {
-        return res.sendStatus(400);
-    }
-    const room = GameRoom.rooms.get(token);
-    if (!room) {
-        return res.sendStatus(404);
-    }
-    if (!req.user) {
-        return res.sendStatus(401);
-    }
-    if (!room.table.has(req.user.id)) {
-        return res.sendStatus(403);
-    }
-    req.session.gameRoomToken = token;
-    await saveSession(req);
-    if (!config.PRODUCTION) {
-        return res.redirect(`${config.FT2_SITE_BASE_URL}/play`);
-    }
-    res.redirect('/play')
+    return res.sendStatus(404);
+    // const { token } = req.params;
+    // debug('token', token);
+    // if (!token) {
+    //     return res.sendStatus(400);
+    // }
+    // const room = GameRoom.rooms.get(token);
+    // if (!room) {
+    //     return res.sendStatus(404);
+    // }
+    // if (!req.user) {
+    //     return res.sendStatus(401);
+    // }
+    // if (!room.table.has(req.user.id)) {
+    //     return res.sendStatus(403);
+    // }
+    // req.session.gameRoomToken = token;
+    // await saveSession(req);
+    // if (!config.PRODUCTION) {
+    //     return res.redirect(`${config.FT2_SITE_BASE_URL}/play`);
+    // }
+    // res.redirect('/play')
 });
 
 /** Create the web server */
@@ -264,7 +263,7 @@ connectToSlack();
 
 /** Where the game room sockets connect */
 
-app.get('/ws', Socket.upgrade());
+app.get('/join/:token', Socket.upgrade());
 
 app.get('/watch/:token', Socket.watch());
 

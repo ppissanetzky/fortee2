@@ -60,14 +60,14 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
     static upgrade() {
         return async (req: Request, res: Response, next: NextFunction) => {
-            const user = req.user;
+            const { user, params: { token } } = req;
             if (!user) {
                 return res.sendStatus(401);
             }
 
             const debug = makeDebug('socket').extend(user.name);
 
-            const { gameRoomToken } = req.session;
+            const gameRoomToken = token;
             if (!gameRoomToken) {
                 debug('missing grt');
                 return res.sendStatus(400);
@@ -82,8 +82,6 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
             if (!GameRoom.rooms.has(gameRoomToken)) {
                 debug('invalid room', gameRoomToken);
-                req.session.gameRoomToken = undefined;
-                req.session.save(() => void 0);
                 return res.sendStatus(404);
             }
 

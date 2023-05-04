@@ -119,17 +119,16 @@ class Client {
             if (this.options.noShow) {
                 return;
             }
-            const response = await fetch(`${URL}/play/${t.token}`, {
+            const response = await fetch(`${URL}/api/tournaments/me`, {
                 headers: this.headers,
                 redirect: 'manual'
             });
-            assert(response.status === 302);
             if (this.options.connectDelay) {
                 await delay(this.options.connectDelay);
             }
             const cookie = response.headers.get('set-cookie');
             assert(cookie);
-            const ws = new WebSocket(`ws://localhost:${PORT}/ws`, {
+            const ws = new WebSocket(`ws://localhost:${PORT}/join/${t.token}`, {
                 headers: {cookie}
             });
             const send = async (type: string, message: any, ack?: number) => {

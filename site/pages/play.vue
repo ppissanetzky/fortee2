@@ -293,6 +293,8 @@ export default {
       youAre: undefined,
       // The room token we're watching
       watching: undefined,
+      // The room we're joining
+      join: undefined,
       hosting: undefined,
       rules: undefined,
       teams: {
@@ -342,9 +344,13 @@ export default {
     }
   },
   fetch () {
-    const { watch } = this.$route.query
-    if (watch) {
+    const { watch, join } = this.$route.query
+    if (join) {
+      this.join = join
+    } else if (watch) {
       this.watching = watch
+    } else {
+      return
     }
     this.connect()
   },
@@ -393,7 +399,7 @@ export default {
   mounted () {},
   methods: {
     connect () {
-      const path = this.watching ? `watch/${this.watching}` : 'ws'
+      const path = this.watching ? `watch/${this.watching}` : `join/${this.join}`
       let url = `wss://${window.location.hostname}/${path}`
       if (process.env.NUXT_ENV_DEV) {
         url = `ws://${window.location.hostname}:4004/${path}`
