@@ -29,8 +29,6 @@ export interface RoomUpdate {
 
 export interface OutgoingGameRoomMessages {
 
-    badRoom: undefined,
-
     /**
      * Tell the user that just entered a game room, and give them
      * details about the room.

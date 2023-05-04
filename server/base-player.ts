@@ -16,6 +16,7 @@ export class BasePlayer implements Player {
 
     public readonly name: string;
     public readonly id: string;
+    public readonly connected = true;
 
     public rules?: Rules;
     public table?: TableHelper;

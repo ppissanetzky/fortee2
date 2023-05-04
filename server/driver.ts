@@ -45,6 +45,8 @@ export class Status {
 
     public readonly renege?: string;
 
+    public winner?: Team;
+
     constructor(game: Game) {
         this.US = new TeamStatus(game, 'US');
         this.THEM = new TeamStatus(game, 'THEM');
@@ -56,6 +58,8 @@ export class Status {
         if (hand.renege >= 0) {
             this.renege = game.players[hand.renege];
         }
+
+        this.winner = game.winningTeam;
     }
 }
 
@@ -71,11 +75,14 @@ export interface SaveWithMetadata extends Save {
 }
 
 export class TimeOutError extends Error {}
+export class StopError extends Error {}
 
 export interface GameDriverEvents {
     endOfHand: Status;
     /** Idle ms */
     idle: number;
+    /** A message sent to itself when it is stopped by the room */
+    stop: undefined;
 }
 
 export default class GameDriver extends Dispatcher<GameDriverEvents> {
@@ -86,6 +93,10 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
     private ran = false;
 
     private lastTime = 0;
+
+    private get connected(): Player[] {
+        return this.players.filter(({connected}) => connected);
+    }
 
     public constructor(rules: Rules, players: Player[], maxIdleMs: number) {
         super();
@@ -117,9 +128,9 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
                         if (time > this.maxIdleMs) {
                             clearInterval(interval);
                             this.emit('idle', time);
-                            reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
+                            return reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
                         }
-                        else if (time >= tick) {
+                        if (time >= tick) {
                             this.emit('idle', time);
                             this.all((player) => player.gameIdle({
                                 idle: ms(time),
@@ -128,6 +139,10 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
                         }
                     }, tick);
                 }
+                this.once('stop', () => {
+                    clearInterval(interval);
+                    reject(new StopError());
+                });
                 const finished = (save: Save) => {
                     clearInterval(interval);
                     resolve(save);
@@ -149,13 +164,16 @@ export default class GameDriver extends Dispatcher<GameDriverEvents> {
         }
     }
 
+    public stop() {
+        this.emit('stop', undefined);
+    }
+
     private all(cb: Callback): void {
-        this.players.forEach(cb);
+        this.connected.forEach(cb);
     }
 
     private not(name: string, cb: Callback): void {
-        const result = this.players.filter((player) => player.name !== name);
-        assert(result.length === 3, 'Not has wrong count');
+        const result = this.connected.filter((player) => player.name !== name);
         result.forEach(cb);
     }
 

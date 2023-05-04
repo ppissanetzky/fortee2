@@ -276,12 +276,20 @@
 
 <script>
 import StatusNew from '~/components/status-new.vue'
+function reviver (key, value) {
+  if (typeof value === 'string') {
+    return value.replace(/^#(bid|bone|trump):/, '')
+  }
+  return value
+}
+let queue = Promise.resolve()
+let snackTimeout
+
 export default {
   components: { StatusNew },
   data () {
     return {
       ws: undefined,
-      joining: false,
       youAre: undefined,
       hosting: undefined,
       rules: undefined,
@@ -326,36 +334,7 @@ export default {
     }
   },
   fetch () {
-    this.joining = true
-    let url = `wss://${window.location.hostname}/ws`
-    if (process.env.NUXT_ENV_DEV) {
-      url = `ws://${window.location.hostname}:4004/ws`
-    }
-    const ws = new WebSocket(url)
-    ws.onclose = (event) => {
-      this.ws = undefined
-      if (event.reason === 'host-close') {
-        this.choiceTitle = 'The host has closed the game'
-        this.paused = true
-        this.over = true
-      }
-    }
-    ws.onerror = (event) => {
-      console.log('error', event)
-    }
-    ws.onopen = (event) => {
-      this.ws = ws
-      console.log('open')
-    }
-    ws.onmessage = (event) => {
-      const { ack, type, message } = JSON.parse(event.data, (key, value) => {
-        if (typeof value === 'string') {
-          return value.replace(/^#(bid|bone|trump):/, '')
-        }
-        return value
-      })
-      this.handleMessage(type, message, ack)
-    }
+    this.connect()
   },
   computed: {
     left () { return this.status(1) },
@@ -401,6 +380,68 @@ export default {
   watch: {},
   mounted () {},
   methods: {
+    connect () {
+      let url = `wss://${window.location.hostname}/ws`
+      if (process.env.NUXT_ENV_DEV) {
+        url = `ws://${window.location.hostname}:4004/ws`
+      }
+      // eslint-disable-next-line no-console
+      console.log('connecting...')
+      const ws = new WebSocket(url)
+      ws.onopen = () => {
+        // eslint-disable-next-line no-console
+        console.log('connected')
+        this.ws = ws
+        this.ws.onmessage = (event) => {
+          const { ack, type, message } = JSON.parse(event.data, reviver)
+          this.handleMessage(type, message, ack)
+        }
+        // Once connected, we will close the socket on an error, which
+        // should cause it to reconnect
+        ws.onerror = (event) => {
+          // eslint-disable-next-line no-console
+          console.log('error', event)
+          ws.close()
+        }
+        ws.onclose = (event) => {
+          this.ws = undefined
+          // Get rid of any choice that is on the screen
+          this.choose(new Error('Socket closed'))
+          const { code, reason } = event
+          // eslint-disable-next-line no-console
+          console.log('closed', code, reason, event.wasClean)
+          // Code 4000 is an explicit server close, it is expected
+          if (code === 4000) {
+            this.over = true
+            this.showSnack('The game is over, you can close this tab', Infinity)
+            switch (reason) {
+              case 'game-over':
+                break
+              case 'game-expired':
+                this.choiceTitle = 'The game timed out'
+                break
+              case 'game-error':
+                this.choiceTitle = 'There was an error with the game'
+                break
+            }
+          } else {
+            setTimeout(() => {
+              // eslint-disable-next-line no-console
+              console.log('reconnecting')
+              this.connect()
+            }, 1)
+          }
+        }
+      }
+      // This should be an error when trying to connect, so we show a message
+      ws.onerror = (event) => {
+        // eslint-disable-next-line no-console
+        console.log('error', event)
+        this.choiceTitle = 'There was a problem connecting'
+        this.paused = true
+        this.over = true
+      }
+    },
     send (type, message, ack) {
       if (this.ws) {
         this.ws.send(JSON.stringify({
@@ -410,13 +451,19 @@ export default {
         }))
       }
     },
-    showSnack (value) {
+    showSnack (value, seconds) {
       this.snack = value
-      setTimeout(() => {
-        this.snack = undefined
-      }, 3500)
+      clearTimeout(snackTimeout)
+      snackTimeout = undefined
+      if (seconds !== Infinity) {
+        snackTimeout = setTimeout(() => {
+          snackTimeout = undefined
+          this.snack = undefined
+        }, seconds ? seconds * 1000 : 3500)
+      }
     },
     async handleMessage (type, message, ack) {
+      // eslint-disable-next-line no-console
       console.log(ack || '', type, message)
       switch (type) {
         case 'welcome':
@@ -595,28 +642,18 @@ export default {
           break
 
         case 'gameOver':
-          this.pointTo = [this.youAre]
-          if (this.hosting) {
-            const title = 'The game is over, would you like to play again?'
-            const response = await this.prompt(title, ['Play again', 'Close'])
-            if (response === 'Close') {
-              this.ws.close(1000, 'host-close')
-              setTimeout(() =>
-                window.location.replace('https://fortee2.slack.com/'), 1000)
-              return
-            }
-            this.send('playAgain', null)
-          } else {
-            await this.prompt('Game over', ['OK'])
+          {
+            const team = message.status.winner
+            const players = this.table
+              .filter(({ name }) => this.teamFor(name) === team)
+              .map(({ name }) => name)
+            this.pointTo = players
+            this.choiceTitle = `${players.join(' and ')} won the game!`
+            this.ws = undefined
+            this.paused = true
+            this.over = true
+            this.connected = []
           }
-          this.US.marks = 0
-          this.US.points = undefined
-          this.THEM.marks = 0
-          this.THEM.points = undefined
-          this.bids = {}
-          this.trump = {}
-          this.bidWinner = undefined
-          this.pile = { US: [], THEM: [] }
           break
 
         case 'gameError':
@@ -625,7 +662,6 @@ export default {
           } else {
             this.choiceTitle = 'There was a bug in the game, it cannot continue'
           }
-          this.ws.close(1000, 'game-error')
           this.ws = undefined
           this.paused = true
           this.over = true
@@ -633,7 +669,7 @@ export default {
           break
 
         case 'gameIdle':
-          this.showSnack(`The game has been idle for ${message.idle} and will time out in ${message.expiresIn}`)
+          this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
           break
       }
     },
@@ -651,7 +687,9 @@ export default {
     status (index) {
       const name = this.table[index]?.name
       if (!name) {
-        return {}
+        return {
+          over: true
+        }
       }
       return {
         name,
@@ -670,7 +708,7 @@ export default {
     prompt (title, choices, timed) {
       this.choiceTitle = title
       this.choices = choices
-      return new Promise((resolve) => {
+      queue = queue.then(() => new Promise((resolve, reject) => {
         const total = typeof timed === 'number' ? timed : 10
         let interval
         let seconds = total
@@ -680,20 +718,24 @@ export default {
             seconds--
             this.timed = 100 * (seconds / total)
             if (seconds <= 0) {
+              clearInterval(interval)
               this.choose(choices[0])
             }
           }, 1000)
         }
         this.choose = (value) => {
+          clearInterval(interval)
+          this.choose = () => undefined
           this.choiceTitle = undefined
           this.choices = []
           this.timed = 0
-          if (interval) {
-            clearInterval(interval)
+          if (value instanceof Error) {
+            return reject(value)
           }
           resolve(value)
         }
-      })
+      })).catch(() => undefined)
+      return queue
     },
     playBone (bone) {
       if (this.choices.includes(bone)) {

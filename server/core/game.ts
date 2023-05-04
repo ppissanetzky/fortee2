@@ -131,6 +131,7 @@ export default class Game {
     public marks          = new Score();
     public hands          : Hand [] = [];
     public next_step      = STEP.START_HAND;
+    public winningTeam?   : Team;
 
     constructor(players: Player[] , rules: Rules) {
         this.rules = rules;
@@ -761,6 +762,7 @@ export default class Game {
 
         if (this.marks[ play_result.winning_team ] >= 7) {
             play_result.game_over = true;
+            this.winningTeam = play_result.winning_team;
             this.next_step = STEP.GAME_OVER;
         }
         else {

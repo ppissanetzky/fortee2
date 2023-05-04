@@ -3,10 +3,6 @@ import type { Bid, Trump, Bone } from './core';
 
 export interface GameRoomMessages {
 
-    /** Start a new game once this one is over */
-
-    playAgain: null,
-
     /**
      * A user is ready to start the hand
      */

@@ -9,7 +9,7 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status, GameDriverEvents } from './driver';
+import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status, GameDriverEvents, StopError } from './driver';
 import type { RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
@@ -337,6 +337,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     }
 
     private async run() {
+        let reason = 'game-over';
         try {
             this.emit('gameStarted', undefined);
             // Create the players
@@ -364,6 +365,11 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 this.emit('idle', time);
             });
 
+            this.once('closed', () => {
+                this.debug('stopping driver');
+                driver.stop();
+            });
+
             const save = await driver.run();
 
             this.saveGame(save);
@@ -374,43 +380,39 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
         }
         catch (error) {
-            /** The clients will close the socket when they get this */
-
-            if (error instanceof TimeOutError) {
+            if (error instanceof StopError) {
+                /** Do nothing, we stopped it */
+            }
+            else if (error instanceof TimeOutError) {
                 this.debug('game expired', error.message);
                 this.emit('expired', this.status);
-                this.all((socket) => socket.send('gameError', {error: 'expired'}));
+                reason = 'game-expired';
             }
             else {
                 this.debug('game error', error);
                 this.emit('gameError', error);
-                this.all((socket) => socket.send('gameError', {}));
+                reason = 'game-error';
             }
         }
         finally {
             this.state = State.OVER;
             this.players = [];
 
-            /**
-             * Remove the room. Players can play again, but the link to it
-             * won't work anymore since it won't be in the map
-             */
+            /** Remove the room */
 
-            if (GameRoom.rooms.has(this.token)) {
+            if (GameRoom.rooms.delete(this.token)) {
                 this.debug('game over, removing %s for %j', this.token, this.table);
-                GameRoom.rooms.delete(this.token);
             }
 
             /**
-             * If there is no replay option, we're going to close all the
-             * sockets now. This will help with players leaving tabs open
-             * and being unable to get into the next game.
+             * Close all the sockets now. This will help with players leaving
+             * tabs open and being unable to get into the next game.
              */
 
-            if (this.options.tournament) {
-                this.all((socket) => socket.close('no-replay'));
-                this.sockets.clear();
-            }
+            this.all((socket) => socket.close(reason));
+            this.sockets.clear();
+
+            /** Will remove all listeners */
 
             this.emit('closed', undefined);
         }
@@ -426,46 +428,36 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.emit('userJoined', userId);
         // If and when the user leaves
         socket.gone.then((reason) => {
-            this.sockets.delete(name);
-            this.debug('removed', name, ': reason', reason, ': have', this.size);
+            if (this.sockets.delete(name)) {
+                this.emit('userLeft', userId);
+                this.debug('removed', name, userId, ': reason', reason, ': have', this.size);
+                this.not(name, (other) => {
+                    other.send('leftGameRoom', {
+                        name,
+                        ...this.roomUpdate(other),
+                    });
+                });
+            }
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;
-            }
-            if (name === this.host && reason === 'host-close' && this.state === State.OVER) {
-                this.not(name, (other) => other.close('host-close'));
-            }
-            if (this.sockets.size === 0 && !this.t && this.started) {
-                this.debug('everyone gone, closing');
-                this.expire();
+                this.emit('gamePaused', undefined);
             }
             /**
-             * We closed it after the game was over and there is no replay,
-             * so we don't need to notify anyone
+             * When the reason is reply-delayed, we closed the socket and
+             * expect the client to re-connect, so we keep the room around
              */
-            if (reason === 'no-replay') {
-                return;
+            if (reason !== 'reply-delayed') {
+                if (this.sockets.size === 0 && !this.t && this.started) {
+                    this.debug('everyone gone, closing');
+                    this.expire();
+                }
             }
-            this.emit('userLeft', userId);
-            this.emit('gamePaused', undefined);
-            this.not(name, (other) => {
-                other.send('leftGameRoom', {
-                    name,
-                    ...this.roomUpdate(other),
-                });
-            });
         });
-        // Look for playAgain from the host
-        if (name === this.host && !this.options.tournament) {
-            socket.on('playAgain', () => {
-                assert(this.state === State.OVER);
-                this.state = State.PLAYING;
-                this.run();
-            });
-        }
         // Notify everyone
         const notify = () => {
             // Tell everyone else that this user is here
-            this.not(name, (other) => other.send('enteredGameRoom', this.roomUpdate(other)));
+            this.not(name, (other) =>
+                other.send('enteredGameRoom', this.roomUpdate(other)));
             // Tell the user about the room
             socket.send('youEnteredGameRoom', this.roomUpdate(socket));
         };
@@ -482,21 +474,21 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             // Notify everyone
             notify();
             // Run the game
-            this.run();
+            return this.run();
         }
 
         // The game is paused, but everyone just came back, so we can
         // automatically resume it
 
-        else if (this.state === State.PAUSED) {
+        if (this.state === State.PAUSED) {
             this.state = State.PLAYING;
             // Tell everyone of the state change
             notify();
             // Now, reset the socket
             this.sockets.forEach((socket) => {
-                // Find the player with the same name
-                const player = this.players.find(({name}) =>
-                    name === socket.name);
+                // Find the player
+                const player = this.players.find(({id}) =>
+                    id === socket.userId);
                 assert(player, `Player ${socket.name} not found in players list`);
                 assert(player instanceof RemotePlayer, `Player ${socket.name} is not remote`);
                 // Reset this player's socket - it'll do nothing if it's the
@@ -505,8 +497,6 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
             this.emit('gameResumed', undefined);
         }
-
-        // TODO: rejoin after the game is over?
     }
 
     private async saveGame(save: SaveWithMetadata) {

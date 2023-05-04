@@ -16,6 +16,7 @@ export default interface Player extends PlayerHandler {
 
     readonly name: string;
     readonly id: string;
+    readonly connected: boolean;
 
     readonly human: boolean;
 

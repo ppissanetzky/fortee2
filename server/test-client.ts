@@ -211,12 +211,12 @@ class Client {
         headers: { ['x-ft2-bot']: 'pablo' }
     });
 
-    for (let i = 0; i < 8; ++i) {
+    for (let i = 0; i < 14; ++i) {
         const options: Options = {
             // connectDelay: _.random(1000, 10000),
             // playDelay: _.random(100, 1000),
-            noShow: true
-            // noReply: _.random(0, 100) < 5,
+            // noShow: true
+            noReply: i === 1,
         };
         new Client(t.id, options).connect();
         await delay(50);

@@ -9,6 +9,7 @@ import { stringify, parse } from './json';
 import GameRoom from './game-room';
 import { NextFunction, Request, Response } from 'express';
 import WsServer from './ws-server';
+import ms from 'ms';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -53,8 +54,12 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(403);
             }
 
-            req.session.gameRoomToken = undefined;
-            req.session.save(() => void 0);
+            if (!GameRoom.rooms.has(gameRoomToken)) {
+                debug('invalid room', gameRoomToken);
+                req.session.gameRoomToken = undefined;
+                req.session.save(() => void 0);
+                return res.sendStatus(404);
+            }
 
             try {
                 const [ws] = await WsServer.get().upgrade(req);
@@ -95,6 +100,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     private readonly debug = makeDebug('socket');
     private readonly ws: WebSocket;
 
+    get isOpen(): boolean {
+        return this.ws.readyState === this.ws.OPEN;
+    }
+
     private constructor(userId: string, name: string, ws: WebSocket, gameRoomToken: string) {
         super();
         this.userId = userId;
@@ -105,7 +114,8 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         this.gone = new Promise<string>((resolve) => {
             ws.once('close', (code, reason) => {
                 this.debug('close', code, reason.toString(),
-                    'outstanding', this.outstanding.map(({mid, type}) => ([mid, type])).join(','));
+                    'outstanding', this.outstanding.map(({mid, type}) =>
+                        ([mid, type])).join(','));
                 resolve(reason.toString());
             });
         });
@@ -114,7 +124,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
         if (!room) {
             this.debug(`room ${gameRoomToken} not found`);
-            this.ws.close(undefined, 'badRoom');
+            this.close('bad-room');
             return;
         }
 
@@ -157,7 +167,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         message: OutgoingMessages[T],
         reply?: R
     ): Promise<IncomingMessages[R] | void> {
-        return new Promise((resolve) => {
+        const timeout: NodeJS.Timer | undefined = reply
+            ? setTimeout(() => this.replyDelayed(), ms('30s'))
+            : undefined;
+        const result = new Promise<IncomingMessages[R] | void>((resolve) => {
             const mid = this.ACK++;
             const ack = reply ? mid : undefined;
             const outstanding: Sent<T, R> = {
@@ -191,6 +204,9 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 }
             });
         });
+        /** Once the reply comes back, we clear the timeout */
+        result.then(() => clearTimeout(timeout));
+        return result;
     }
 
     async replay(target: Socket): Promise<void> {
@@ -206,11 +222,18 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.replay(target);
     }
 
-    close(reason: string) {
+    private replyDelayed() {
+        if (this.ws.readyState === this.ws.OPEN) {
+            this.debug('reply delayed');
+            this.close('reply-delayed', 4001);
+        }
+    }
+
+    close(reason: string, code = 4000) {
         switch (this.ws.readyState) {
             case this.ws.OPEN:
             case this.ws.CONNECTING:
-                this.ws.close(4000, reason);
+                this.ws.close(code, reason);
         }
     }
 }

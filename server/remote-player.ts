@@ -31,6 +31,10 @@ export default class RemotePlayer implements Player {
         return this.socket.name;
     }
 
+    get connected(): boolean {
+        return this.socket.isOpen;
+    }
+
     /**
      * This player may have reconnected with a different socket, so we
      * update our socket and replay the old one's outstanding messages

@@ -248,6 +248,9 @@ app.get('/play/:token', async (req, res) => {
     }
     req.session.gameRoomToken = token;
     await saveSession(req);
+    if (!config.PRODUCTION) {
+        return res.redirect(`${config.FT2_SITE_BASE_URL}/play`);
+    }
     res.redirect('/play')
 });
 
