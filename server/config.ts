@@ -39,7 +39,7 @@ const variables: Record<string, string> = {
      * How long a game can go idle before it times out - a 'ms' string
      */
 
-    FT2_GAME_EXPIRY: '6m',
+    FT2_GAME_EXPIRY: '5m',
 
     /**
      * How long after we expire an invitation from slack - a 'ms' string
