@@ -3,6 +3,7 @@ import { App } from '@slack/bolt';
 
 import * as db from './tournament-db';
 import { makeDebug } from './utility';
+import GameRoom from './game-room';
 
 const debug = makeDebug('user-names');
 
@@ -49,6 +50,10 @@ export default class UserNames {
     }
 
     static exists(id: string): string {
+        const bot = GameRoom.isBot(id);
+        if (bot) {
+            return bot;
+        }
         const row = db.first(SELECT, { id }) as Row;
         return row?.name || '<unknown>';
     }
@@ -56,6 +61,10 @@ export default class UserNames {
     static async get(id?: string | null): Promise<string | void> {
         if (!id) {
             return;
+        }
+        const bot = GameRoom.isBot(id);
+        if (bot) {
+            return bot;
         }
         const row = db.first(SELECT, { id }) as Row;
         if (row) {

@@ -160,6 +160,16 @@
             mdi-trophy
           </v-icon>
           <h3>{{ t.name }}</h3>
+          <v-btn
+            v-if="you?.roles?.includes('td')"
+            small
+            icon
+            color="grey"
+            class="ml-3"
+            @click="openUrl(`/td?t=${t.id}`)"
+          >
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
           <v-spacer />
           <h3>{{ t.startTime }}</h3>
         </v-toolbar>
@@ -286,7 +296,7 @@
             <strong>{{ others(t)[1] }}</strong>
           </span>
         </v-toolbar>
-        <v-toolbar v-if="t.url" flat>
+        <v-toolbar v-if="t.url && t.stillPlaying" flat>
           <v-btn
             outlined
             color="green"
@@ -400,7 +410,7 @@
       </v-card>
     </div>
     <!-- THE DIALOG TO START A GAME -->
-    <v-dialog v-model="dialog">
+    <v-dialog v-model="dialog" max-width="800">
       <v-card>
         <v-toolbar flat color="#8fa5b7">
           <v-toolbar-title class="white--text pl-1">

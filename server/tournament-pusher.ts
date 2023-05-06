@@ -125,7 +125,9 @@ export default class TournamentPusher {
             .on('gameOver', ({t}) => this.updateAll(t))
             .on('tournamentOver', ({t}) => this.updateAll(t))
             .on('gameUpdate', (status) => this.ps.pushToAll('game', status))
+            .on('updated', (t) => this.updateAll(t))
 
+            .on('added', () => this.refresh())
             .on('reload', () => this.refresh())
             .on('dropped', () => this.refresh())
 

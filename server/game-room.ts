@@ -286,7 +286,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             const name = this.positions[i];
             const id = expected(this.table.idFor(name));
             const socket = this.sockets.get(name);
-            const connected = Boolean(socket);
+            const connected = GameRoom.isBot(id) ? true : Boolean(socket);
             const outstanding = socket?.outstanding.length || 0;
             return { id, name, connected, outstanding };
         });

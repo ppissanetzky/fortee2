@@ -149,3 +149,7 @@ export function getRecurringTournaments(): TournamentRow[] {
         `
     );
 }
+
+export function deleteTournament(id: number): number {
+    return database.change('DELETE FROM tournaments WHERE id = $id', { id });
+}

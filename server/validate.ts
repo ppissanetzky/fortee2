@@ -1,9 +1,11 @@
+import assert from 'node:assert';
 import _ from 'lodash';
 
 import { Rules } from './core';
 import TexasTime from './texas-time';
 import Tournament, { TournamentRow } from './tournament';
 import { makeDebug } from './utility';
+import { parse } from 'date-fns';
 
 const debug = makeDebug('validate');
 
@@ -31,6 +33,7 @@ export function fa(expression: any, message: string): asserts expression {
 
 export function validateEvery(every: string): number {
     switch (every) {
+        case '': return 0;
         case 'Monday': return 1;
         case 'Tuesday': return 2;
         case 'Wednesday': return 3;
@@ -44,26 +47,20 @@ export function validateEvery(every: string): number {
     fail('Invalid recurring days');
 }
 
-const TIME_RX = /^(?<h>\d\d):(?<m>\d\d) (?<ap>[ap])m$/;
-
-export function validateTime(name: string, time: string): string {
+export function validateTime(name: string, original: string, time: string): string {
     fa(time, `${name} time is empty`);
-    const message = `Invalid ${name} time "${time}", it must be hh:mm am/pm`;
-    time = time.padStart(8, '0')
-    const matches = time.match(TIME_RX);
-    fa(matches, message);
-    const { groups } = matches;
-    fa(groups, message);
-    const { h, m, ap } = groups;
-    let hn = parseInt(h, 10);
-    fa(_.isSafeInteger(hn) && hn >= 0 && hn <= 12, message);
-    const mn = parseInt(m);
-    fa(_.isSafeInteger(mn) && mn >= 0 && mn <= 59, message);
-    if (ap === 'p') {
-        hn += 12;
-        fif(hn > 23, message);
+    let reference: Date | undefined = undefined;
+    try {
+        reference = TexasTime.parse(original).date;
     }
-    return `${String(hn).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+    catch (error) {
+        void 0;
+    }
+    fa(reference, 'Invalid reference date');
+    const date = parse(time, 'h:mm aaa', reference);
+    fa(!isNaN(date.getTime()),
+        `Invalid ${name} time "${time}", it must be hh:mm am/pm`);
+    return new TexasTime(date).toString();
 }
 
 export function validateRules(rules: any): Rules {
@@ -92,22 +89,31 @@ export function validateTournament(t: Record<string, any>): Tournament {
     fif(!t.name, 'Tournament name is blank');
     fif(![1, 2].includes(t.partner), 'Invalid partner');
     const recurring = validateEvery(t.every);
-    t.openTime = validateTime('Open', t.openTime);
-    t.closeTime = validateTime('Close', t.closeTime);
-    t.startTime = validateTime('Start', t.startTime);
 
     const rules = validateRules(t.rules);
 
-    const date = TexasTime.today().dateString;
-
-    const open = `${date} ${t.openTime}`;
-    const close = `${date} ${t.closeTime}`;
-    const start = `${date} ${t.startTime}`;
+    const open = validateTime('Open', t.signup_start_dt, t.openTime);
+    const close = validateTime('Close', t.signup_end_dt, t.closeTime);
+    const start = validateTime('Start', t.start_dt, t.startTime);
 
     fif(TexasTime.toUTC(open) >= TexasTime.toUTC(close),
         'Close time has to be after open time');
     fif(TexasTime.toUTC(close) >= TexasTime.toUTC(start),
         'Start time has to be after close time');
+
+    if (!t.recurring) {
+        fif(t.signup_opened !== 0, 'This tournament is already open');
+        fif(t.signup_closed !== 0, 'This tournament is closed');
+        fif(t.started !== 0, 'This tournament started');
+        fif(t.finished !== 0, 'This tournament is finished');
+    }
+
+    /** It is a new tournament */
+    if (!t.id) {
+        fif(TexasTime.minutesUntil(open) <= 0,
+            'The tournament should open at least one minute from now');
+        fif(t.recurring_source !== 0, 'It should not have a recurring source');
+    }
 
     return new Tournament({
         id: t.id,
@@ -132,7 +138,7 @@ export function validateTournament(t: Record<string, any>): Tournament {
         invitees: null,
         prize: null,
         winners: '',
-        recurring_source: 0,
+        recurring_source: t.recurring_source,
         host: t.host || null
     });
 }

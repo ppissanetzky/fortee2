@@ -3,10 +3,10 @@ import assert from 'node:assert';
 import _ from 'lodash';
 import ms from 'ms';
 
-import { makeDebug } from './utility';
+import { expected, makeDebug } from './utility';
 import Dispatcher from './dispatcher';
 import TexasTime from './texas-time';
-import Tournament, { TournamentRow } from './tournament';
+import Tournament, { State, TournamentRow } from './tournament';
 import config from './config';
 import * as db from './tournament-db';
 import UserNames from './user-names';
@@ -76,23 +76,39 @@ interface SchedulerEvents extends TournamentDriverEvents {
         t: Tournament;
         user: string;
     },
-    dropped: number,
-    reload: undefined
+    dropped: number;
+    reload: undefined;
+    updated: Tournament;
+    added: Tournament;
 }
+
+type TimeoutPair = [number, NodeJS.Timeout];
 
 class TimeoutSet {
 
-    private readonly set = new Set<NodeJS.Timeout>();
+    private list: TimeoutPair[] = [];
 
-    add(cb: () => void, m: number) {
-        this.set.add(setTimeout(cb, m));
+    add(id: number, cb: () => void, m: number): void {
+        const timeout = setTimeout(() => {
+            this.list = this.list.filter(([, other]) => other !== timeout);
+            cb();
+        }, m);
+        this.list.push([id, timeout]);
+    }
+
+    delete(id: number) {
+        this.list = this.list.filter(([other, timeout]) => {
+            if (other === id) {
+                clearTimeout(timeout);
+                return false;
+            }
+            return true;
+        });
     }
 
     clear() {
-        for (const t of this.set.values()) {
-            clearTimeout(t);
-        }
-        this.set.clear();
+        this.list.forEach(([, timeout]) => clearTimeout(timeout));
+        this.list = [];
     }
 
 }
@@ -104,6 +120,10 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             this.instance = new Scheduler();
         }
         return this.instance;
+    }
+
+    public static tourneys(): Tournament[] {
+        return _.sortBy(Array.from(this.get().tourneys.values()), 'utcStartTime');
     }
 
     private static instance?: Scheduler;
@@ -122,6 +142,49 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         this.tourneys.clear();
         this.loadToday();
         this.emit('reload', undefined);
+    }
+
+    public reloadOne(tid: number): boolean {
+        const isNew = !this.tourneys.has(tid);
+        const today = TexasTime.today();
+        const [loaded] = this.todaysTournaments(today).filter(({id}) => id === tid);
+        if (!loaded) {
+            return false;
+        }
+        const t = new Tournament(loaded);
+        if (t.state !== State.LATER) {
+            return false;
+        }
+        /** Remove existing timers for this one */
+        this.timeouts.delete(tid);
+
+        /** Change it in our map */
+        this.tourneys.set(tid, t);
+        const m = Math.max(5000, today.msUntil(TexasTime.parse(t.signup_start_dt)));
+        debug('signup in', ms(m), 'for', tid, t.signup_start_dt, t.name);
+        this.timeouts.add(tid, () => this.openSignup(expected(t)), m);
+        if (isNew) {
+            this.emit('added', t)
+        }
+        else {
+            this.emit('updated', t);
+        }
+        return true;
+    }
+
+    public delete(tid: number): boolean {
+        const row = db.getTournament(tid);
+        if (!row) {
+            return false;
+        }
+        const t = new Tournament(row);
+        if (t.state !== State.LATER) {
+            return false;
+        }
+        this.timeouts.delete(tid);
+        this.tourneys.delete(tid);
+        this.emit('reload', undefined);
+        return true;
     }
 
     private loadToday(): void {
@@ -147,13 +210,13 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         for (const t of this.tourneys.values()) {
             const m = Math.max(100, now.msUntil(TexasTime.parse(t.signup_start_dt)));
             debug('signup in', ms(m), 'for', t.id, t.signup_start_dt, t.name);
-            this.timeouts.add(() => this.openSignup(t), m);
+            this.timeouts.add(t.id, () => this.openSignup(t), m);
         }
 
         const tomorrow = TexasTime.midnight();
         const m = now.msUntil(tomorrow) + ms('30s');
         debug('tomorrow', tomorrow.toString(), 'in', ms(m));
-        this.timeouts.add(() => this.reload(), m);
+        this.timeouts.add(-1, () => this.reload(), m);
     }
 
     /**
@@ -245,7 +308,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
 
         const now = TexasTime.today();
         const m = Math.max(100, now.msUntil(TexasTime.parse(t.signup_end_dt)));
-        this.timeouts.add(() => this.closeSignup(t), m);
+        this.timeouts.add(t.id, () => this.closeSignup(t), m);
         debug('signup close in', ms(m), t.id, t.signup_end_dt, t.name);
     }
 
@@ -267,7 +330,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             });
             debug('canceled', id, t.start_dt, t.name);
             this.emit('canceled', t);
-            this.timeouts.add(() => {
+            this.timeouts.add(id, () => {
                 this.tourneys.delete(id);
                 this.emit('dropped', id);
             }, ms('5m'));
@@ -277,7 +340,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         const now = TexasTime.today();
         const m = Math.max(100, now.msUntil(TexasTime.parse(t.start_dt)));
         debug('start in', ms(m), t.id, t.signup_end_dt, t.name);
-        this.timeouts.add(() => this.start(driver), m);
+        this.timeouts.add(id, () => this.start(driver), m);
     }
 
     private async start(driver: TournamentDriver) {
@@ -318,7 +381,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
                 t.saveWith({finished: 1});
             }
             /** Keep the tourney around for a few minutes */
-            this.timeouts.add(() => {
+            this.timeouts.add(id, () => {
                 this.tourneys.delete(id);
                 this.emit('dropped', id);
             }, ms('10m'));

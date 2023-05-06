@@ -227,6 +227,10 @@ export default class Tournament implements Readonly<TournamentRow> {
         return this;
     }
 
+    save(): this {
+        return this.saveWith({});
+    }
+
     get signups(): Signups {
         if (!this.#signups) {
             this.#signups = db.getSignups(this.id);
