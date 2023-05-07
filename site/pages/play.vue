@@ -67,7 +67,7 @@
                 </h1>
                 <v-card flat color="#c0d4e5">
                   <v-card
-                    v-for="(trick, index) in pile.US"
+                    v-for="(trick, index) in stack ? pile.US.slice(0, 2) : pile.US"
                     :key="`US-${index}`"
                     flat
                     color="#c0d4e5"
@@ -79,7 +79,7 @@
                       class="ma-0 mt-1"
                       contain
                       max-width="29"
-                      :src="`/${bone}v.png`"
+                      :src="stack ? 'back.png': `/${bone}v.png`"
                     />
                   </v-card>
                 </v-card>
@@ -90,7 +90,7 @@
                 </h1>
                 <v-card flat color="#c0d4e5">
                   <v-card
-                    v-for="(trick, index) in pile.THEM"
+                    v-for="(trick, index) in stack ? pile.THEM.slice(0, 2) : pile.THEM"
                     :key="`THEM-${index}`"
                     color="#c0d4e5"
                     flat
@@ -102,7 +102,7 @@
                       class="ma-0 mt-1"
                       contain
                       max-width="29"
-                      :src="`/${bone}v.png`"
+                      :src="stack ? 'back.png': `/${bone}v.png`"
                     />
                   </v-card>
                 </v-card>
@@ -217,6 +217,10 @@
               width="180"
               height="90"
               class="ma-2"
+              draggable="true"
+              @dragstart="(event) => dragStart(event, n - 1)"
+              @drop="(event) => drop(event, n - 1)"
+              @dragover="(event) => dragOver(event, n - 1)"
               @click="playBone(bones[n - 1])"
             >
               <template #default>
@@ -244,6 +248,10 @@
               contain
               width="180"
               height="90"
+              draggable="true"
+              @dragstart="(event) => dragStart(event, n + 3)"
+              @drop="(event) => drop(event, n + 3)"
+              @dragover="(event) => dragOver(event, n + 3)"
               @click="playBone(bones[n + 3])"
             >
               <template #default>
@@ -327,6 +335,7 @@ export default {
       plays: {},
       trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
+      stack: false,
 
       pointTo: [],
       choiceTitle: undefined,
@@ -584,6 +593,7 @@ export default {
         case 'bidWon':
           this.bids = { [message.from]: message.bid }
           this.bidWinner = message.from
+          this.stack = message.bid.includes('mark')
           this.US.points = 0
           this.THEM.points = 0
           this.choiceTitle = `${message.from} bid ${message.bid}`
@@ -788,6 +798,24 @@ export default {
       if (this.choices.includes(bone)) {
         this.choose(bone)
       }
+    },
+    dragStart (event, n) {
+      event.dataTransfer.setData('text/plain', n)
+      event.dataTransfer.dropEffect = 'move'
+      const image = new Image()
+      image.src = `/${this.bones[n]}.png`
+      event.dataTransfer.setDragImage(image, 90, 45)
+    },
+    drop (event, n) {
+      event.preventDefault()
+      const other = parseInt(event.dataTransfer.getData('text/plain'), 10)
+      const swap = this.bones[n]
+      this.bones.splice(n, 1, this.bones[other])
+      this.bones.splice(other, 1, swap)
+    },
+    dragOver (event, n) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
     }
   }
 }
