@@ -530,7 +530,7 @@ export default {
       this.tick()
     } catch (error) {
       if (error?.response?.status === 401) {
-        return window.open('/main', '_top')
+        return window.open('/', '_top')
       }
       throw error
     }
