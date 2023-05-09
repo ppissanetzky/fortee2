@@ -4,26 +4,7 @@
       <v-img max-width="400" width="400" src="/logo.png" />
     </v-sheet>
     <v-sheet class="d-flex justify-space-around">
-      <v-spacer />
-      <v-btn
-        outlined
-        color="#0049bd"
-        class="mr-6"
-        height="40"
-        @click="$router.push('/main')"
-      >
-        PLAY
-      </v-btn>
-      <v-btn
-        outlined
-        color="#0049bd"
-        height="40"
-        class="ml-6"
-        @click="toSlack()"
-      >
-        CHAT
-      </v-btn>
-      <v-spacer />
+      <div id="google-button"></div>
     </v-sheet>
   </div>
 </template>
@@ -32,9 +13,42 @@ export default {
   data () {
     return {}
   },
+  async fetch () {
+    try {
+      await this.$axios.$get('/api/tournaments/me')
+      window.open('/main/', '_top')
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        return this.renderGoogleButton()
+      }
+      throw error
+    }
+  },
+  mounted () {
+  },
   methods: {
-    toSlack () {
-      window.open('https://fortee2.slack.com', '_blank')
+    renderGoogleButton () {
+      const gis = document.createElement('script')
+      gis.setAttribute('src', 'https://accounts.google.com/gsi/client')
+      document.head.appendChild(gis)
+      gis.onload = () => {
+        function handleCredentialsResponse (value) {
+          const { credential } = value
+          window.open(`/api/google-login/${encodeURIComponent(credential)}`, '_top')
+        }
+        // eslint-disable-next-line no-undef
+        google.accounts.id.initialize({
+          client_id: '539882529096-oqp7qpthd98qftj9orihpe0vvcn2gtoc.apps.googleusercontent.com',
+          callback: handleCredentialsResponse,
+          prompt_parent_id: 'prompt',
+          context: 'signup'
+        })
+        console.log('initialized')
+        // eslint-disable-next-line no-undef
+        google.accounts.id.renderButton(document.getElementById('google-button'), {
+          type: 'standard'
+        })
+      }
     }
   }
 }

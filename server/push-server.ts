@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws';
 import { NextFunction, Request, Response } from 'express';
+import _ from 'lodash';
 
 import { makeDebug } from './utility';
 import type { TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
@@ -7,10 +8,17 @@ import type { Message } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 import type { GameStatus } from './tournament-driver';
+import User, { UserType } from './users';
+
+interface Online {
+    value: string;
+    text: string;
+    type: UserType;
+}
 
 interface PushMessages {
     /** Sends an object with all users online, key is id, value is name */
-    online: Record<string, string>;
+    online: Online[];
 
     /** A tournament update */
     tournament: TournamentUpdate;
@@ -35,8 +43,7 @@ interface PushMessages {
 }
 
 interface Connection {
-    id: string;
-    name: string;
+    user: User;
     sockets: Set<WebSocket>;
 }
 
@@ -65,7 +72,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         return async (req: Request, res: Response, next: NextFunction) => {
             try {
                 const [ws, user] = await WsServer.get().upgrade(req);
-                this.connected(user.id, user.name, ws);
+                this.connected(user, ws);
             }
             catch (error) {
                 next(error);
@@ -81,6 +88,16 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         return Array.from(this.connections.keys());
     }
 
+    public close(userId: string) {
+        const existing = this.connections.get(userId);
+        if (existing) {
+            for (const socket of existing.sockets.values()) {
+                socket.close(4000, 'blocked');
+            }
+            this.connections.delete(userId);
+        }
+    }
+
     private disconnected(id: string, name: string, ws: WebSocket) {
         const existing = this.connections.get(id);
         if (existing && existing.sockets.delete(ws)) {
@@ -93,7 +110,9 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         }
     }
 
-    private connected(id: string, name: string, ws: WebSocket) {
+    private connected(user: User, ws: WebSocket) {
+
+        const { id, name} = user;
 
         this.debug('connected', id, name);
 
@@ -110,12 +129,12 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         const existing = this.connections.get(id);
 
         if (existing) {
-            existing.name = name;
+            existing.user = user;
             existing.sockets.add(ws);
             this.pushOnline(id);
         }
         else {
-            this.connections.set(id, { id, name, sockets: new Set([ws]) });
+            this.connections.set(id, {user, sockets: new Set([ws])});
             this.pushOnline();
         }
         this.emit('connected', {
@@ -125,10 +144,13 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     }
 
     private pushOnline(userId?: string) {
-        const message: Record<string, string> = {};
-        for (const c of this.connections.values()) {
-            message[c.id] = c.name;
-        }
+        const message: Online[] =
+            _.sortBy(Array.from(this.connections.values())
+            .map(({user: { id, name, type}}) => ({
+                value: id,
+                text: name,
+                type
+            })), 'text');
         this.debug('online %j', message);
         if (userId) {
             this.pushToOne(userId, 'online', message);
@@ -140,9 +162,9 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
 
     public pushToAll<T extends Key>(type: T, message: PushMessages[T]) {
         const payload = JSON.stringify({ type, message });
-        for (const c of this.connections.values()) {
-            this.debug('=>', c.id, c.name, type);
-            for (const ws of c.sockets.values()) {
+        for (const {user: {id, name}, sockets} of this.connections.values()) {
+            this.debug('=>', id, name, type);
+            for (const ws of sockets.values()) {
                 ws.send(payload);
             }
         }
@@ -155,7 +177,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         const list = ids.map((id) => this.connections.get(id));
         for (const c of list) {
             if (c) {
-                this.debug('=>', c.id, c.name, type);
+                this.debug('=>', c.user.id, c.user.name, type);
                 for (const ws of c.sockets.values()) {
                     ws.send(payload);
                 }
@@ -170,12 +192,12 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     }
 
     public forEach<T extends Key>(type: T, cb: ForEachCallback<T>) {
-        for (const c of this.connections.values()) {
-            const message = cb(c.id);
+        for (const {user: {id, name}, sockets} of this.connections.values()) {
+            const message = cb(id);
             if (message) {
-                this.debug('=>', c.id, c.name, type);
+                this.debug('=>', id, name, type);
                 const payload = JSON.stringify({type, message});
-                for (const ws of c.sockets.values()) {
+                for (const ws of sockets.values()) {
                     ws.send(payload);
                 }
             }

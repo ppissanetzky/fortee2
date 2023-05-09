@@ -4,7 +4,6 @@ import _ from 'lodash';
 import express, { NextFunction, Request, Response } from 'express';
 
 import Scheduler from './tournament-scheduler';
-import * as db from './tournament-db';
 import { makeDebug } from './utility';
 import { TableBuilder } from './table-helper';
 import GameRoom from './game-room';
@@ -12,7 +11,7 @@ import Socket from './socket';
 import TournamentPusher from './tournament-pusher';
 import tdRouter from './td-router';
 import { fail, fif, fa, validateRules, AppError } from './validate';
-import UserNames from './user-names';
+import User from './users';
 
 const debug = makeDebug('t-router');
 
@@ -34,15 +33,8 @@ router.get('/tws', pusher.ps.upgrade());
 router.get('/me', async (req, res) => {
     const { user } = req;
     assert(user);
-    let you = db.getUser(user.id);
-    if (!you) {
-        /** The user has been authenticated, but is not in our database yet */
-        UserNames.put(user.id, user.name);
-        you = db.getUser(user.id);
-        assert(you);
-    }
-    debug('you %j', you);
-    res.json(you);
+    debug('you %j', user);
+    res.json(user);
 });
 
 /** These could be done with the WS */
@@ -51,7 +43,7 @@ router.get('/signup/:id/:partner', (req, res) => {
     const { user } = req;
     assert(user);
     try {
-        fif(!db.getUser(user.id), 'invalid-user');
+        fif(!user.isStandard, 'guest');
         const { params } = req;
         const id = parseInt(params.id, 10);
         const partner = params.partner === 'null' ? null : params.partner;
@@ -60,7 +52,7 @@ router.get('/signup/:id/:partner', (req, res) => {
         fif(!t, 'invalid-tournament');
         assert(t);
         fif(!t.isOpen, 'not-open');
-        fif(partner && !db.getUser(partner), 'invalid-partner');
+        fif(partner && !User.get(partner), 'invalid-partner');
 
         /** This will add it to the database and push an update */
         scheduler.register(t.id, user.id, partner);
@@ -76,7 +68,7 @@ router.get('/dropout/:id', (req, res) => {
     const { user } = req;
     assert(user);
     try {
-        fif(!db.getUser(user.id), 'invalid-user');
+        fif(!user.isStandard, 'guest');
         const { params } = req;
         const id = parseInt(params.id, 10);
         const scheduler = Scheduler.get();
@@ -100,8 +92,9 @@ router.post('/start-game', express.json(), (req, res) => {
     const { partner, left, right } = body;
     const players: string [] = [user.id, partner, left, right].filter((p) => p);
     fif(_.uniq(players).length !== players.length, 'You have duplicate players');
-    const users = new Map<string, Express.User>(players.map((userId) => {
-        const info = db.getUser(userId);
+    interface User { id: string; name: string; }
+    const users = new Map<string, User>(players.map((userId) => {
+        const info = User.get(userId);
         fif(!info, 'Something is wrong with the players');
         assert(info);
         return [userId, {id: userId, name: info.name}];

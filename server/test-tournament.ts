@@ -4,7 +4,6 @@ import { EventEmitter } from 'node:stream';
 import Tournament from './tournament';
 import TournamentDriver from './tournament-driver';
 import { makeDebug } from './utility';
-import UserNames from './user-names';
 import type Socket from './socket';
 import Bot from './bot';
 import { Rules } from './core';
@@ -52,7 +51,7 @@ for (let i = 0; i < 1; i++) {
 //t.signups = () => new Map(signups.map((n) => s(n)));
 
 for (const id of signups) {
-    UserNames.put(id, id);
+//    UserNames.put(id, id);
 }
 
 const driver = new TournamentDriver(t);

@@ -7,8 +7,9 @@ import * as db from './tournament-db';
 import Tournament, { State } from './tournament';
 import { Rules } from './core';
 import { makeDebug } from './utility';
-import { fif, validateTournament } from './validate';
+import { fa, fif, validateTournament } from './validate';
 import Scheduler from './tournament-scheduler';
+import User, { UserPrefs, UserType } from './users';
 
 const debug = makeDebug('td-router');
 
@@ -50,8 +51,7 @@ function toJson(t: Tournament): Record<string, any> {
 router.use((req, res, next) => {
     const { user } = req;
     assert(user);
-    const info = db.getUser(user.id);
-    if (info?.roles.includes('td')) {
+    if (user.roles.includes('td')) {
         return next();
     }
     return res.sendStatus(403);
@@ -99,3 +99,19 @@ router.get('/reload', (req, res) => {
     res.sendStatus(200);
 });
 
+router.get('/users/:type', (req, res) => {
+    const { params: { type } } = req;
+    res.json(User.listOf(type as UserType));
+});
+
+router.post('/save/user', express.json(), (req, res) => {
+    const { body } = req;
+    debug('saving %j', body);
+    const existing = User.get(body.id);
+    fa(existing, 'Invalid user');
+    const { type , prefs } = body;
+    fif(!['guest', 'standard', 'blocked'].includes(type), 'Invalid type');
+    fa(prefs && _.isObject(prefs), 'Invalid prefs');
+    existing.update(type as UserType, prefs as UserPrefs);
+    res.json({});
+});

@@ -15,7 +15,7 @@ export interface UserInfo {
     roles: string[];
 }
 
-const database = new Database('tournaments', 2);
+const database = new Database('tournaments', 3);
 
 export function all(query: string, params?: Params) {
     return database.all(query, params);
@@ -107,27 +107,6 @@ export function getSignupsForUser(date: TexasTime, user: string): Map<number, st
         , { date: date.toString(), user }
     );
     return new Map(rows.map(({id, partner}) => [id, partner]));
-}
-
-export function getUsers(): Record<string, string> {
-    const rows = database.all('SELECT id, name FROM users');
-    return rows.reduce((result, {id, name}) => {
-        result[id] = name;
-        return result;
-    }, {});
-}
-
-export function getUser(id: string): UserInfo | undefined {
-    const row = database.first(
-        'SELECT name, roles, prefs FROM users WHERE id = $id', { id });
-    if (row) {
-        return {
-            id,
-            name: row.name,
-            prefs: row.prefs ? JSON.parse(row.prefs) : {},
-            roles: row.roles ? row.roles.split(',') : []
-        };
-    }
 }
 
 export function getTournament(id: number): TournamentRowWithCount | undefined {

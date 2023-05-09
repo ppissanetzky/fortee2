@@ -7,9 +7,9 @@ import { makeDebug } from './utility';
 import Tournament, { State } from './tournament';
 import { GameStatus, Status } from './tournament-driver';
 import GameRoom from './game-room';
-import { User } from './table-helper';
+import { User as TableUser } from './table-helper';
 import Chatter from './chatter';
-import UserNames from './user-names';
+import User from './users';
 
 const debug = makeDebug('pusha-t');
 
@@ -42,7 +42,7 @@ export interface TournamentUpdate {
 function makeTournamentUpdate(t: Tournament): TournamentUpdate {
     const games = t.driver?.gameStatus || null;
     const signups = Array.from(t.signups.entries()).map(([s, p]) =>
-        [UserNames.exists(s), p ? UserNames.exists(p) : null] as Signup);
+        [User.getName(s), p ? User.getName(p) : null] as Signup);
 
     return {
         id: t.id,
@@ -90,7 +90,7 @@ type TableStatus = 't' | 'hosting' | 'invited';
 export interface TableUpdate {
     status?: TableStatus;
     url?: string;
-    with?: User[];
+    with?: TableUser[];
     tid?: number;
     token?: string;
 }
@@ -113,6 +113,9 @@ export default class TournamentPusher {
         GameRoom.events
             .on('created', (room) => this.pushRoom(room))
             .on('closed', (room) => this.pushRoom(room));
+
+        User.events
+            .on('blocked', (userId) => this.ps.close(userId));
 
         this.scheduler
             .on('registered', ({t}) => this.updateAll(t))

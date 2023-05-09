@@ -76,8 +76,8 @@ export default class SlackTournamentMessenger {
 
         this.scheduler
             .on('signupOpen', (t) => ready.then(() => this.signupOpen(t)))
-            .on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
             .on('signupClosed', (t) => ready.then(() => this.deleteThread(t.id)));
+            //.on('tournamentOver', (event) => ready.then(() => this.tournamentOver(event)))
             // .on('canceled', (t) => ready.then(() => this.deleteThread(t.id)))
             // .on('started', (t) => ready.then(() => this.started(t)))
             // .on('registered', (event) => ready.then(() => this.registered(event)))

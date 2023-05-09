@@ -101,10 +101,10 @@ export async function authenticated(req: Request, res: Response, next: NextFunct
         assert(name, `Missing name for ${id}`);
 
         /** All is good, sign-in this user */
-        await new Promise<void>((resolve, reject) => {
-            req.login({id, name}, {session: true, keepSessionInfo: true},
-                (error) => error ? reject(error) : resolve());
-        });
+        // await new Promise<void>((resolve, reject) => {
+        //     req.login({id, name}, {session: true, keepSessionInfo: true},
+        //         (error) => error ? reject(error) : resolve());
+        // });
 
         assert(req.user, 'User came out wrong');
         assert(req.user.id === id, 'User ID came out wrong');

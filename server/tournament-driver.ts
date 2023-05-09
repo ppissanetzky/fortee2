@@ -3,21 +3,16 @@ import _ from 'lodash';
 
 import Tournament from './tournament';
 import Dispatcher from './dispatcher';
-import UserNames from './user-names';
 import GameRoom, { GameRoomStatus } from './game-room';
 import { TableBuilder } from './table-helper';
 import { Rules } from './core';
 import { expected, makeDebug } from './utility';
 import nextBotName from './bot-names';
-import config from './config';
 import ms from 'ms';
+import User from './users';
 
-async function user(id: string) {
-    const name = GameRoom.isBot(id);
-    if (name) {
-        return {id, name};
-    }
-    return UserNames.user(id);
+function user(id: string) {
+    return {id, name: User.getName(id)};
 }
 
 export class Team {
@@ -48,7 +43,7 @@ export class Team {
         if (this.isBye) {
             return 'bye';
         }
-        return this.users.map((id) => UserNames.exists(id));
+        return this.users.map((id) => User.getName(id));
     }
 
     public has(userId: string): boolean {
@@ -232,10 +227,10 @@ export class Game {
 
         /** No byes, we can set-up the game */
         const table = new TableBuilder([
-            await user(teams[0].users[0]),
-            await user(teams[1].users[0]),
-            await user(teams[0].users[1]),
-            await user(teams[1].users[1])
+            user(teams[0].users[0]),
+            user(teams[1].users[0]),
+            user(teams[0].users[1]),
+            user(teams[1].users[1])
         ]);
 
         return new Promise((resolve, reject) => {

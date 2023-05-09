@@ -9,9 +9,9 @@ import TexasTime from './texas-time';
 import Tournament, { State, TournamentRow } from './tournament';
 import config from './config';
 import * as db from './tournament-db';
-import UserNames from './user-names';
 import TournamentDriver, { TournamentDriverEvents } from './tournament-driver';
 import { Rules } from './core';
+import User from './users';
 
 const debug = makeDebug('scheduler');
 
@@ -360,7 +360,8 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         driver.on('summonTable', (event) => this.emit('summonTable', event));
         driver.on('gameOver', (event) => this.emit('gameOver', event));
         driver.on('tournamentOver', (event) => {
-            const winners = driver.winners?.join(',') || '';
+            const winners = driver.winners?.map((id) => User.getName(id))
+                .join(',') || '';
             t.saveWith({
                 finished: 1,
                 winners
@@ -416,10 +417,6 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
 
         /** In the DB */
         t.register(user, partner);
-
-        /** To prime the user names database */
-        UserNames.get(user);
-        UserNames.get(partner);
 
         this.emit('registered', {
             t,

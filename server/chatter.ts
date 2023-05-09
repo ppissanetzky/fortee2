@@ -1,8 +1,8 @@
 import ms from 'ms';
 import PushServer from './push-server';
-import { getUser } from './tournament-db';
 import { makeDebug } from './utility';
 import config from './config';
+import User from './users';
 
 const debug = makeDebug('chatter');
 
@@ -36,7 +36,7 @@ export default class Chatter {
 
             /** Get info about this user */
 
-            const info = getUser(userId);
+            const info = User.get(userId);
             if (!info) {
                 debug('no info for', userId);
                 return;
