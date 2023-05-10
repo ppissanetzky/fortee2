@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert';
 
+import _ from 'lodash';
 import express from 'express';
 
 import { OAuth2Client } from 'google-auth-library';
@@ -85,9 +86,9 @@ app.use(passport.authenticate('session'));
 // See https://developers.google.com/identity/gsi/web/reference/js-reference#CredentialResponse
 //-----------------------------------------------------------------------------
 
-app.get('/api/google-login/:credential', async (req, res) => {
-    const { params: { credential } } = req;
-    if (!credential) {
+app.get('/api/login/google', async (req, res) => {
+    const { credential } = req.query
+    if (!credential || !_.isString(credential)) {
         return res.sendStatus(400);
     }
     try {

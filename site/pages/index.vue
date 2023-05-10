@@ -34,7 +34,7 @@ export default {
       gis.onload = () => {
         function handleCredentialsResponse (value) {
           const { credential } = value
-          window.open(`/api/google-login/${encodeURIComponent(credential)}`, '_top')
+          window.open(`/api/login/google?credential=${encodeURIComponent(credential)}`, '_top')
         }
         // eslint-disable-next-line no-undef
         google.accounts.id.initialize({
