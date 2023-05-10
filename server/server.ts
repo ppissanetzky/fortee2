@@ -130,6 +130,12 @@ app.get('/api/google-login/:credential', async (req, res) => {
     }
 });
 
+app.get('/api/signout', (req, res) => {
+    req.logout(() => {
+        res.redirect('/?signout=1');
+    });
+});
+
 //-----------------------------------------------------------------------------
 
 // if (!config.PRODUCTION) {

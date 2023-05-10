@@ -4,7 +4,7 @@
       <v-img max-width="400" width="400" src="/logo.png" />
     </v-sheet>
     <v-sheet class="d-flex justify-space-around">
-      <div id="google-button"></div>
+      <div id="google-button" />
     </v-sheet>
   </div>
 </template>
@@ -43,11 +43,14 @@ export default {
           prompt_parent_id: 'prompt',
           context: 'signup'
         })
-        console.log('initialized')
         // eslint-disable-next-line no-undef
         google.accounts.id.renderButton(document.getElementById('google-button'), {
           type: 'standard'
         })
+        if (this.$route.query.signout) {
+          // eslint-disable-next-line no-undef
+          google.accounts.id.disableAutoSelect()
+        }
       }
     }
   }

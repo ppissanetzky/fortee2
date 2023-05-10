@@ -8,22 +8,44 @@
       min-width="375"
     >
       <v-toolbar flat color="#0049bd">
-        <v-toolbar-title v-if="you.name" class="white--text">
-          <strong>Hi, {{ you.name }}</strong>
-        </v-toolbar-title>
-        <v-btn
-          v-if="you?.roles?.includes('td')"
-          outlined
-          small
-          color="white"
-          class="ml-3"
-          @click="openUrl('/td')"
-        >
-          TD
-        </v-btn>
-
-        <v-spacer />
         <v-img contain max-width="300" src="/logo.png" />
+        <v-spacer />
+        <v-toolbar-title v-if="you.name" class="white--text mr-3">
+          <strong>Hi, {{ you.prefs?.displayName || you.name }}</strong>
+        </v-toolbar-title>
+        <v-menu offset-y>
+          <template #activator="{ on, attrs }">
+            <v-btn icon color="white" v-bind="attrs" v-on="on">
+              <v-icon>mdi-chevron-down</v-icon>
+            </v-btn>
+          </template>
+          <v-card tile>
+            <v-card-text>
+              <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" />
+              <div class="mt-3">
+                You are signed in as <strong>{{ you.name }}</strong><br>
+                <span class="blue--text">{{ you.email }}</span><br>
+                <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong></span>
+                <span v-else>You are a <strong>{{ you.type }}</strong> user</span>
+              </div>
+            </v-card-text>
+            <v-card-actions>
+              <v-btn text @click="signOut">
+                sign out
+              </v-btn>
+            </v-card-actions>
+            <v-divider />
+            <v-card-actions>
+              <v-btn
+                v-if="you?.roles?.includes('td')"
+                text
+                @click="openUrl('/td')"
+              >
+                open TD page
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-menu>
       </v-toolbar>
     </v-card>
     <div>
@@ -541,6 +563,9 @@ export default {
     }
   },
   methods: {
+    signOut () {
+      window.open('/api/signout', '_top')
+    },
     startPings () {
       // send a ping message (not a WS ping)
       setInterval(() => {
