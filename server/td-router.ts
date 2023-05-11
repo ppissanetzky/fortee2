@@ -9,7 +9,7 @@ import { Rules } from './core';
 import { makeDebug } from './utility';
 import { fa, fif, validateTournament } from './validate';
 import Scheduler from './tournament-scheduler';
-import User, { UserPrefs, UserType } from './users';
+import User, { UserPrefs, UserRole, UserType } from './users';
 
 const debug = makeDebug('td-router');
 
@@ -109,9 +109,16 @@ router.post('/save/user', express.json(), (req, res) => {
     debug('saving %j', body);
     const existing = User.get(body.id);
     fa(existing, 'Invalid user');
-    const { type , prefs } = body;
+    const { type , prefs } : { type: UserType, prefs: UserPrefs }= body;
     fif(!['guest', 'standard', 'blocked'].includes(type), 'Invalid type');
     fa(prefs && _.isObject(prefs), 'Invalid prefs');
-    existing.update(type as UserType, prefs as UserPrefs);
+    let roles: UserRole[] | undefined = undefined;
+    if (req.user?.isAdmin) {
+        roles = body.roles
+        fa(roles && _.isArray(roles), 'Invalid roles');
+        const possible = new Set<UserRole>(['admin', 'td']);
+        fif(!roles.every((role) => possible.has(role)), 'Unknown role');
+    }
+    existing.update(type, prefs, roles);
     res.json({});
 });

@@ -25,8 +25,9 @@
               <div class="mt-3">
                 You are signed in as <strong>{{ you.name }}</strong><br>
                 <span class="blue--text">{{ you.email }}</span><br>
-                <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong></span>
-                <span v-else>You are a <strong>{{ you.type }}</strong> user</span>
+                <span v-if="you.roles?.includes('admin')">You are an <strong>admin</strong><br></span>
+                <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong><br></span>
+                <span>You are a <strong>{{ you.type }}</strong> user</span>
               </div>
             </v-card-text>
             <v-card-actions>

@@ -99,13 +99,18 @@ export default class User {
         return this.roles.includes('admin');
     }
 
-    update(type: UserType, prefs: UserPrefs) {
+    update(type: UserType, prefs: UserPrefs, roles?: UserRole[]) {
         const wasBlocked = this.isBlocked;
         db.run(
             'UPDATE users SET type = $type, prefs = $prefs WHERE id = $id',
             { type, prefs: JSON.stringify(prefs), id: this.id});
+        if (roles) {
+            db.run('UPDATE users SET roles = $roles WHERE id = $id',
+            { id: this.id, roles: roles.join(',') });
+            this.row.roles = [...roles];
+        }
         this.row.type = type;
-        this.row.prefs = prefs;
+        this.row.prefs = {...prefs};
         if (this.isBlocked && !wasBlocked) {
             User.events.emit('blocked', this);
         }
@@ -142,9 +147,9 @@ export default class User {
         return new User(row);
     }
 
-    static listOf(type: UserType): UserRow[] {
+    static listOf(type: UserType | 'all'): UserRow[] {
         return db.all(
-            'SELECT * FROM users WHERE type = $type ORDER BY name', { type })
+            `SELECT * FROM users WHERE type = $type OR $type = 'all' ORDER BY name`, { type })
             .map((row) => decodeRow(row));
     }
 }

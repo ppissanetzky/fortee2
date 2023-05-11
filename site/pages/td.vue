@@ -34,6 +34,18 @@
             label="Display name"
           />
         </v-card-actions>
+        <v-card-title v-if="you.roles?.includes('admin')">Admin</v-card-title>
+        <v-card-actions v-if="you.roles?.includes('admin')">
+          <v-select
+            v-model="user.roles"
+            :items="['td', 'admin']"
+            label="Roles"
+            multiple
+            outlined
+            dense
+            hide-details
+          />
+        </v-card-actions>
         <v-card-actions>
           <v-spacer />
           <strong class="red--text pr-2">{{ error }}</strong>
@@ -180,17 +192,28 @@
         <v-toolbar flat>
           <v-select
             v-model="userType"
-            :items="['blocked', 'guest', 'standard']"
+            :items="['all', 'blocked', 'guest', 'standard']"
             hide-details
             dense
             outlined
             label="Type"
           />
+          <v-text-field
+            v-model="userSearch"
+            append-icon="mdi-magnify"
+            label="Search"
+            single-line
+            hide-details
+            dense
+            outlined
+            clearable
+            class="px-4"
+          />
         </v-toolbar>
         <v-data-table
           :headers="userHeaders"
           :items="users"
-          :search="search"
+          :search="userSearch"
           item-key="id"
           @click:row="editUser"
         />
@@ -243,6 +266,7 @@
 export default {
   data () {
     return {
+      you: {},
       ts: [],
       todays: [],
       users: [],
@@ -266,10 +290,12 @@ export default {
         { text: 'Name', value: 'name' },
         { text: 'Display name', value: 'prefs.displayName' },
         { text: 'E-mail', value: 'email' },
-        { text: 'Type', value: 'type' }
+        { text: 'Type', value: 'type' },
+        { text: 'Roles', value: 'roleList' }
       ],
       // Models
       search: undefined,
+      userSearch: undefined,
       dialog: false,
       userDialog: false,
       user: undefined,
@@ -279,10 +305,11 @@ export default {
       tab: undefined,
       sure: false,
       everyFilter: [],
-      userType: 'guest'
+      userType: 'all'
     }
   },
   async fetch () {
+    this.you = await this.$axios.$get('/api/tournaments/me')
     await this.loadUsers()
     const { t } = this.$route.query
     if (t) {
@@ -319,7 +346,8 @@ export default {
   methods: {
     async loadUsers () {
       const url = `/api/tournaments/td/users/${this.userType}`
-      this.users = await this.$axios.$get(url)
+      const users = await this.$axios.$get(url)
+      this.users = users.map(user => ({ ...user, roleList: user.roles.join() }))
     },
     async loadToday () {
       const { tournaments } = await this.$axios.$get('/api/tournaments/td/today')
