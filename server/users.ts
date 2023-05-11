@@ -37,8 +37,8 @@ function getUserRow(id: string): UserRow | undefined  {
 }
 
 export interface UserEvents {
-    /** The userID */
-    blocked: string;
+    changed: User;
+    blocked: User;
 }
 
 export default class User {
@@ -107,7 +107,10 @@ export default class User {
         this.row.type = type;
         this.row.prefs = prefs;
         if (this.isBlocked && !wasBlocked) {
-            User.events.emit('blocked', this.id);
+            User.events.emit('blocked', this);
+        }
+        else {
+            User.events.emit('changed', this);
         }
     }
 

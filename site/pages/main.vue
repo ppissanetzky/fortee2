@@ -111,60 +111,83 @@
           </v-card-title>
         </div>
       </v-card>
-
-      <v-card tile flat class="mb-3" color="grey lighten-3">
-        <v-card-title>
-          Lobby
-          <v-spacer />
-          <span v-if="users.length" class="caption">{{ users.length }} online</span>
-          <span v-else class="caption">No one else online</span>
-        </v-card-title>
-        <div v-if="users.length" class="mx-3">
-          <v-chip
-            v-for="user in users"
-            :key="user.value"
-            label
-            class="mr-1 mb-1"
-          >
-            {{ user.text }}
-            <strong v-if="user.type === 'guest'">(guest)</strong>
-          </v-chip>
-        </div>
-        <v-divider class="my-3" />
-        <div class="mx-3 mb-3 pb-3">
-          <v-card
-            id="chat-box"
-            height="216"
-            flat
-            tile
-            class="overflow-y-auto pt-1"
-          >
-            <div v-for="m in messages" :key="m.id" class="mb-1 mx-3">
-              <div>
-                <strong>{{ m.name }}</strong>
-                <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
-                  <strong style="color: #78909C;">{{ m.title }}</strong>
-                </v-chip>
-                <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
+      <!-- LOBBY -->
+      <v-card tile flat class="py-3 mb-3">
+        <v-card-text>
+          <v-row>
+            <v-col class="pa-0">
+              <v-card
+                id="chat-box"
+                height="216"
+                flat
+                tile
+                outlined
+                class="overflow-y-auto pt-1"
+                style="border-color: #0000006b;"
+              >
+                <div v-for="m in messages" :key="m.id" class="mb-1 mx-3">
+                  <div>
+                    <strong>{{ m.name }}</strong>
+                    <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
+                      <strong style="color: #78909C;">{{ m.title }}</strong>
+                    </v-chip>
+                    <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
+                  </div>
+                  <div>{{ m.text }}</div>
+                </div>
+              </v-card>
+              <v-form @submit.prevent="() => void 0" @submit="chat">
+                <v-text-field
+                  v-model="message"
+                  color="#0049bd"
+                  dense
+                  outlined
+                  clearable
+                  placeholder="Send a message..."
+                  hide-details
+                  append-icon="mdi-send"
+                  class="mt-3"
+                  style="background-color: white;border-radius: 0;"
+                  @click:append="chat"
+                />
+              </v-form>
+            </v-col>
+            <v-col cols="auto" class="pa-0 pl-3">
+              <v-card
+                flat
+                tile
+                outlined
+                height="216"
+                class="d-flex overflow-y-auto"
+                style="border-color: #0000006b;"
+              >
+                <v-card-text class="py-0 px-3">
+                  <div v-if="online('td').length" class="mt-2">
+                    <h3>TDs</h3><v-divider class="mb-1" />
+                    <div v-for="u in online('td')" :key="u.id">
+                      {{ u.text }}
+                    </div>
+                  </div>
+                  <div v-if="online('standard').length" class="mt-2">
+                    <h3>Members</h3><v-divider class="mb-1" />
+                    <div v-for="u in online('standard')" :key="u.id">
+                      {{ u.text }}
+                    </div>
+                  </div>
+                  <div v-if="online('guest').length" class="mt-2">
+                    <h3>Guests</h3><v-divider class="mb-1" />
+                    <div v-for="u in online('guest')" :key="u.id">
+                      {{ u.text }}
+                    </div>
+                  </div>
+                </v-card-text>
+              </v-card>
+              <div class="mt-5 ml-3">
+                <span class="caption">{{ users.length }} online</span>
               </div>
-              <div>{{ m.text }}</div>
-            </div>
-          </v-card>
-          <v-form @submit.prevent="() => void 0" @submit="chat">
-            <v-text-field
-              v-model="message"
-              color="#0049bd"
-              dense
-              solo
-              clearable
-              placeholder="Send a message..."
-              hide-details
-              append-icon="mdi-send"
-              class="mt-3"
-              @click:append="chat"
-            />
-          </v-form>
-        </div>
+            </v-col>
+          </v-row>
+        </v-card-text>
       </v-card>
       <div v-if="you.type === 'standard'">
         <v-card
@@ -595,7 +618,7 @@ export default {
       ws.onclose = (event) => {
         this.ws = undefined
         if (event.code === 4000) {
-          return
+          return window.open('/', '_top')
         }
         setTimeout(() => this.connect(), this.reconnectS * 1000)
         this.reconnectS = Math.min(this.reconnectS * 2, 20)
@@ -603,6 +626,9 @@ export default {
     },
     onMessage (type, message) {
       switch (type) {
+        case 'you':
+          this.you = message
+          break
         case 'online':
           this.users = message
           break
@@ -655,6 +681,9 @@ export default {
     },
     signupsFor (t) {
       return t.signups.map(([s, p]) => `${s}${p ? '/' + p : ''}`)
+    },
+    online (type) {
+      return this.users.filter(user => user.type === type)
     },
     async signUp (t) {
       const { id, newPartner } = t

@@ -13,10 +13,13 @@ import User, { UserType } from './users';
 interface Online {
     value: string;
     text: string;
-    type: UserType;
+    type: UserType | 'td';
 }
 
 interface PushMessages {
+    /** This user was updated */
+    you: User;
+
     /** Sends an object with all users online, key is id, value is name */
     online: Online[];
 
@@ -68,6 +71,13 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
 
     private connections = new Map<string, Connection>();
 
+    constructor() {
+        super();
+        User.events
+            .on('changed', (user) => this.changed(user))
+            .on('blocked', (user) => this.blocked(user.id));
+    }
+
     public upgrade() {
         return async (req: Request, res: Response, next: NextFunction) => {
             try {
@@ -88,13 +98,22 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         return Array.from(this.connections.keys());
     }
 
-    public close(userId: string) {
+    private blocked(userId: string) {
         const existing = this.connections.get(userId);
         if (existing) {
             for (const socket of existing.sockets.values()) {
                 socket.close(4000, 'blocked');
             }
             this.connections.delete(userId);
+        }
+    }
+
+    private changed(user: User) {
+        const existing = this.connections.get(user.id);
+        if (existing) {
+            existing.user = user;
+            this.pushToOne(user.id, 'you', user);
+            this.pushOnline();
         }
     }
 
@@ -146,10 +165,10 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     private pushOnline(userId?: string) {
         const message: Online[] =
             _.sortBy(Array.from(this.connections.values())
-            .map(({user: { id, name, type}}) => ({
-                value: id,
-                text: name,
-                type
+            .map(({user}) => ({
+                value: user.id,
+                text: user.name,
+                type: user.isTD ? 'td' : user.type
             })), 'text');
         this.debug('online %j', message);
         if (userId) {

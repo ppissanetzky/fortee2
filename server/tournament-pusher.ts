@@ -114,9 +114,6 @@ export default class TournamentPusher {
             .on('created', (room) => this.pushRoom(room))
             .on('closed', (room) => this.pushRoom(room));
 
-        User.events
-            .on('blocked', (userId) => this.ps.close(userId));
-
         this.scheduler
             .on('registered', ({t}) => this.updateAll(t))
             .on('unregistered', ({t}) => this.updateAll(t))

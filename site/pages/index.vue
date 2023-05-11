@@ -4,24 +4,33 @@
       <v-img max-width="400" width="400" src="/logo.png" />
     </v-sheet>
     <v-sheet class="d-flex justify-space-around">
-      <div id="google-button" />
+      <span v-if="blocked">You have been blocked</span>
+      <div v-else id="google-button" />
     </v-sheet>
   </div>
 </template>
 <script>
 export default {
   data () {
-    return {}
+    return {
+      blocked: false
+    }
   },
   async fetch () {
     try {
       await this.$axios.$get('/api/tournaments/me')
       window.open('/main/', '_top')
     } catch (error) {
-      if (error?.response?.status === 401) {
-        return this.renderGoogleButton()
+      switch (error?.response?.status) {
+        case 401:
+          this.renderGoogleButton()
+          break
+        case 403:
+          this.blocked = true
+          break
+        default:
+          throw error
       }
-      throw error
     }
   },
   mounted () {
