@@ -707,7 +707,7 @@ export default {
           } else {
             this.pointTo = [message.winner]
             this.showTitle(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`)
-            await new Promise(resolve => setTimeout(resolve, 2500))
+            await this.delay(2.5)
           }
           this.choiceTitle = undefined
           this.plays = {}
@@ -917,8 +917,12 @@ export default {
         const box = document.getElementById('chat-box')
         box.scrollTop = box.scrollHeight
       }, 0)
+    },
+    async delay (s) {
+      if (!this.catchingUp) {
+        await new Promise(resolve => setTimeout(resolve, s * 1000))
+      }
     }
-
   }
 }
 </script>
