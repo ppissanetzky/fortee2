@@ -7,6 +7,7 @@ import { makeDebug } from './utility';
 import type Socket from './socket';
 import Bot from './bot';
 import { Rules } from './core';
+import User from './users';
 
 const debug = makeDebug('test-t');
 
@@ -51,7 +52,15 @@ for (let i = 0; i < 1; i++) {
 //t.signups = () => new Map(signups.map((n) => s(n)));
 
 for (const id of signups) {
-//    UserNames.put(id, id);
+    User.add({
+        id,
+        name: id,
+        email: '',
+        source: 'test',
+        type: 'standard',
+        roles: [],
+        prefs: {}
+    });
 }
 
 const driver = new TournamentDriver(t);

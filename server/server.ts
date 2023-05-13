@@ -139,18 +139,27 @@ app.get('/api/signout', (req, res) => {
 
 //-----------------------------------------------------------------------------
 
-// if (!config.PRODUCTION) {
-//     app.use((req, res, next) => {
-//         if (!req.isAuthenticated()) {
-//             const bot = req.header('x-ft2-bot');
-//             if (bot) {
-//                 return req.login({id: bot, name: bot}, () => next());
-//             }
-//             return req.login({id: 'pablo', name: 'pablo'}, () => next());
-//         }
-//         next();
-//     });
-// }
+if (!config.PRODUCTION) {
+    app.use((req, res, next) => {
+        if (!req.isAuthenticated()) {
+            const bot = req.header('x-ft2-bot');
+            if (bot) {
+                const user = User.get(bot) || User.add({
+                    id: bot,
+                    name: bot,
+                    email: `${bot}@fortee2.com`,
+                    source: 'test',
+                    type: 'standard',
+                    roles: [],
+                    prefs: {}
+                });
+                return req.login(user, () => next());
+            }
+//            return req.login({id: 'pablo', name: 'pablo'}, () => next());
+        }
+        next();
+    });
+}
 
 //-----------------------------------------------------------------------------
 

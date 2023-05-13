@@ -93,6 +93,11 @@ export interface GameRoomEvents extends GameDriverEvents {
     gameIdle: GameIdle;
 }
 
+export interface ChatMessage {
+    name: string;
+    text: string;
+}
+
 export interface GameRoomOptions {
     rules: Rules;
     table: TableBuilder;
@@ -165,6 +170,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     private watchers = new Set<WebSocket>();
 
     private watcherCatchup: string[] = [];
+
+    private chat: ChatMessage[] = [];
 
     /**
      * A set of user names that have been invited to this room. Always
@@ -455,10 +462,20 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             this.debug('removed watcher', user.id, user.name);
             this.watchers.delete(ws);
         });
+        /** Only watchers that are TDs can chat */
+        if (user.isTD) {
+            ws.on('message', (raw) => {
+                const { type, message } = JSON.parse(raw.toString());
+                if (type === 'chat' && message) {
+                    this.sendChat(user.name, message);
+                }
+            });
+        }
         const message: string[] = [
-            stringify({type: 'welcome', message: {youAre: this.host}}),
+            stringify({type: 'welcome', message: {youAre: this.host, you: user}}),
             stringify({type: 'youEnteredGameRoom', message: this.roomUpdate(user)}),
             stringify({type: 'startingGame', message: {desc: this.rules.parts()}}),
+            stringify({type: 'chat', message: this.chat}),
             ...this.watcherCatchup,
         ];
         ws.send(JSON.stringify({type: 'catchup', message}));
@@ -472,6 +489,13 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.debug('joined', name);
         this.sockets.set(name, socket);
         this.emit('userJoined', userId);
+        /**
+         * When the user sends us a chat message, we save it and then send it
+         * to everyone
+         */
+        socket.on('chat', (message) => this.sendChat(name, message));
+        /** When the user joins, we send them all the existing chat messages */
+        socket.send('chat', this.chat);
         // If and when the user leaves
         socket.gone.then((reason) => {
             if (this.sockets.delete(name)) {
@@ -545,11 +569,22 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
     }
 
+    private sendChat(name: string, text: string) {
+        const chat = {name, text};
+        this.chat.push(chat);
+        this.all((socket) => socket.send('chat', [chat]));
+        const message = stringify({type: 'chat', message: [chat]});
+        for (const watcher of this.watchers.values()) {
+            watcher.send(message)
+        }
+    }
+
     private async saveGame(save: SaveWithMetadata) {
         try {
             const name = sanitize(new Date(save.started).toISOString(), {
                 replacement: '-'
             }).replace('.', '-') + '.json';
+            save.chat = this.chat;
             const contents = JSON.stringify(save);
             await fs.writeFile(path.join(config.FT2_SAVE_PATH, name), contents);
             this.debug('saved', name);

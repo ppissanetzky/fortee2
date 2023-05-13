@@ -1,5 +1,7 @@
 import type { Bone, Trump, Bid , Rules} from './core';
 import type { Team, Status } from './driver';
+import type { ChatMessage } from './game-room';
+import User from './users';
 
 export interface OutgoingGlobalMessages {
 
@@ -8,11 +10,10 @@ export interface OutgoingGlobalMessages {
      */
 
     welcome: {
-        /**
-         * Your name
-         */
-
+        /** Your name */
         youAre: string;
+        /** Your user */
+        you: User;
     };
 }
 
@@ -56,6 +57,10 @@ export interface OutgoingGameRoomMessages {
         id: string;
         name: string;
     }
+
+    /** Chat messages */
+
+    chat: ChatMessage[];
 }
 
 export interface StartingGame {

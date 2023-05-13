@@ -1,131 +1,123 @@
 <template>
   <div>
-    <div class="d-flex">
-      <!-- LEFT SIDE COLUMN -->
-      <v-sheet class="d-flex flex-column align-stretch pl-3 pr-2 pb-6" width="300">
-        <v-img class="d-flex" max-height="56" aspect-ratio="1" contain src="/logo.png" />
-        <v-card class="d-flex mt-1" flat tile color="#8fa5b7">
-          <v-container class="pa-2">
-            <v-row>
-              <v-col cols="6" class="pa-2">
-                <div class="text-center white--text">
-                  <h2>US</h2>
-                  <span class="subtitle-1 pl-1">{{ teams.US[0] }} <br> {{ teams.US[1] }}</span>
-                </div>
-              </v-col>
-              <v-col cols="6" class="pa-2">
-                <div class="text-center white--text">
-                  <h2>THEM</h2>
-                  <span class="subtitle-1 pr-1">{{ teams.THEM[0] }} <br> {{ teams.THEM[1] }}</span>
-                </div>
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="6" class="pa-0 pb-2">
-                <div class="text-center white--text">
-                  <h1>
-                    {{ US.marks }}
-                  </h1>
-                </div>
-              </v-col>
-              <v-col cols="6" class="pa-0 pb-2">
-                <div class="text-center white--text">
-                  <h1>
-                    {{ THEM.marks }}
-                  </h1>
-                </div>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-card>
-        <v-sheet class="d-flex fill-height flex-column mt-2" color="#c0d4e5">
-          <v-card-text>
-            <div v-if="bidWinner" class="text-center" style="color: #6f6f6f;">
-              <span class="text-h6">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-              <span v-if="trump[bidWinner]" class="text-h6"> on <strong>{{ trump[bidWinner] }}</strong></span>
+    <div class="d-flex flex-column">
+      <!-- VERY TOP - BLUE STATUS BAR -->
+      <v-sheet class="d-flex" color="#0049bd" width="814" min-width="814">
+        <div class="d-flex px-2 py-2">
+          <div class="white--text mr-6">
+            <div class="subtitle-1">
+              {{ teams.US[0] }} & {{ teams.US[1] }}
             </div>
-          </v-card-text>
-          <v-card-text v-if="bidWinner && trump[bidWinner]">
-            <v-progress-linear
-              :value="bidPercentage"
-              :reverse="teamFor(bidWinner) === 'THEM'"
-              rounded
-              height="25"
-              color="#8dc73f"
-              background-color="#e8e8e8"
-            >
-              <template #default>
-                <!-- {{ US.points }} -->
-              </template>
-            </v-progress-linear>
-          </v-card-text>
-          <v-container>
-            <v-row class="text-center" style="color: #676767;">
-              <v-col cols="6" class="pa-0 pl-1">
-                <h1 v-if="bidWinner && trump[bidWinner]">
-                  {{ US.points }}
-                </h1>
-                <v-card flat color="#c0d4e5">
-                  <v-card
-                    v-for="(trick, index) in stack ? pile.US.slice(0, 2) : pile.US"
-                    :key="`US-${index}`"
-                    flat
-                    color="#c0d4e5"
-                    class="d-flex justify-space-around align-center pa-0"
-                  >
-                    <v-img
-                      v-for="bone in trick"
-                      :key="bone"
-                      class="ma-0 mt-1"
-                      contain
-                      max-width="29"
-                      :src="stack ? 'back.png': `/${bone}v.png`"
-                    />
-                  </v-card>
-                </v-card>
-              </v-col>
-              <v-col cols="6" class="pa-0 pl-1 pr-1">
-                <h1 v-if="bidWinner && trump[bidWinner]">
-                  {{ THEM.points }}
-                </h1>
-                <v-card flat color="#c0d4e5">
-                  <v-card
-                    v-for="(trick, index) in stack ? pile.THEM.slice(0, 2) : pile.THEM"
-                    :key="`THEM-${index}`"
-                    color="#c0d4e5"
-                    flat
-                    class="d-flex justify-space-around align-center pa-0"
-                  >
-                    <v-img
-                      v-for="bone in trick"
-                      :key="bone"
-                      class="ma-0 mt-1"
-                      contain
-                      max-width="29"
-                      :src="stack ? 'back.png': `/${bone}v.png`"
-                    />
-                  </v-card>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-container>
-        </v-sheet>
+            <div class="subtitle-1">
+              {{ teams.THEM[0] }} & {{ teams.THEM[1] }}
+            </div>
+          </div>
+          <div class="white--text mr-6">
+            <h3>{{ US.marks }}</h3>
+            <h3>{{ THEM.marks }}</h3>
+          </div>
+          <div class="white--text mr-6">
+            <div v-if="bidWinner">
+              <div v-if="teamFor(bidWinner) === 'US'">
+                <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
+                <span v-if="trump[bidWinner]" class="subtitle-1"> on <strong>{{ trump[bidWinner] }}</strong></span>
+              </div>
+              <v-sheet v-else width="0" height="28" />
+            </div>
+            <div v-if="bidWinner">
+              <div v-if="teamFor(bidWinner) === 'THEM'">
+                <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
+                <span v-if="trump[bidWinner]" class="subtitle-1"> on <strong>{{ trump[bidWinner] }}</strong></span>
+              </div>
+              <v-sheet v-else width="0" height="28" />
+            </div>
+          </div>
+        </div>
+        <v-spacer />
+        <div v-if="rules" class="d-flex white--text align-end pa-2 pr-3 mb-1">
+          <h4 v-if="watching" class="mr-3">
+            Watching
+          </h4>
+          <v-chip
+            v-for="r in rules"
+            :key="r"
+            label
+            small
+            color="white"
+            class="mr-1 pa-2"
+          >
+            <span style="color: #0049bd;">{{ r }}</span>
+          </v-chip>
+        </div>
       </v-sheet>
-      <div>
-        <!-- THE PLAYING AREA -->
-        <div>
+
+      <!-- TOP - BONE PILE AND PLAY AREA -->
+      <div class="d-flex">
+        <!-- LEFT - PILE -->
+        <div class="d-flex">
+          <v-sheet class="d-flex flex-column fill-height px-2" min-width="150" width="150" color="#c0d4e5">
+            <div v-if="pile.US.length" class="d-flex">
+              <div class="d-flex caption ml-1">
+                <strong>{{ US.points }}</strong>
+              </div>
+              <v-progress-linear
+                class="d-flex align-self-center ml-2 mr-1"
+                height="10"
+                :value="bidPercentage('US')"
+                :color="bidColor('US')"
+              />
+            </div>
+            <v-card
+              v-for="(trick, index) in stack ? pile.US.slice(0, 2) : pile.US"
+              :key="`US-${index}`"
+              flat
+              color="#c0d4e5"
+              class="d-flex justify-space-around align-center pa-0"
+            >
+              <v-img
+                v-for="bone in trick"
+                :key="bone"
+                class="ma-0 mt-1"
+                contain
+                max-width="29"
+                :src="stack ? 'back.png': `/${bone}v.png`"
+              />
+            </v-card>
+            <div v-if="pile.THEM.length" class="d-flex mt-1">
+              <div class="d-flex caption ml-1">
+                <strong>{{ THEM.points }}</strong>
+              </div>
+              <v-progress-linear
+                class="d-flex align-self-center ml-2 mr-1"
+                height="10"
+                :value="bidPercentage('THEM')"
+                :color="bidColor('THEM')"
+              />
+            </div>
+            <v-card
+              v-for="(trick, index) in stack ? pile.THEM.slice(0, 2) : pile.THEM"
+              :key="`THEM-${index}`"
+              flat
+              color="#c0d4e5"
+              class="d-flex justify-space-around align-center pa-0"
+            >
+              <v-img
+                v-for="bone in trick"
+                :key="bone"
+                class="ma-0 mt-1"
+                contain
+                max-width="29"
+                :src="stack ? 'back.png': `/${bone}v.png`"
+              />
+            </v-card>
+          </v-sheet>
+        </div>
+        <!-- RIGHT - PLAY AREA -->
+        <div class="d-flex mx-8 flex-column">
           <div class="d-flex justify-space-around">
-            <div class="d-flex flex-column align-center mb-6">
-              <v-sheet width="200" height="115" color="#00000000" />
+            <div class="d-flex flex-column align-center justify-space-around">
               <!-- LEFT PLAYER STATUS -->
-              <StatusNew v-model="left" class="ma-6 mb-12" />
-              <v-sheet width="200" height="90" color="#00000000">
-                <div v-if="snack" class="pa-1 pt-3 text-center">
-                  <h3 style="color: #6f6f6f;">
-                    {{ snack }}
-                  </h3>
-                </div>
-              </v-sheet>
+              <StatusNew v-model="left" class="ma-3" />
             </div>
 
             <div class="d-flex flex-column align-center justify-space-around">
@@ -143,9 +135,39 @@
                   <v-icon :color="pointUp">
                     mdi-chevron-up
                   </v-icon>
-                  <h3 style="color: #6f6f6f;">
-                    {{ choiceTitle }}
-                  </h3>
+                  <!-- CENTER CHOICE -->
+                  <div>
+                    <div v-if="!choices || timed">
+                      <h4 style="color: #6f6f6f;">
+                        {{ choiceTitle }}
+                      </h4>
+                      <div v-if="choices" class="mt-3">
+                        <v-chip
+                          v-for="c in choices"
+                          :key="c"
+                          label
+                          color="#ff3600"
+                          class="mr-1 white--text"
+                          @click="choose(c)"
+                        >
+                          <strong>{{ c }}</strong>
+                          <v-progress-circular
+                            v-if="timed"
+                            v-model="timed"
+                            class="ml-2"
+                            size="18"
+                            width="5"
+                            color="white"
+                          />
+                        </v-chip>
+                      </div>
+                    </div>
+                    <div v-else-if="choiceTitle && choices.length > 1 && !watching && !paused">
+                      <h4 style="color: #6f6f6f;">
+                        {{ choiceTitle }}
+                      </h4>
+                    </div>
+                  </div>
                   <v-icon :color="pointDown">
                     mdi-chevron-down
                   </v-icon>
@@ -157,65 +179,93 @@
                 </div>
               </div>
               <!-- MY STATUS -->
-              <StatusNew v-model="me" :name="false" class="mt-6 mb-1 align-self-center" />
-              <h2 class="mb-3" style="color: #6f6f6f;">
-                {{ youAre }}
-              </h2>
+              <StatusNew v-model="me" :name="false" class="ma-3 align-self-center" />
             </div>
 
-            <div class="d-flex flex-column align-center mb-6">
-              <v-sheet width="200" height="115" color="#00000000">
-                <div v-if="rules" class="pa-3 pt-9 text-center">
-                  <h5 style="color: #0049bd;">
-                    {{ rules.join(' \u00b7 ') }}
-                  </h5>
-                </div>
-              </v-sheet>
+            <div class="d-flex flex-column align-center justify-space-around">
               <!-- RIGHT PLAYER STATUS -->
-              <StatusNew v-model="right" class="ma-6 mb-12" />
+              <StatusNew v-model="right" class="ma-3" />
             </div>
           </div>
-        </div>
-        <!-- THE CHOICE BAR -->
-        <div>
-          <v-sheet color="#0049bd" height="60" class="white--text d-flex align-center">
-            <v-spacer />
-            <div v-if="watching">
-              <strong>Watching</strong>
-            </div>
-            <div v-else-if="!paused" class="pl-6">
-              <v-chip
-                v-for="choice in choices"
-                :key="choice"
-                label
-                color="#ff3600"
-                class="mr-1 white--text"
-                @click="choose(choice)"
-              >
-                <strong>{{ choice }}</strong>
-                <v-progress-circular
-                  v-if="timed"
-                  v-model="timed"
-                  class="ml-2"
-                  size="18"
-                  width="5"
-                  color="white"
-                />
-              </v-chip>
-            </div>
-            <v-spacer />
+          <!-- BELOW PLAYING AREA - YOUR NAME AND SNACK -->
+          <v-sheet class="d-flex flex-column" height="132">
+            <span class="text-center text-h6" :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'">
+              <strong>{{ youAre }}</strong>
+            </span>
+            <v-card
+              v-if="snack"
+              flat
+              outlined
+              class="mt-3 pa-3"
+              color="#c0d4e5"
+              style="border-color: #525252; border-width: 2px; border-radius: 9px;"
+            >
+              <h3 class="text-center" style="color: #525252;">
+                {{ snack }}
+              </h3>
+            </v-card>
+            <v-sheet
+              v-else-if="choiceTitle && choices && choices.length > 1 && !watching && !paused"
+              class="d-flex mt-3 align-self-center"
+              max-width="140"
+            >
+              <v-select
+                v-model="choice"
+                :items="choices"
+                :label="choiceTitle"
+                hide-details
+                dense
+                outlined
+                max-width="140"
+              />
+            </v-sheet>
           </v-sheet>
         </div>
-        <!-- MY BONES -->
-        <div v-if="!watching" class="mt-2">
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pa-3">
+        <!-- FAR RIGHT - BORDER -->
+        <div class="d-flex">
+          <v-sheet class="d-flex fill-height" color="#8fa5b7" width="12" />
+        </div>
+      </div>
+      <!-- BOTTOM - CHAT AND MY BONES -->
+      <div class="d-flex">
+        <v-sheet class="d-flex pl-1 flex-column" color="#8fa5b7" width="150" min-width="150">
+          <v-card
+            id="chat-box"
+            height="133"
+            flat
+            tile
+            outlined
+            class="d-flex overflow-y-auto flex-column mt-2"
+            style="border-color: #0000006b;"
+          >
+            <div v-for="m in messages" :key="m.id" class="mb-1 mx-1" style="line-height: 50%;">
+              <span class="body-2"><strong>{{ m.name }} </strong>{{ m.text }}</span>
+            </div>
+          </v-card>
+          <v-form @submit.prevent="() => void 0" @submit="chat">
+            <v-text-field
+              v-model="message"
+              color="#0049bd"
+              dense
+              outlined
+              placeholder="chat..."
+              hide-details
+              append-icon="mdi-send"
+              class="d-flex mt-1 body-2"
+              style="background-color: white;border-radius: 0;"
+              @click:append="chat"
+            />
+          </v-form>
+        </v-sheet>
+        <div>
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around px-3 py-2">
             <v-img
               v-for="n in 4"
               :key="`t${n}`"
               :src="`/${bones[n - 1]}.png`"
               contain
-              width="180"
-              height="90"
+              width="144"
+              height="72"
               class="ma-2"
               draggable="true"
               @dragstart="(event) => dragStart(event, n - 1)"
@@ -231,8 +281,8 @@
                 >
                   <v-img
                     v-if="possible && bones[n - 1] &&!possible.includes(bones[n - 1])"
-                    width="180"
-                    height="90"
+                    width="144"
+                    height="72"
                     src="/cover.png"
                     contain
                   />
@@ -240,14 +290,14 @@
               </template>
             </v-img>
           </v-sheet>
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-6 pl-12 pr-12">
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-3 pl-12 pr-12">
             <v-img
               v-for="n in 3"
               :key="`b${n}`"
               :src="`/${bones[n + 3]}.png`"
               contain
-              width="180"
-              height="90"
+              width="144"
+              height="72"
               draggable="true"
               @dragstart="(event) => dragStart(event, n + 3)"
               @drop="(event) => drop(event, n + 3)"
@@ -262,8 +312,8 @@
                 >
                   <v-img
                     v-if="possible && bones[n + 3] && !possible.includes(bones[n + 3])"
-                    width="180"
-                    height="90"
+                    width="144"
+                    height="72"
                     src="/cover.png"
                     contain
                   />
@@ -272,15 +322,15 @@
             </v-img>
           </v-sheet>
         </div>
-        <div class="text-right">
-          <span class="caption">
-            designed by
-            <a href="https://www.nitecreative.com/" target="_blank">
-              nite creative
-            </a>
-          </span>
-        </div>
       </div>
+      <!-- <v-sheet class="text-right" color="#8fa5b7">
+        <div class="caption pr-3 pb-2">
+          designed by
+          <a href="https://www.nitecreative.com/" target="_blank">
+            nite creative
+          </a>
+        </div>
+      </v-sheet> -->
     </div>
   </div>
 </template>
@@ -298,7 +348,10 @@ export default {
   data () {
     return {
       ws: undefined,
+      // This person's user name
       youAre: undefined,
+      // This person's full user
+      you: {},
       // The room token we're watching
       watching: undefined,
       // The room we're joining
@@ -336,10 +389,14 @@ export default {
       trickWinner: undefined,
       bones: ['null', 'null', 'null', 'null', 'null', 'null', 'null'],
       stack: false,
+      // Chat
+      messages: [],
+      message: undefined,
 
       pointTo: [],
       choiceTitle: undefined,
       choices: [],
+      choice: undefined,
       timed: 0,
       choose: () => undefined,
       possible: undefined,
@@ -368,17 +425,6 @@ export default {
     top () { return this.status(2) },
     right () { return this.status(3) },
     me () { return this.status(0) },
-    bidPercentage () {
-      const bid = this.bids[this.bidWinner]
-      if (!bid) {
-        return 0
-      }
-      const max = bid.length === 2 ? parseInt(bid, 10) : 42
-      const value = this.teamFor(this.bidWinner) === 'US'
-        ? this.US.points
-        : this.THEM.points
-      return Math.min(100, 100 * (value / max))
-    },
     pointUp () {
       if (this.pointTo.includes(this.top.name)) {
         return '#6f6f6f'
@@ -404,7 +450,13 @@ export default {
       return '#00000000'
     }
   },
-  watch: {},
+  watch: {
+    choice (value) {
+      if (this.choose && !this.watching) {
+        this.choose(value)
+      }
+    }
+  },
   mounted () {},
   methods: {
     connect () {
@@ -448,10 +500,10 @@ export default {
               case 'game-over':
                 break
               case 'game-expired':
-                this.choiceTitle = 'The game timed out'
+                this.showTitle('The game timed out')
                 break
               case 'game-error':
-                this.choiceTitle = 'There was an error with the game'
+                this.showTitle('There was an error with the game')
                 break
             }
           } else {
@@ -467,7 +519,7 @@ export default {
       ws.onerror = (event) => {
         // eslint-disable-next-line no-console
         console.log('error', event)
-        this.choiceTitle = 'There was a problem connecting'
+        this.showTitle('There was a problem connecting')
         this.paused = true
         this.over = true
       }
@@ -501,6 +553,7 @@ export default {
       switch (type) {
         case 'welcome':
           this.youAre = message.youAre
+          this.you = message.you
           this.send('info', {
             screenW: window.screen.width,
             screenH: window.screen.height,
@@ -539,7 +592,7 @@ export default {
           break
 
         case 'declined':
-          this.choiceTitle = `${message.name} declined the invitation to play, the game is over`
+          this.showTitle(`${message.name} declined the invitation to play, the game is over`)
           this.ws = undefined
           this.paused = true
           this.over = true
@@ -596,7 +649,7 @@ export default {
           this.stack = message.bid.includes('mark')
           this.US.points = 0
           this.THEM.points = 0
-          this.choiceTitle = `${message.from} bid ${message.bid}`
+          this.showTitle(`${message.from} bid ${message.bid}`)
           this.pointTo = [this.bidWinner]
           break
 
@@ -617,7 +670,7 @@ export default {
         case 'trumpSubmitted':
           this.waitingForTrump = undefined
           this.trump = { [message.from]: message.trump }
-          this.choiceTitle = `Trumps are ${message.trump}`
+          this.showTitle(`Trumps are ${message.trump}`)
           this.pointTo = [message.from]
           break
 
@@ -630,7 +683,7 @@ export default {
           this.waitingForPlay = this.youAre
           this.pointTo = [this.youAre]
           this.possible = message.possible
-          this.prompt('What will it be?', message.possible).then((bone) => {
+          this.prompt('What will it be?').then((bone) => {
             this.possible = undefined
             this.plays[this.youAre] = bone
             this.bones[this.bones.indexOf(bone)] = null
@@ -653,8 +706,10 @@ export default {
             await this.prompt(`${message.status.renege} didn't follow suit, the hand goes to the other team`, ['Continue'], 3)
           } else {
             this.pointTo = [message.winner]
-            await this.prompt(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`, ['Next trick'], 3)
+            this.showTitle(`${message.winner} won the trick with ${message.points} point${message.points === 1 ? '' : 's'}`)
+            await new Promise(resolve => setTimeout(resolve, 2500))
           }
+          this.choiceTitle = undefined
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)
@@ -684,7 +739,7 @@ export default {
               .filter(({ name }) => this.teamFor(name) === team)
               .map(({ name }) => name)
             this.pointTo = players
-            this.choiceTitle = `${players.join(' and ')} won the game!`
+            this.showTitle(`${players.join(' and ')} won the game!`)
             this.ws = undefined
             this.paused = true
             this.over = true
@@ -694,9 +749,9 @@ export default {
 
         case 'gameError':
           if (message.error === 'expired') {
-            this.choiceTitle = 'This game timed out'
+            this.showTitle('This game timed out')
           } else {
-            this.choiceTitle = 'There was a bug in the game, it cannot continue'
+            this.showTitle('There was a bug in the game, it cannot continue')
           }
           this.ws = undefined
           this.paused = true
@@ -714,6 +769,7 @@ export default {
               this.catchingUp = true
             })
             this.choiceTitle = undefined
+            this.choices = undefined
             for (const data of message) {
               this.ws.onmessage({ data })
             }
@@ -721,6 +777,10 @@ export default {
               this.catchingUp = false
             })
           }
+          break
+        case 'chat':
+          this.messages = [...this.messages, ...message]
+          this.scrollChat()
           break
       }
     },
@@ -753,13 +813,19 @@ export default {
         trump: this.trump[name],
         waitingForPlay: this.waitingForPlay === name,
         play: this.plays[name],
-        trickWinner: this.trickWinner === name
+        trickWinner: this.trickWinner === name,
+        bidWinner: this.bidWinner === name
       }
+    },
+    showTitle (title) {
+      this.choices = undefined
+      this.choiceTitle = title
     },
     prompt (title, choices, timed) {
       if (this.catchingUp) {
         return Promise.resolve()
       }
+      this.choice = undefined
       this.choiceTitle = title
       this.choices = choices
       this.queue = this.queue.then(() => new Promise((resolve, reject) => {
@@ -795,7 +861,7 @@ export default {
       if (this.watching) {
         return
       }
-      if (this.choices.includes(bone)) {
+      if (this.possible?.includes(bone)) {
         this.choose(bone)
       }
     },
@@ -816,7 +882,43 @@ export default {
     dragOver (event, n) {
       event.preventDefault()
       event.dataTransfer.dropEffect = 'move'
+    },
+    bidPercentage (team) {
+      const bid = this.bids[this.bidWinner]
+      if (!bid) {
+        return 0
+      }
+      let max = bid.length === 2 ? parseInt(bid, 10) : 42
+      const biddingTeam = this.teamFor(this.bidWinner)
+      if (biddingTeam !== team) {
+        max = 43 - max
+      }
+      const value = team === 'US'
+        ? this.US.points
+        : this.THEM.points
+      return Math.min(100, 100 * (value / max))
+    },
+    bidColor (team) {
+      return team === this.teamFor(this.bidWinner) ? 'green' : '#ff3600'
+    },
+    chat () {
+      const { message, ws } = this
+      if (message && ws) {
+        // Only TDs that are watching can chat
+        if (this.watching && !this.you.roles?.includes('td')) {
+          return
+        }
+        ws.send(JSON.stringify({ type: 'chat', message }))
+        this.message = undefined
+      }
+    },
+    scrollChat () {
+      setTimeout(() => {
+        const box = document.getElementById('chat-box')
+        box.scrollTop = box.scrollHeight
+      }, 0)
     }
+
   }
 }
 </script>

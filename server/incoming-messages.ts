@@ -37,7 +37,11 @@ export interface GameRoomMessages {
      * After a trick or hand are over, the player acknowledges
      */
 
-    readyToContinue: null
+    readyToContinue: null;
+
+    /** A chat message is received */
+
+    chat: string;
 }
 
 export type IncomingMessages = GameRoomMessages;

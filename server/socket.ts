@@ -11,6 +11,7 @@ import GameRoom from './game-room';
 import { NextFunction, Request, Response } from 'express';
 import WsServer from './ws-server';
 import ms from 'ms';
+import User from './users';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -90,7 +91,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 this.connected.add(user.id);
                 ws.once('close', () => this.connected.delete(user.id));
                 /** Create a socket for it */
-                new Socket(user.id, user.name, ws, gameRoomToken);
+                new Socket(user, ws, gameRoomToken);
             }
             catch (error) {
                 next(error);
@@ -128,11 +129,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.ws.readyState === this.ws.OPEN;
     }
 
-    private constructor(userId: string, name: string, ws: WebSocket, gameRoomToken: string) {
+    private constructor(user: User, ws: WebSocket, gameRoomToken: string) {
         super();
-        this.userId = userId;
-        this.name = name;
-        this.debug = this.debug.extend(name);
+        this.userId = user.id;
+        this.name = user.name;
+        this.debug = this.debug.extend(user.name);
         this.ws = ws;
         this.debug('created');
         this.gone = new Promise<string>((resolve) => {
@@ -183,7 +184,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         });
 
         // Send the welcome message
-        this.send('welcome', {youAre: name}).then(() => room.join(this));
+        this.send('welcome', {youAre: user.name, you: user}).then(() => room.join(this));
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(

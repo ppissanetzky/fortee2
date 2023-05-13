@@ -3,17 +3,17 @@
     v-if="value"
     color="#00000000"
     flat
-    width="180"
+    width="144"
     class="pa-0 ma-0"
   >
-    <div v-if="name" class="text-center ma-1" style="color: #6f6f6f;">
-      <v-icon v-if="value.bot" class="mr-2 mb-3">
+    <div v-if="name" class="text-center ma-1" :style="value.bidWinner ? 'color: #0049bd;' : 'color: #6f6f6f;'">
+      <v-icon v-if="value.bot" class="mb-2" :color="value.bidWinner ? '#0049bd' : '#6f6f6f'">
         mdi-robot
       </v-icon>
-      <span class="text-h5"><strong>{{ value.name }}</strong></span>
+      <span class="text-h6"><strong>{{ value.name }}</strong></span>
     </div>
-    <v-sheet height="90" width="180" color="#00000000">
-      <v-img v-if="!value.play" height="90" width="180" src="/null.png">
+    <v-sheet height="72" width="144" color="#00000000">
+      <v-img v-if="!value.play" height="72" width="144" src="/null.png">
         <v-container fill-height class="pa-0 ma-0">
           <v-row align-center>
             <v-col cols="12" class="text-center">
@@ -21,7 +21,7 @@
                 v-if="thinking"
                 indeterminate
                 size="40"
-                color="#0049bd"
+                :color="value.connected? '#0049bd' : '#ff3600'"
               />
               <div v-else-if="value.bid && !value.trump">
                 <h2 class="black-text">
@@ -36,8 +36,8 @@
         v-else
         :src="`/${value.play}.png`"
         contain
-        width="180"
-        height="90"
+        width="144"
+        height="72"
       />
     </v-sheet>
   </v-sheet>

@@ -6,6 +6,7 @@ import saveGame, { type Save } from './core/save-game';
 import ms from 'ms';
 import Dispatcher from './dispatcher';
 import { GameMessages, StartingGame } from './outgoing-messages';
+import { ChatMessage } from './game-room';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -73,6 +74,8 @@ export interface SaveWithMetadata extends Save {
     started: number;
     /** The time it ended */
     ended: number;
+    /** Chat messages */
+    chat: ChatMessage[];
 }
 
 export class TimeOutError extends Error {}
@@ -158,11 +161,13 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
             const ended = Date.now();
             const bots = this.players.filter(({human}) => !human)
                 .map(({name}) => name);
+            const chat: ChatMessage[] = [];
             return {
                 ...save,
                 started,
                 ended,
-                bots
+                bots,
+                chat
             };
         }
         finally {

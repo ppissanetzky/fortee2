@@ -210,10 +210,10 @@ class Client {
         headers: { ['x-ft2-bot']: 'pablo' }
     });
 
-    for (let i = 0; i < 16; ++i) {
+    for (let i = 0; i < 8; ++i) {
         const options: Options = {
             // connectDelay: _.random(1000, 10000),
-             playDelay: _.random(2000, 4000),
+             playDelay: _.random(500, 1000),
             // noShow: true
             // noReply: i === 1,
         };
