@@ -360,8 +360,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         driver.on('summonTable', (event) => this.emit('summonTable', event));
         driver.on('gameOver', (event) => this.emit('gameOver', event));
         driver.on('tournamentOver', (event) => {
-            const winners = driver.winners?.map((id) => User.getName(id))
-                .join(',') || '';
+            const winners = driver.winners?.join(',') || '';
             t.saveWith({
                 finished: 1,
                 winners

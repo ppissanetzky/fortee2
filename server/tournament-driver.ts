@@ -131,7 +131,7 @@ export class Game {
     tournamentOver(winners: Team): void {
         assert(!this.next_game);
         this.finished = true;
-        this.driver.winners = winners.users;
+        this.driver.winners = winners.users.map((userId) => User.getName(userId));
         this.driver.emit('tournamentOver', {
             t: this.driver.t,
             winners
