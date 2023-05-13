@@ -51,7 +51,7 @@ jobs:
         with:
           context: .
           build-args:
-            - FT2_VERSION=${{ steps.get_version.outputs.version }}
+            FT2_VERSION: ${{ steps.get_version.outputs.version }}
           file: server.dockerfile
           push: true
           tags: ppissanetzky/fortee2:${{ steps.get_version.outputs.version }}
