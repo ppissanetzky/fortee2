@@ -46,6 +46,12 @@ const variables: Record<string, string> = {
 
     FT2_GAME_EXPIRY: '5m',
 
+    /** How long do we wait for a game room reply before we close
+     * the socket and reopen it. A 'ms' string
+     */
+
+    FT2_REPLY_TIMEOUT: '50s',
+
     /**
      * How long after we expire an invitation from slack - a 'ms' string
      */

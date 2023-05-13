@@ -12,6 +12,7 @@ import { NextFunction, Request, Response } from 'express';
 import WsServer from './ws-server';
 import ms from 'ms';
 import User from './users';
+import config from './config';
 
 interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessages> {
     readonly mid: number;
@@ -193,7 +194,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         reply?: R
     ): Promise<IncomingMessages[R] | void> {
         const timeout: NodeJS.Timer | undefined = reply
-            ? setTimeout(() => this.replyDelayed(), ms('30s'))
+            ? setTimeout(() => this.replyDelayed(), ms(config.FT2_REPLY_TIMEOUT))
             : undefined;
         const result = new Promise<IncomingMessages[R] | void>((resolve) => {
             const mid = this.ACK++;
