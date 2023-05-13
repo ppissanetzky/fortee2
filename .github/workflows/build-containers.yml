@@ -50,8 +50,8 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          build-args:
-            FT2_VERSION: ${{ steps.get_version.outputs.version }}
+          build-args: |
+            FT2_VERSION=${{ steps.get_version.outputs.version }}
           file: server.dockerfile
           push: true
           tags: ppissanetzky/fortee2:${{ steps.get_version.outputs.version }}
