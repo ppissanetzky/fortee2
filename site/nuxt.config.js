@@ -27,7 +27,7 @@ export default {
   },
 
   publicRuntimeConfig: {
-    version
+    version: `v${version}`
   },
 
   // Global CSS: https://go.nuxtjs.dev/config-css

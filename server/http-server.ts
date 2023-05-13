@@ -15,7 +15,7 @@ export class HttpServer {
                 key: fs.readFileSync('./certs/privkey.pem'),
                 cert: fs.readFileSync('./certs/fullchain.pem'),
             }, app)
-            .listen(PORT, () => console.log(`fortee2 ready with https at port ${PORT}`));
+            .listen(PORT, () => console.log(`fortee2 ${config.FT2_VERSION} ready with https at port ${PORT}`));
         }
         else {
             if (config.PRODUCTION) {
@@ -23,7 +23,7 @@ export class HttpServer {
                 return process.exit(1);
             }
             server = http.createServer(app).listen(PORT, () => {
-                console.log(`fortee2 ready with http at port ${PORT}`);
+                console.log(`fortee2 ${config.FT2_VERSION} ready with http at port ${PORT}`);
             });
         }
 

@@ -309,7 +309,8 @@ export default {
     }
   },
   async fetch () {
-    this.you = await this.$axios.$get('/api/tournaments/me')
+    const version = encodeURIComponent(this.$config.version)
+    this.you = await this.$axios.$get(`/api/tournaments/me?v=${version}`)
     await this.loadUsers()
     const { t } = this.$route.query
     if (t) {

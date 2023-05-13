@@ -9,6 +9,7 @@
     >
       <v-toolbar flat color="#0049bd">
         <v-img contain max-width="300" src="/logo.png" />
+        <span class="caption white--text align-self-end mb-1">{{ $config.version }}</span>
         <v-spacer />
         <v-toolbar-title v-if="you.name" class="white--text mr-3">
           <strong>Hi, {{ you.prefs?.displayName || you.name }}</strong>
@@ -570,7 +571,8 @@ export default {
   },
   async fetch () {
     try {
-      this.you = await this.$axios.$get('/api/tournaments/me')
+      const url = `/api/tournaments/me?v=${encodeURIComponent(this.$config.version)}`
+      this.you = await this.$axios.$get(url)
       this.connect()
       this.startPings()
       this.tick()
@@ -595,15 +597,16 @@ export default {
       setInterval(() => {
         if (this.ws) {
           this.ws.send(JSON.stringify({
-            ping: `c:${new Date().toISOString()}`
+            ping: `c:${this.$config.version}:${new Date().toISOString()}`
           }))
         }
       }, 3 * 60000)
     },
     connect () {
-      let url = `wss://${window.location.hostname}/api/tournaments/tws`
+      const version = encodeURIComponent(this.$config.version)
+      let url = `wss://${window.location.hostname}/api/tournaments/tws?v=${version}`
       if (process.env.NUXT_ENV_DEV) {
-        url = `ws://${window.location.hostname}:4004/api/tournaments/tws`
+        url = `ws://${window.location.hostname}:4004/api/tournaments/tws?v=${version}`
       }
       const ws = new WebSocket(url)
       ws.onopen = () => {

@@ -460,7 +460,10 @@ export default {
   mounted () {},
   methods: {
     connect () {
-      const path = this.watching ? `watch/${this.watching}` : `join/${this.join}`
+      const version = encodeURIComponent(this.$config.version)
+      const path = this.watching
+        ? `watch/${this.watching}?v=${version}`
+        : `join/${this.join}?v=${version}`
       let url = `wss://${window.location.hostname}/${path}`
       if (process.env.NUXT_ENV_DEV) {
         url = `ws://${window.location.hostname}:4004/${path}`

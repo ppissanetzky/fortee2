@@ -4,6 +4,11 @@ import dotenv from 'dotenv';
 const YES = 'yes';
 
 const variables: Record<string, string> = {
+    /**
+     * The version, injected using an environment variable at docker
+     * image build time. Abset in dev
+     */
+    FT2_VERSION: 'local',
 
     /**
      * The base URL for the site
@@ -124,8 +129,6 @@ for (const name in variables) {
 }
 
 variables.PRODUCTION = process.env.NODE_ENV === 'production' ? YES : '';
-
-variables.version = 'v2';
 
 export function on(value: string): boolean {
     return value === YES;

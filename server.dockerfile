@@ -26,5 +26,9 @@ COPY server/dist/ ./
 RUN mkdir ./database
 COPY server/database/ ./database/
 
+# The version - get it from build args and pass it in as an env variable
+ARG FT2_VERSION
+ENV FT2_VERSION=${FT2_VERSION}
+
 # Command to start the server
 CMD ["node", "server.js"]
