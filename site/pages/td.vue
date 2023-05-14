@@ -34,7 +34,9 @@
             label="Display name"
           />
         </v-card-actions>
-        <v-card-title v-if="you.roles?.includes('admin')">Admin</v-card-title>
+        <v-card-title v-if="you.roles?.includes('admin')">
+          Admin
+        </v-card-title>
         <v-card-actions v-if="you.roles?.includes('admin')">
           <v-select
             v-model="user.roles"
@@ -183,11 +185,13 @@
           <v-tab>Users</v-tab>
           <v-tab>Today's</v-tab>
           <v-tab>Recurring</v-tab>
+          <v-tab>Status</v-tab>
         </v-tabs>
       </template>
     </v-toolbar>
 
     <v-tabs-items v-model="tab">
+      <!-- USERS -->
       <v-tab-item>
         <v-toolbar flat>
           <v-select
@@ -218,6 +222,7 @@
           @click:row="editUser"
         />
       </v-tab-item>
+      <!-- TODAY'S TOURNEYS -->
       <v-tab-item>
         <v-data-table
           :headers="headers.filter(({value}) => value !== 'every')"
@@ -227,6 +232,7 @@
           @click:row="edit"
         />
       </v-tab-item>
+      <!-- RECURRING TOURNEYS -->
       <v-tab-item>
         <v-toolbar flat>
           <v-select
@@ -259,6 +265,35 @@
           @click:row="edit"
         />
       </v-tab-item>
+      <!-- SERVER STATUS -->
+      <v-tab-item>
+        <div v-for="s in status" :key="s.name">
+          <v-btn small text @click="loadStatus">
+            refresh
+          </v-btn>
+          <h3 class="ml-3 mt-3">
+            {{ s.name }}
+          </h3>
+          <v-simple-table dense>
+            <template #default>
+              <thead>
+                <tr>
+                  <th v-for="c in s.table.columns" :key="c">
+                    {{ c }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in s.table.rows" :key="i">
+                  <td v-for="(n, j) in r" :key="j">
+                    {{ n }}
+                  </td>
+                </tr>
+              </tbody>
+            </template>
+          </v-simple-table>
+        </div>
+      </v-tab-item>
     </v-tabs-items>
   </div>
 </template>
@@ -270,6 +305,7 @@ export default {
       ts: [],
       todays: [],
       users: [],
+      status: [],
       headers: [
         { text: 'Name', value: 'name' },
         { text: 'Every', value: 'every', groupable: true },
@@ -339,6 +375,9 @@ export default {
       if (this.tab === 2 && this.ts.length === 0) {
         return await this.loadRecurring()
       }
+      if (this.tab === 3 && this.status.length === 0) {
+        return await this.loadStatus()
+      }
     },
     async userType () {
       await this.loadUsers()
@@ -357,6 +396,9 @@ export default {
     async loadRecurring () {
       const { tournaments } = await this.$axios.$get('/api/tournaments/td')
       this.ts = tournaments
+    },
+    async loadStatus () {
+      this.status = await this.$axios.$get('/api/tournaments/td/status')
     },
     edit (t) {
       this.editing = JSON.parse(JSON.stringify(t))

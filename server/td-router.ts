@@ -10,6 +10,7 @@ import { makeDebug } from './utility';
 import { fa, fif, validateTournament } from './validate';
 import Scheduler from './tournament-scheduler';
 import User, { UserPrefs, UserRole, UserType } from './users';
+import ServerStatus from './server-status';
 
 const debug = makeDebug('td-router');
 
@@ -121,4 +122,8 @@ router.post('/save/user', express.json(), (req, res) => {
     }
     existing.update(type, prefs, roles);
     res.json({});
+});
+
+router.get('/status', (req, res) => {
+    res.json(ServerStatus.get());
 });

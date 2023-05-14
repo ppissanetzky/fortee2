@@ -2,8 +2,10 @@ import type { Request } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import ms from 'ms';
 
-import { makeDebug } from './utility';
+import { formatDuration, makeDebug } from './utility';
 import config from './config';
+import User from './users';
+import ServerStatus from './server-status';
 
 /**
  * This is an exception that Express treats as an HTTP error because it has
@@ -18,6 +20,26 @@ class StatusError extends Error {
 
 function status(status: number) {
     return new StatusError(status);
+}
+
+export interface SocketStats {
+    userId: string;
+    name: string;
+    url: string;
+    /** The time the socket connected */
+    connected: number;
+    /** The time we got the last ping message */
+    lastPingMessage: number;
+    /** The time we sent the last ping frame */
+    lastPingOut: number;
+    /** The time we received the last pong frame */
+    lastPong: number;
+    /** The time we received the last ping frame from the client */
+    lastPing: number;
+    /** The time we received the last message */
+    lastMessage: number;
+    /** The time we got the last error */
+    lastError: number;
 }
 
 //------------------------------------------------------------------------------
@@ -37,12 +59,15 @@ export default class WsServer {
 
     private readonly wss: WebSocketServer;
 
+    public readonly stats = new Map<WebSocket, SocketStats>();
+
     private constructor() {
         // From https://github.com/websockets/ws/blob/master/examples/express-session-parse/index.js
         this.wss = new WebSocketServer({
             clientTracking: false,
             noServer: true
         });
+        this.publishStatus();
     }
 
     public async upgrade(req: Request): Promise<[WebSocket, Express.User]> {
@@ -79,7 +104,7 @@ export default class WsServer {
             });
             // All good
             this.debug('accepted %j', user);
-            this.setupPings(user.name, ws);
+            this.setupPings(req, user, ws);
             return [ws, user];
         }
         catch (error) {
@@ -89,25 +114,44 @@ export default class WsServer {
         }
     }
 
-    private setupPings(name: string, ws: WebSocket) {
-        const debug = this.debug.extend(name);
+    private setupPings(req: Request, user: User, ws: WebSocket) {
+        const stats: SocketStats = {
+            url: req.url,
+            userId: user.id,
+            name: user.name,
+            connected: Date.now(),
+            lastPingMessage: 0,
+            lastPingOut: 0,
+            lastPong: 0,
+            lastPing: 0,
+            lastMessage: 0,
+            lastError: 0
+        };
+        this.stats.set(ws, stats);
+        const debug = this.debug.extend(user.name);
         const interval = setInterval(() => {
             const data = `s:${new Date().toISOString()}`;
             debug('-> ping', data);
             ws.ping(data);
+            stats.lastPingOut = Date.now();
         }, ms(config.FT2_PING_INTERVAL));
         ws.once('close', () => {
             clearInterval(interval);
+            this.stats.delete(ws);
         });
         ws.on('pong', (data) => {
             debug('<- pong', data.toString());
+            stats.lastPong = Date.now();
         });
         ws.on('ping', (data) => {
             debug('<- ping', data.toString());
+            stats.lastPing = Date.now();
         });
         ws.on('message', (data) => {
+            stats.lastMessage = Date.now();
             const message = JSON.parse(data.toString());
             if (message.ping) {
+                stats.lastPingMessage = Date.now();
                 debug('<- ping message', message.ping);
                 ws.send(JSON.stringify({
                     pong: message.ping
@@ -116,6 +160,46 @@ export default class WsServer {
         });
         ws.on('error', (error) => {
             debug('error', error);
+            stats.lastError = Date.now();
+        });
+    }
+
+    private publishStatus() {
+        const columns = [
+            'url',
+            'userId',
+            'name',
+            'uptime',
+            'lastPingMessage',
+            'lastPingOut',
+            'lastPong',
+            'lastPing',
+            'lastMessage',
+            'lastError'
+        ];
+        ServerStatus.publish({
+            name: 'WebSockets',
+            get: () => {
+                const now = Date.now();
+                const convert = (n: number) =>
+                    n ? formatDuration(now - n) : '';
+                const rows = [];
+                for (const s of this.stats.values()) {
+                    rows.push([
+                        s.url,
+                        s.userId,
+                        s.name,
+                        convert(s.connected),
+                        convert(s.lastPingMessage),
+                        convert(s.lastPingOut),
+                        convert(s.lastPong),
+                        convert(s.lastPing),
+                        convert(s.lastMessage),
+                        convert(s.lastError)
+                    ]);
+                }
+                return { columns, rows };
+            }
         });
     }
 }
