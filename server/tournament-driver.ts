@@ -270,10 +270,7 @@ export class Game {
             });
 
             room.on('endOfHand', () => this.update());
-            room.on('gameIdle', ({time}) => {
-                debug('room idle for %s : %j', ms(time), room.status);
-                this.update();
-            });
+            room.on('gameIdle', () => this.update());
 
             room.once('expired', (status) => {
                 debug('room expired %j', status);

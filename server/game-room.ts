@@ -382,8 +382,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
 
             driver.on('gameIdle', (msg) => {
-                this.gameIdle = msg.time;
+                const { time } = msg;
+                this.gameIdle = time > 0 ? time : undefined;
                 this.emit('gameIdle', msg);
+                this.debug('idle %j', msg);
             });
 
             this.once('closed', () => {

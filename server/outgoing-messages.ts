@@ -243,7 +243,10 @@ export interface GameMessages {
 
     gameError: GameError;
 
-    /** The game has been idle and may expire soone */
+    /**
+     * The game has been idle and may expire soon, or if time === 0 it is no
+     * longer idle.
+     */
 
     gameIdle: GameIdle;
 }

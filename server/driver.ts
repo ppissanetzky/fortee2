@@ -94,6 +94,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
     private ran = false;
 
     private lastTime = 0;
+    private idle = false;
 
     private get connected(): Player[] {
         return this.players.filter(({connected}) => connected);
@@ -138,6 +139,7 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
                             return reject(new TimeOutError(`idle for ${Math.floor(time / 1000)} seconds`));
                         }
                         if (time >= tick) {
+                            this.idle = true
                             const msg = {
                                 time,
                                 idle: ms(time),
@@ -206,6 +208,15 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
 
     private async next(): Promise<Save> {
         this.lastTime = Date.now();
+        /** If it was idle, it is no longer idle */
+        if (this.idle) {
+            this.emit('gameIdle', {
+                time: 0,
+                idle: '',
+                expiresIn: ''
+            });
+            this.idle = false;
+        }
         switch (this.game.next_step) {
             case STEP.START_HAND: {
                     this.emit('startingHand', null);
