@@ -23,7 +23,6 @@ function status(status: number) {
 }
 
 export interface SocketStats {
-    userId: string;
     name: string;
     url: string;
     /** The time the socket connected */
@@ -34,6 +33,8 @@ export interface SocketStats {
     lastPingOut: number;
     /** The time we received the last pong frame */
     lastPong: number;
+    /** Difference between last pong and last ping */
+    latency: number;
     /** The time we received the last ping frame from the client */
     lastPing: number;
     /** The time we received the last message */
@@ -117,12 +118,12 @@ export default class WsServer {
     private setupPings(req: Request, user: User, ws: WebSocket) {
         const stats: SocketStats = {
             url: req.url,
-            userId: user.id,
             name: user.name,
             connected: Date.now(),
             lastPingMessage: 0,
             lastPingOut: 0,
             lastPong: 0,
+            latency: 0,
             lastPing: 0,
             lastMessage: 0,
             lastError: 0
@@ -135,13 +136,10 @@ export default class WsServer {
             ws.ping(data);
             stats.lastPingOut = Date.now();
         }, ms(config.FT2_PING_INTERVAL));
-        ws.once('close', () => {
-            clearInterval(interval);
-            this.stats.delete(ws);
-        });
         ws.on('pong', (data) => {
             debug('<- pong', data.toString());
             stats.lastPong = Date.now();
+            stats.latency = stats.lastPong - stats.lastPingOut;
         });
         ws.on('ping', (data) => {
             debug('<- ping', data.toString());
@@ -162,17 +160,21 @@ export default class WsServer {
             debug('error', error);
             stats.lastError = Date.now();
         });
+        ws.once('close', () => {
+            clearInterval(interval);
+            this.stats.delete(ws);
+        });
     }
 
     private publishStatus() {
         const columns = [
             'url',
-            'userId',
             'name',
             'uptime',
             'lastPingMessage',
             'lastPingOut',
             'lastPong',
+            'latency',
             'lastPing',
             'lastMessage',
             'lastError'
@@ -187,12 +189,12 @@ export default class WsServer {
                 for (const s of this.stats.values()) {
                     rows.push([
                         s.url,
-                        s.userId,
                         s.name,
                         convert(s.connected),
                         convert(s.lastPingMessage),
                         convert(s.lastPingOut),
                         convert(s.lastPong),
+                        convert(s.latency),
                         convert(s.lastPing),
                         convert(s.lastMessage),
                         convert(s.lastError)
