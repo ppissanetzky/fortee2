@@ -155,7 +155,9 @@ if (!config.PRODUCTION) {
                 });
                 return req.login(user, () => next());
             }
-//            return req.login({id: 'pablo', name: 'pablo'}, () => next());
+            const user = User.get('pablo');
+            assert(user)
+            return req.login(user, () => next());
         }
         next();
     });

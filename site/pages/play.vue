@@ -528,7 +528,7 @@ export default {
       }
     },
     send (type, message, ack) {
-      if (this.ws) {
+      if (this.ws && !this.catchingUp) {
         this.ws.send(JSON.stringify({
           type,
           ack,
@@ -626,13 +626,14 @@ export default {
           break
 
         case 'bid':
-          this.waitingForBid = this.youAre
-          this.pointTo = [this.youAre]
-          this.prompt('Your bid', message.possible).then((bid) => {
+          {
+            this.waitingForBid = this.youAre
+            this.pointTo = [this.youAre]
+            const bid = await this.prompt('Your bid', message.possible)
             this.waitingForBid = undefined
             this.bids[this.youAre] = bid
             this.send('submitBid', { bid: `#bid:${bid}` }, ack)
-          })
+          }
           break
 
         case 'bidSubmitted':
@@ -662,12 +663,13 @@ export default {
           break
 
         case 'call':
-          this.waitingForTrump = this.youAre
-          this.pointTo = [this.youAre]
-          this.prompt('Call trumps', message.possible).then((trump) => {
+          {
+            this.waitingForTrump = this.youAre
+            this.pointTo = [this.youAre]
+            const trump = await this.prompt('Call trumps', message.possible)
             this.trump = { [this.youAre]: trump }
             this.send('callTrump', { trump: `#trump:${trump}` }, ack)
-          })
+          }
           break
 
         case 'trumpSubmitted':
@@ -683,15 +685,16 @@ export default {
           break
 
         case 'play':
-          this.waitingForPlay = this.youAre
-          this.pointTo = [this.youAre]
-          this.possible = message.possible
-          this.prompt('What will it be?').then((bone) => {
+          {
+            this.waitingForPlay = this.youAre
+            this.pointTo = [this.youAre]
+            this.possible = message.possible
+            const bone = await this.prompt('What will it be?')
             this.possible = undefined
             this.plays[this.youAre] = bone
             this.bones[this.bones.indexOf(bone)] = null
             this.send('play', { bone: `#bone:${bone}` }, ack)
-          })
+          }
           break
 
         case 'playSubmitted':
@@ -766,6 +769,12 @@ export default {
           this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
           break
 
+        case 'gameState':
+          for (const [key, value] of Object.entries(message)) {
+            this[key] = value
+          }
+          break
+
         case 'catchup':
           if (this.ws && this.ws.onmessage) {
             this.catchup = this.catchup.then(() => {
@@ -781,6 +790,7 @@ export default {
             })
           }
           break
+
         case 'chat':
           this.messages = [...this.messages, ...message]
           this.scrollChat()

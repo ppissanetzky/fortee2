@@ -1,6 +1,7 @@
 import type { Bone, Trump, Bid , Rules} from './core';
 import type { Team, Status } from './driver';
 import type { ChatMessage } from './game-room';
+import type { GameState } from './game-state';
 import User from './users';
 
 export interface OutgoingGlobalMessages {
@@ -61,6 +62,10 @@ export interface OutgoingGameRoomMessages {
     /** Chat messages */
 
     chat: ChatMessage[];
+
+    /** State of the game */
+
+    gameState: GameState;
 }
 
 export interface StartingGame {

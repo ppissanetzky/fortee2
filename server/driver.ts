@@ -89,7 +89,6 @@ export interface GameDriverEvents {
 export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessages> {
 
     private readonly players: Player[];
-    private readonly game: Game;
     private readonly maxIdleMs: number;
     private ran = false;
 
@@ -99,6 +98,8 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
     private get connected(): Player[] {
         return this.players.filter(({connected}) => connected);
     }
+
+    public readonly game: Game;
 
     public constructor(rules: Rules, players: Player[], maxIdleMs: number) {
         super();

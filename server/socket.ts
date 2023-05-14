@@ -75,8 +75,6 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(400);
             }
 
-            debug('connected %j', Array.from(this.connected));
-
             if (this.connected.has(user.id)) {
                 debug(`user %j already connected`, user);
                 return res.sendStatus(403);
@@ -207,12 +205,16 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 resolve,
                 // reject
             };
+
             this.outstanding.push(outstanding);
-            this.ws.send(stringify({
+
+            const payload = stringify({
                 ack: reply ? mid : undefined,
                 type,
                 message: message || undefined
-            }), (error) => {
+            });
+
+            this.ws.send(payload, (error) => {
                 if (error) {
                     this.debug('->', 'failed', error);
                     // Not rejecting the promise: we leave it alone

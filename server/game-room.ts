@@ -9,7 +9,8 @@ import type Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status, GameDriverEvents, StopError } from './driver';
+import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status,
+    GameDriverEvents, StopError, Game } from './driver';
 import type { EndOfHand, GameIdle, RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
@@ -19,6 +20,8 @@ import sanitize from 'sanitize-filename';
 import Tournament from './tournament';
 import { WebSocket } from 'ws';
 import { stringify } from './json';
+import { gameState } from './game-state';
+
 
 const enum State {
     /**
@@ -154,6 +157,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     public readonly bots = new Map<string, Player>();
 
     private players: Player[] = [];
+
+    private game?: Game;
 
     private state: State = State.WAITING;
 
@@ -375,6 +380,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             const driver = new GameDriver(this.rules, this.players,
                     ms(config.FT2_GAME_EXPIRY));
 
+            this.game = driver.game;
+
             driver.on('endOfHand', (msg) => {
                 this.gameStatus = msg.status;
                 this.gameIdle = 0;
@@ -436,6 +443,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         finally {
             this.state = State.OVER;
             this.players = [];
+            this.game = undefined;
 
             /** Remove the room */
 
@@ -532,6 +540,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 other.send('enteredGameRoom', this.roomUpdate(other)));
             // Tell the user about the room
             socket.send('youEnteredGameRoom', this.roomUpdate(socket));
+            // Send them the game state
+            if (this.game) {
+                socket.send('gameState', gameState(this.game, name));
+            }
         };
 
         // If it's not full, just notify everyone
