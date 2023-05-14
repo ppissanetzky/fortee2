@@ -1,3 +1,4 @@
+import prettyBytes from "pretty-bytes";
 
 
 export interface ServerStatusTable {
@@ -33,3 +34,19 @@ export default class ServerStatus {
     private constructor() { void 0 }
 }
 
+ServerStatus.publish({
+    name: 'Node memory',
+    get() {
+        const m = process.memoryUsage();
+        return {
+            columns: ['rss', 'heapTotal', 'heapUsed', 'external', 'arrayBuffers'],
+            rows: [[
+                prettyBytes(m.rss),
+                prettyBytes(m.heapTotal),
+                prettyBytes(m.heapUsed),
+                prettyBytes(m.external),
+                prettyBytes(m.arrayBuffers)
+            ]]
+        };
+    }
+});
