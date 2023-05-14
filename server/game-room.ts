@@ -21,6 +21,7 @@ import Tournament from './tournament';
 import { WebSocket } from 'ws';
 import { stringify } from './json';
 import { gameState } from './game-state';
+import ServerStatus from './server-status';
 
 
 const enum State {
@@ -112,6 +113,11 @@ interface GlobalGameRoomEvents {
     closed: GameRoom;
 }
 
+interface Latency {
+    time: number;
+    count: number;
+}
+
 /**
  * This one handles the messages for all users in a game room
  */
@@ -184,6 +190,10 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
      */
     public readonly invited = new Set<string>();
 
+    /** Latency of alive messages per user name */
+
+    public readonly latencies = new Map<string, Latency>();
+
     constructor(options: GameRoomOptions) {
         super();
         this.options = options;
@@ -233,7 +243,24 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
         GameRoom.events.emit('created', this);
 
+        const aliveInterval = setInterval(() => {
+            this.all((socket) => {
+                const start = Date.now();
+                socket.send('alive', null, 'readyToContinue').then(() => {
+                    const time = Date.now() - start;
+                    const latency = this.latencies.get(socket.name);
+                    if (!latency) {
+                        this.latencies.set(socket.name, {time, count: 1});
+                    } else {
+                        latency.time += time;
+                        latency.count += 1;
+                    }
+                });
+            })
+        }, ms('25s'));
+
         this.once('closed', () => {
+            clearInterval(aliveInterval);
             GameRoom.events.emit('closed', this);
             this.emitter.removeAllListeners();
             for (const watcher of this.watchers.values()) {
@@ -631,4 +658,22 @@ GameRoom.events.on('created', (room) => {
 GameRoom.events.on('closed', (room) => {
     debug('closed', room.id, 'for', room.positions,
         'have', GameRoom.rooms.size);
+});
+
+ServerStatus.publish({
+    name: 'Game room latency',
+    get() {
+        const columns = ['Room', 'User', 'Latency'];
+        const rows = [];
+        for (const room of GameRoom.rooms.values()) {
+            for (const [name, latency] of room.latencies.entries()) {
+                rows.push([
+                    room.id,
+                    name,
+                    ms(Math.floor(latency.time / latency.count))
+                ]);
+            }
+        }
+        return {columns, rows};
+    }
 });

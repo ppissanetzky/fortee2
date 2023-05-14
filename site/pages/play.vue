@@ -334,7 +334,6 @@
     </div>
   </div>
 </template>
-
 <script>
 import StatusNew from '~/components/status-new.vue'
 function reviver (key, value) {
@@ -343,6 +342,11 @@ function reviver (key, value) {
   }
   return value
 }
+const backgroundMessages = new Set([
+  'chat',
+  'gameIdle',
+  'alive'
+])
 export default {
   components: { StatusNew },
   data () {
@@ -476,8 +480,11 @@ export default {
         console.log('connected')
         this.ws = ws
         this.ws.onmessage = (event) => {
+          const { ack, type, message } = JSON.parse(event.data, reviver)
+          if (backgroundMessages.has(type)) {
+            return this.handleMessage(type, message, ack)
+          }
           this.catchup = this.catchup.then(() => {
-            const { ack, type, message } = JSON.parse(event.data, reviver)
             return this.handleMessage(type, message, ack)
           })
         }
@@ -765,14 +772,21 @@ export default {
           this.connected = []
           break
 
-        case 'gameIdle':
-          this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
-          break
-
         case 'gameState':
           for (const [key, value] of Object.entries(message)) {
             this[key] = value
           }
+          break
+
+          // Background messages
+
+        case 'alive':
+          this.send('readyToContinue', null, ack)
+          break
+
+        case 'gameIdle':
+          this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
+          this.send('readyToContinue', null, ack)
           break
 
         case 'catchup':

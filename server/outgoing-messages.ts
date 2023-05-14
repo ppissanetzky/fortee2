@@ -66,6 +66,9 @@ export interface OutgoingGameRoomMessages {
     /** State of the game */
 
     gameState: GameState;
+
+    /** Keep alive */
+    alive: null;
 }
 
 export interface StartingGame {

@@ -251,10 +251,12 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     }
 
     private replyDelayed() {
-        if (this.ws.readyState === this.ws.OPEN) {
-            this.debug('reply delayed');
-            this.close('reply-delayed', 4001);
-        }
+        this.debug('reply delayed');
+        this.send('alive', null, 'readyToContinue');
+        // if (this.ws.readyState === this.ws.OPEN) {
+        //     this.debug('reply delayed');
+        //     this.close('reply-delayed', 4001);
+        // }
     }
 
     close(reason: string, code = 4000) {

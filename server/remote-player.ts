@@ -152,7 +152,6 @@ export default class RemotePlayer implements Player {
     }
 
     gameIdle(msg: GameIdle): void {
-        this.socket.send('gameIdle', msg);
+        this.socket.send('gameIdle', msg, 'readyToContinue');
     }
-
 }

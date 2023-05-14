@@ -267,10 +267,10 @@
       </v-tab-item>
       <!-- SERVER STATUS -->
       <v-tab-item>
+        <v-btn text @click="loadStatus">
+          refresh
+        </v-btn>
         <div v-for="s in status" :key="s.name">
-          <v-btn small text @click="loadStatus">
-            refresh
-          </v-btn>
           <h3 class="ml-3 mt-3">
             {{ s.name }}
           </h3>
