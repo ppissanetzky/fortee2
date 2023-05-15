@@ -80,7 +80,7 @@
                 class="ma-0 mt-1"
                 contain
                 max-width="29"
-                :src="stack ? 'back.png': `/${bone}v.png`"
+                :src="stack ? '/back.png': `/${bone}v.png`"
               />
             </v-card>
             <div v-if="pile.THEM.length" class="d-flex mt-1">
@@ -107,7 +107,7 @@
                 class="ma-0 mt-1"
                 contain
                 max-width="29"
-                :src="stack ? 'back.png': `/${bone}v.png`"
+                :src="stack ? '/back.png': `/${bone}v.png`"
               />
             </v-card>
           </v-sheet>
