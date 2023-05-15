@@ -9,6 +9,7 @@ import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 import type { GameStatus } from './tournament-driver';
 import User, { UserType } from './users';
+import config from './config';
 
 interface Online {
     value: string;
@@ -17,6 +18,9 @@ interface Online {
 }
 
 interface PushMessages {
+    /** The client has a different version than the one we expect */
+    mismatch: string;
+
     /** This user was updated */
     you: User;
 
@@ -82,7 +86,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         return async (req: Request, res: Response, next: NextFunction) => {
             try {
                 const [ws, user] = await WsServer.get().upgrade(req);
-                this.connected(user, ws);
+                this.connected(req, user, ws);
             }
             catch (error) {
                 next(error);
@@ -129,11 +133,13 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         }
     }
 
-    private connected(user: User, ws: WebSocket) {
+    private connected(req: Request, user: User, ws: WebSocket) {
 
         const { id, name} = user;
 
-        this.debug('connected', id, name);
+        const version = req.query.v;
+
+        this.debug('connected', id, name, version);
 
         ws.once('close', (event) => {
             this.debug('closed', id, name, event);
@@ -160,6 +166,10 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
             userId: id,
             ws
         });
+        /** The client has an old version of the page */
+        if (config.PRODUCTION && version !== config.FT2_VERSION) {
+            this.pushToOne(id, 'mismatch', config.FT2_VERSION);
+        }
     }
 
     private pushOnline(userId?: string) {
@@ -170,7 +180,6 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
                 text: user.name,
                 type: user.isTD ? 'td' : user.type
             })), 'text');
-        this.debug('online %j', message);
         if (userId) {
             this.pushToOne(userId, 'online', message);
         }

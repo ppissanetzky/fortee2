@@ -1,5 +1,21 @@
 <template>
   <div class="ma-3">
+    <!-- DIALOG TO REFRESH ON VERSION MISMATCH -->
+    <v-dialog v-model="refreshDialog" persistent max-width="300">
+      <v-card>
+        <v-card-title>
+          <p class="body-1">
+            There is a new version available!
+          </p>
+        </v-card-title>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn outlined small @click="reload">
+            refresh
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-card
       color="#0049bd"
       tile
@@ -566,7 +582,8 @@ export default {
       ws: undefined,
       interval: undefined,
       ticks: {},
-      reconnectS: 1
+      reconnectS: 1,
+      refreshDialog: false
     }
   },
   async fetch () {
@@ -623,6 +640,8 @@ export default {
         this.ws = undefined
         if (event.code === 4000) {
           return window.open('/', '_top')
+        } else if (event.code === 4001) {
+          return
         }
         setTimeout(() => this.connect(), this.reconnectS * 1000)
         this.reconnectS = Math.min(this.reconnectS * 2, 20)
@@ -630,6 +649,13 @@ export default {
     },
     onMessage (type, message) {
       switch (type) {
+        case 'mismatch':
+          if (this.ws) {
+            this.ws.close(4001)
+            this.ws = undefined
+          }
+          this.refreshDialog = true
+          break
         case 'you':
           this.you = message
           break
@@ -871,6 +897,9 @@ export default {
         const box = document.getElementById('chat-box')
         box.scrollTop = box.scrollHeight
       }, 0)
+    },
+    reload () {
+      window.location.reload()
     }
   }
 }
