@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import assert from 'node:assert';
 import _ from 'lodash';
 import debug from 'debug';
+import prettyMilliseconds from 'pretty-ms';
 
 type Debugger = debug.Debugger;
 
@@ -43,6 +44,10 @@ export function formatDuration(ms: number): string {
     if (ms < 0) {
         return `${ms}ms`;
     }
+    return prettyMilliseconds(ms, {
+        separateMilliseconds: true
+    });
+    /*
     const time = {
       d: Math.floor(ms / 86400000),
       h: Math.floor(ms / 3600000) % 24,
@@ -54,4 +59,5 @@ export function formatDuration(ms: number): string {
       .filter(val => val[1] !== 0)
       .map(([key, val]) => `${val}${key}`)
       .join('');
+    */
 }

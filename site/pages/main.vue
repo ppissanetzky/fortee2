@@ -561,6 +561,8 @@ function format (t) {
 const dtFormat = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short'
 })
+const loaded = Date.now()
+
 export default {
   data () {
     return {
@@ -635,6 +637,16 @@ export default {
             this.onMessage(type, message)
           }
         }
+        this.ws.send(JSON.stringify({
+          type: 'info',
+          message: {
+            loaded,
+            screenW: window.screen.width,
+            screenH: window.screen.height,
+            innerW: window.innerWidth,
+            innerH: window.innerHeight
+          }
+        }))
       }
       ws.onclose = (event) => {
         this.ws = undefined

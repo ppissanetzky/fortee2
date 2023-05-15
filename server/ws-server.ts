@@ -25,6 +25,10 @@ function status(status: number) {
 export interface SocketStats {
     name: string;
     url: string;
+    /** The time the page was loaded, from the 'info' message */
+    loaded: number;
+    /** The contents of the 'info' message */
+    info: string;
     /** The time the socket connected */
     connected: number;
     /** The time we got the last ping message */
@@ -35,6 +39,8 @@ export interface SocketStats {
     lastPong: number;
     /** Difference between last pong and last ping */
     latency: number;
+    /** Largest latency */
+    maxLatency: number;
     /** The time we received the last ping frame from the client */
     lastPing: number;
     /** The time we received the last message */
@@ -119,11 +125,14 @@ export default class WsServer {
         const stats: SocketStats = {
             url: req.url,
             name: user.name,
+            loaded: 0,
+            info: '',
             connected: Date.now(),
             lastPingMessage: 0,
             lastPingOut: 0,
             lastPong: 0,
             latency: 0,
+            maxLatency: 0,
             lastPing: 0,
             lastMessage: 0,
             lastError: 0
@@ -140,20 +149,28 @@ export default class WsServer {
             debug('<- pong', data.toString());
             stats.lastPong = Date.now();
             stats.latency = stats.lastPong - stats.lastPingOut;
+            stats.maxLatency = Math.max(stats.latency, stats.maxLatency);
         });
         ws.on('ping', (data) => {
             debug('<- ping', data.toString());
             stats.lastPing = Date.now();
         });
-        ws.on('message', (data) => {
-            stats.lastMessage = Date.now();
-            const message = JSON.parse(data.toString());
-            if (message.ping) {
+        ws.on('message', (raw) => {
+            const data = JSON.parse(raw.toString());
+            if (data.ping) {
                 stats.lastPingMessage = Date.now();
-                debug('<- ping message', message.ping);
+                debug('<- ping message', data.ping);
                 ws.send(JSON.stringify({
-                    pong: message.ping
+                    pong: data.ping
                 }));
+            }
+            else if (data.type === 'info') {
+                stats.loaded = data.message.loaded;
+                delete data.message.loaded;
+                stats.info = JSON.stringify(data.message);
+            }
+            else {
+                stats.lastMessage = Date.now();
             }
         });
         ws.on('error', (error) => {
@@ -170,11 +187,14 @@ export default class WsServer {
         const columns = [
             'url',
             'name',
-            'uptime',
+            'loaded',
+            'info',
+            'connected',
             'lastPingMessage',
             'lastPingOut',
             'lastPong',
             'latency',
+            'maxLatency',
             'lastPing',
             'lastMessage',
             'lastError'
@@ -190,11 +210,14 @@ export default class WsServer {
                     rows.push([
                         s.url,
                         s.name,
+                        convert(s.loaded),
+                        s.info,
                         convert(s.connected),
                         convert(s.lastPingMessage),
                         convert(s.lastPingOut),
                         convert(s.lastPong),
-                        convert(s.latency),
+                        formatDuration(s.latency),
+                        formatDuration(s.maxLatency),
                         convert(s.lastPing),
                         convert(s.lastMessage),
                         convert(s.lastError)
