@@ -22,6 +22,11 @@ interface Sent<T extends keyof OutgoingMessages, R extends keyof IncomingMessage
     readonly resolve: (value?: IncomingMessages[R]) => void;
 }
 
+const enum SocketType {
+    PLAYER = 1,
+    WATCHER = 2
+}
+
 /**
  * This is a connected WebSocket with a user name. It emits all the
  * incoming messages from this user and can send all the outgoing messages.
@@ -35,32 +40,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
     private static connected = new Set<string>();
 
-    static watch() {
-        return async (req: Request, res: Response, next: NextFunction) => {
-            const { user, params: { token } } = req;
-            assert(user);
-
-            if (!token) {
-                return res.sendStatus(400);
-            }
-
-            const room = GameRoom.rooms.get(token);
-
-            if (!room) {
-                return res.sendStatus(404);
-            }
-
-            try {
-                const [ws] = await WsServer.get().upgrade(req);
-                room.addWatcher(user, ws);
-            }
-            catch (error) {
-                next(error);
-            }
-        };
-    }
-
-    static upgrade() {
+    static upgrade(watching: boolean) {
         return async (req: Request, res: Response, next: NextFunction) => {
             const { user, params: { token } } = req;
             if (!user) {
@@ -75,9 +55,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(400);
             }
 
-            if (this.connected.has(user.id)) {
-                debug(`user %j already connected`, user);
-                return res.sendStatus(403);
+            if (!watching) {
+                if (this.connected.has(user.id)) {
+                    debug(`user %j already connected`, user);
+                    return res.sendStatus(403);
+                }
             }
 
             if (!GameRoom.rooms.has(gameRoomToken)) {
@@ -87,10 +69,13 @@ export default class Socket extends Dispatcher<IncomingMessages> {
 
             try {
                 const [ws] = await WsServer.get().upgrade(req);
-                this.connected.add(user.id);
-                ws.once('close', () => this.connected.delete(user.id));
+                if (!watching) {
+                    this.connected.add(user.id);
+                    ws.once('close', () => this.connected.delete(user.id));
+                }
                 /** Create a socket for it */
-                new Socket(user, ws, gameRoomToken);
+                const type = watching ? SocketType.WATCHER : SocketType.PLAYER;
+                new Socket(type, user, ws, gameRoomToken);
             }
             catch (error) {
                 next(error);
@@ -98,8 +83,8 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         }
     }
 
-    public readonly userId: string;
-    public readonly name: string;
+    public readonly type: SocketType;
+    public readonly user: User;
 
     /**
      * A promise that is resolved when the ws is disconnected. It resolves
@@ -128,10 +113,25 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.ws.readyState === this.ws.OPEN;
     }
 
-    private constructor(user: User, ws: WebSocket, gameRoomToken: string) {
+    get isWatcher(): boolean {
+        return this.type === SocketType.WATCHER;
+    }
+
+    get userId(): string {
+        return this.user.id;
+    }
+
+    get name(): string {
+        return this.user.name;
+    }
+
+    private constructor(type: SocketType, user: User, ws: WebSocket, gameRoomToken: string) {
         super();
-        this.userId = user.id;
-        this.name = user.name;
+        this.type = type;
+        this.user = user;
+        if (type === SocketType.WATCHER) {
+            this.debug = this.debug.extend('watching');
+        }
         this.debug = this.debug.extend(user.name);
         this.ws = ws;
         this.debug('created');
@@ -182,8 +182,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
             }
         });
 
-        // Send the welcome message
-        this.send('welcome', {youAre: user.name, you: user})
+        /** For watchers, we send the host as 'youAre', to keep the illusion */
+        const youAre = this.isWatcher ? room.host : user.name;
+
+        /** Send the welcome message */
+        this.send('welcome', {youAre, you: user})
             .then(() => room.join(this));
     }
 
@@ -192,6 +195,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         message: OutgoingMessages[T],
         reply?: R
     ): Promise<IncomingMessages[R] | void> {
+        /** Watchers don't reply */
+        if (this.type === SocketType.WATCHER) {
+            reply = undefined;
+        }
         const timeout: NodeJS.Timer | undefined = reply
             ? setTimeout(() => this.replyDelayed(), ms(config.FT2_REPLY_TIMEOUT))
             : undefined;

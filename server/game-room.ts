@@ -5,13 +5,13 @@ import path from 'node:path';
 import ms from 'ms';
 
 import { expected, makeDebug, makeToken } from './utility';
-import type Socket from './socket';
+import Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
 import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status,
     GameDriverEvents, StopError, Game } from './driver';
-import type { EndOfHand, GameIdle, RoomUpdate } from './outgoing-messages';
+import type { EndOfHand, GameIdle, GameMessages, RoomUpdate } from './outgoing-messages';
 import { SaveHelper } from './core/save-game';
 import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
@@ -178,9 +178,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     public readonly gone: Promise<void>;
 
-    private watchers = new Set<WebSocket>();
-
-    private watcherCatchup: string[] = [];
+    private watchers = new Set<Socket>();
 
     private chat: ChatMessage[] = [];
 
@@ -264,7 +262,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             GameRoom.events.emit('closed', this);
             this.emitter.removeAllListeners();
             for (const watcher of this.watchers.values()) {
-                watcher.close(4000, 'game-over');
+                watcher.close('game-over');
             }
             this.watchers.clear();
         });
@@ -362,8 +360,17 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         return true;
     }
 
+    /** Just players */
+
     private all(cb: (user: Socket) => void) {
         this.sockets.forEach(cb);
+    }
+
+    /** Includes watchers */
+
+    private everyone(cb: (user: Socket) => void) {
+        this.all(cb);
+        this.watchers.forEach(cb);
     }
 
     private not(name: string, cb: (user: Socket) => void) {
@@ -428,19 +435,9 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             });
 
             driver.onAll((event) => {
-                try {
-                    const data = stringify(event);
-                    for (const ws of this.watchers.values()) {
-                        ws.send(data);
-                    }
-                    if (event.type === 'endOfHand') {
-                        this.watcherCatchup = [];
-                    }
-                    this.watcherCatchup.push(data);
-                }
-                catch (error) {
-                    /** Ignore */
-                }
+                const { type , message } = event;
+                this.watchers.forEach((socket) =>
+                    socket.send(type as keyof GameMessages, message));
             });
 
             const save = await driver.run();
@@ -492,34 +489,33 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
     }
 
-    public addWatcher(user: Express.User, ws: WebSocket) {
-        this.watchers.add(ws);
-        this.debug('added watcher', user.id, user.name);
-        ws.once('close', () => {
-            this.debug('removed watcher', user.id, user.name);
-            this.watchers.delete(ws);
+    public addWatcher(socket: Socket) {
+        const { userId, name } = socket;
+        this.watchers.add(socket);
+        this.debug('added watcher', userId, name);
+        socket.gone.then(() => {
+            this.debug('removed watcher', userId, name);
+            this.watchers.delete(socket);
         });
         /** Only watchers that are TDs can chat */
-        if (user.isTD) {
-            ws.on('message', (raw) => {
-                const { type, message } = JSON.parse(raw.toString());
-                if (type === 'chat' && message) {
-                    this.sendChat(user.name, message);
-                }
-            });
+        if (socket.user.isTD) {
+            socket.on('chat', (message) => this.sendChat(name, message));
         }
-        const message: string[] = [
-            stringify({type: 'welcome', message: {youAre: this.host, you: user}}),
-            stringify({type: 'youEnteredGameRoom', message: this.roomUpdate(user)}),
-            stringify({type: 'startingGame', message: {desc: this.rules.parts()}}),
-            stringify({type: 'chat', message: this.chat}),
-            ...this.watcherCatchup,
-        ];
-        ws.send(JSON.stringify({type: 'catchup', message}));
+        /** When the user joins, we send them all the existing chat messages */
+        socket.send('chat', this.chat);
+        /** Tell the user about the room */
+        socket.send('youEnteredGameRoom', this.roomUpdate(socket));
+        /** Send them the game state */
+        if (this.game) {
+            socket.send('gameState', gameState(this.game, name));
+        }
     }
 
     public async join(socket: Socket) {
         const { userId, name } = socket;
+        if (socket.isWatcher) {
+            return this.addWatcher(socket);
+        }
         assert(!this.names.has(name), `User "${name}" exists`);
         assert(!this.full, 'Game room is full');
         assert(this.invited.has(name), `User "${name}" has not been invited`);
@@ -613,11 +609,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     private sendChat(name: string, text: string) {
         const chat = {name, text};
         this.chat.push(chat);
-        this.all((socket) => socket.send('chat', [chat]));
-        const message = stringify({type: 'chat', message: [chat]});
-        for (const watcher of this.watchers.values()) {
-            watcher.send(message)
-        }
+        this.everyone((socket) => socket.send('chat', [chat]));
     }
 
     private async saveGame(save: SaveWithMetadata) {

@@ -408,9 +408,7 @@ export default {
 
       queue: Promise.resolve(),
       snackTimeout: undefined,
-      catchup: Promise.resolve(),
-      catchingUp: false
-
+      ingress: Promise.resolve()
     }
   },
   fetch () {
@@ -484,9 +482,9 @@ export default {
           if (backgroundMessages.has(type)) {
             return this.handleMessage(type, message, ack)
           }
-          this.catchup = this.catchup.then(() => {
-            return this.handleMessage(type, message, ack)
-          })
+          // Queue handling of this message
+          this.ingress = this.ingress.then(() =>
+            this.handleMessage(type, message, ack))
         }
         // Once connected, we will close the socket on an error, which
         // should cause it to reconnect
@@ -535,7 +533,7 @@ export default {
       }
     },
     send (type, message, ack) {
-      if (this.ws && !this.catchingUp) {
+      if (this.ws) {
         this.ws.send(JSON.stringify({
           type,
           ack,
@@ -544,9 +542,6 @@ export default {
       }
     },
     showSnack (value, seconds) {
-      if (this.catchingUp) {
-        return
-      }
       this.snack = value
       clearTimeout(this.snackTimeout)
       this.snackTimeout = undefined
@@ -662,6 +657,7 @@ export default {
           this.THEM.points = 0
           this.showTitle(`${message.from} bid ${message.bid}`)
           this.pointTo = [this.bidWinner]
+          await this.delay(2)
           break
 
         case 'waitingForTrump':
@@ -791,22 +787,6 @@ export default {
           this.send('readyToContinue', null, ack)
           break
 
-        case 'catchup':
-          if (this.ws && this.ws.onmessage) {
-            this.catchup = this.catchup.then(() => {
-              this.catchingUp = true
-            })
-            this.choiceTitle = undefined
-            this.choices = undefined
-            for (const data of message) {
-              this.ws.onmessage({ data })
-            }
-            this.catchup = this.catchup.then(() => {
-              this.catchingUp = false
-            })
-          }
-          break
-
         case 'chat':
           this.messages = [...this.messages, ...message]
           this.scrollChat()
@@ -851,9 +831,6 @@ export default {
       this.choiceTitle = title
     },
     prompt (title, choices, timed) {
-      if (this.catchingUp) {
-        return Promise.resolve()
-      }
       this.choice = undefined
       this.choiceTitle = title
       this.choices = choices
@@ -948,9 +925,7 @@ export default {
       }, 0)
     },
     async delay (s) {
-      if (!this.catchingUp) {
-        await new Promise(resolve => setTimeout(resolve, s * 1000))
-      }
+      await new Promise(resolve => setTimeout(resolve, s * 1000))
     }
   }
 }

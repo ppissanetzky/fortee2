@@ -191,9 +191,9 @@ connectToSlack();
 
 /** Where the game room sockets connect */
 
-app.get('/join/:token', Socket.upgrade());
+app.get('/join/:token', Socket.upgrade(false));
 
-app.get('/watch/:token', Socket.watch());
+app.get('/watch/:token', Socket.upgrade(true));
 
 /** The tournaments router */
 
