@@ -183,7 +183,8 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         });
 
         // Send the welcome message
-        this.send('welcome', {youAre: user.name, you: user}).then(() => room.join(this));
+        this.send('welcome', {youAre: user.name, you: user})
+            .then(() => room.join(this));
     }
 
     send<T extends keyof OutgoingMessages, R extends keyof IncomingMessages>(
@@ -251,12 +252,10 @@ export default class Socket extends Dispatcher<IncomingMessages> {
     }
 
     private replyDelayed() {
-        this.debug('reply delayed');
-        this.send('alive', null, 'readyToContinue');
-        // if (this.ws.readyState === this.ws.OPEN) {
-        //     this.debug('reply delayed');
-        //     this.close('reply-delayed', 4001);
-        // }
+        if (this.isOpen) {
+            this.debug('reply delayed');
+            this.send('alive', null, 'readyToContinue');
+        }
     }
 
     close(reason: string, code = 4000) {
