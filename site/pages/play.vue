@@ -785,7 +785,9 @@ export default {
           break
 
         case 'gameIdle':
-          this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
+          if (message.time) {
+            this.showSnack(`The game has been stuck for ${message.idle} and will time out in ${message.expiresIn}`, 8)
+          }
           this.send('readyToContinue', null, ack)
           break
 
