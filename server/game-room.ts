@@ -533,12 +533,14 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         socket.gone.then((reason) => {
             if (this.sockets.delete(name)) {
                 this.emit('userLeft', userId);
-                this.debug('removed', name, userId, ': reason', reason, ': have', this.size);
-                this.not(name, (other) => {
-                    other.send('leftGameRoom', {
-                        name,
-                        ...this.roomUpdate(other),
-                    });
+                this.debug('removed', name, userId, ': reason', reason);
+                this.everyone((other) => {
+                    if (other.name !== name) {
+                        other.send('leftGameRoom', {
+                            name,
+                            ...this.roomUpdate(other),
+                        });
+                    }
                 });
             }
             if (this.state === State.PLAYING) {
