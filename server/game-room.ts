@@ -558,9 +558,12 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         });
         // Notify everyone
         const notify = () => {
-            // Tell everyone else that this user is here
-            this.not(name, (other) =>
-                other.send('enteredGameRoom', this.roomUpdate(other)));
+            // Tell everyone else that this user is here, including watchers
+            this.everyone((socket) => {
+                if (socket.name !== name) {
+                    socket.send('enteredGameRoom', this.roomUpdate(socket));
+                }
+            })
             // Tell the user about the room
             socket.send('youEnteredGameRoom', this.roomUpdate(socket));
             // Send them the game state
