@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import _ from 'lodash';
 import debug from 'debug';
 import prettyMilliseconds from 'pretty-ms';
+import ms from 'ms';
 
 type Debugger = debug.Debugger;
 
@@ -40,12 +41,14 @@ export function random<T>(from: T[]): T {
     return expected(_.sample(from));
 }
 
-export function formatDuration(ms: number): string {
-    if (ms < 0) {
-        return `${ms}ms`;
+const MINUTE = ms('1m');
+
+export function formatDuration(nms: number): string {
+    if (nms < 0) {
+        return `${nms}ms`;
     }
-    return prettyMilliseconds(ms, {
-        separateMilliseconds: true
+    return prettyMilliseconds(nms, {
+        separateMilliseconds: nms < MINUTE
     });
     /*
     const time = {
