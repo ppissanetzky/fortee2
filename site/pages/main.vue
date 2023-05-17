@@ -1055,7 +1055,7 @@ export default {
       window.location.reload()
     },
     sortedTs () {
-      return this.today.map((t) => {
+      return this.today.filter(({ canceled }) => !canceled).map((t) => {
         // Whether the user is in the tourney.
         // When the tourney is playing, true if the user signed up and didn't
         // get dropped. Otherwise, true if the user signed up
