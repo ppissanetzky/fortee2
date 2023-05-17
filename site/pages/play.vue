@@ -68,7 +68,7 @@
               />
             </div>
             <v-card
-              v-for="(trick, index) in stack ? pile.US.slice(0, 2) : pile.US"
+              v-for="(trick, index) in stack ? pile.US.slice(-2) : pile.US"
               :key="`US-${index}`"
               flat
               color="#c0d4e5"
@@ -80,7 +80,7 @@
                 class="ma-0 mt-1"
                 contain
                 max-width="29"
-                :src="stack ? '/back.png': `/${bone}v.png`"
+                :src="`/${bone}v.png`"
               />
             </v-card>
             <div v-if="pile.THEM.length" class="d-flex mt-1">
@@ -95,7 +95,7 @@
               />
             </div>
             <v-card
-              v-for="(trick, index) in stack ? pile.THEM.slice(0, 2) : pile.THEM"
+              v-for="(trick, index) in stack ? pile.THEM.slice(-2) : pile.THEM"
               :key="`THEM-${index}`"
               flat
               color="#c0d4e5"
@@ -107,7 +107,7 @@
                 class="ma-0 mt-1"
                 contain
                 max-width="29"
-                :src="stack ? '/back.png': `/${bone}v.png`"
+                :src="`/${bone}v.png`"
               />
             </v-card>
           </v-sheet>
