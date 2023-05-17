@@ -396,6 +396,24 @@
                   <p v-else-if="t.stillPlaying">
                     You're still in it, wait for your next table to be ready
                   </p>
+                  <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
+                    <span class="caption mb-1">Table status</span>
+                    <div class="d-flex flex-row">
+                      <v-sheet
+                        v-for="g in tablesFor(t)"
+                        :key="g.id"
+                        width="20"
+                        height="20"
+                        class="mr-1 mb-1"
+                        :color="gameColor(g)"
+                        @click="g.room && !g.finished? openUrl(`/play?watch=${g.room.token}`) : undefined"
+                      >
+                        <div class="caption white--text text-center">
+                          <strong>{{ gameStatusLetter(g) }}</strong>
+                        </div>
+                      </v-sheet>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- ************************************************************* -->
@@ -937,7 +955,10 @@ export default {
     gameColor (game) {
       if (!game.finished && game.room) {
         const { state, idle } = game.room
-        if (state === 'waiting' || state === 'paused') {
+        if (state === 'paused') {
+          return 'red'
+        }
+        if (state === 'waiting') {
           return 'orange'
         }
         if (state === 'playing' && idle) {
@@ -952,13 +973,47 @@ export default {
       }
       return '#8fa5b7'
     },
+    gameStatusLetter (game) {
+      if (!game.finished && game.room) {
+        const { state, idle } = game.room
+        if (state === 'paused') {
+          return 'D'
+        }
+        if (state === 'waiting') {
+          return 'W'
+        }
+        if (state === 'playing' && idle) {
+          return 'S'
+        }
+      }
+      return ''
+    },
+    gamesFor (t) {
+      const result = []
+      t.games?.forEach(round => round.forEach(game => result.push(game)))
+      return result
+    },
+    // Games that have a room
+    tablesFor (t) {
+      return this.gamesFor(t).filter(({ room, finished }) => room && !finished)
+    },
     tournamentColor (t) {
       if (t.playing) {
-        const problem = t.games?.some(round => round.some((game) => {
-          return !game.finished &&
-            (game.room?.state === 'paused' || game.room?.idle)
-        }))
-        if (problem) {
+        let waiting = false
+        let stuck = false
+        for (const { room, finished } of this.gamesFor(t)) {
+          if (room && !finished) {
+            if (room.state === 'waiting' || room.idle) {
+              waiting = true
+            } else if (room.state === 'paused') {
+              stuck = true
+            }
+          }
+        }
+        if (stuck) {
+          return 'red'
+        }
+        if (waiting) {
           return 'orange'
         }
       }
