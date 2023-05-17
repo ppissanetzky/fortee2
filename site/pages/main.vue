@@ -1,6 +1,8 @@
 <template>
   <div class="ma-3">
+    <!-- ************************************************************* -->
     <!-- DIALOG TO REFRESH ON VERSION MISMATCH -->
+    <!-- ************************************************************* -->
     <v-dialog v-model="refreshDialog" persistent max-width="300">
       <v-card>
         <v-card-title>
@@ -16,465 +18,11 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-card
-      color="#0049bd"
-      tile
-      flat
-      class="mb-3"
-      min-width="375"
-    >
-      <v-toolbar flat color="#0049bd">
-        <v-img contain max-width="300" src="/logo.png" />
-        <span class="caption white--text align-self-end mb-1">{{ $config.version }}</span>
-        <v-spacer />
-        <v-toolbar-title v-if="you.name" class="white--text mr-3">
-          <strong>Hi, {{ you.prefs?.displayName || you.name }}</strong>
-        </v-toolbar-title>
-        <v-menu offset-y>
-          <template #activator="{ on, attrs }">
-            <v-btn icon color="white" v-bind="attrs" v-on="on">
-              <v-icon>mdi-chevron-down</v-icon>
-            </v-btn>
-          </template>
-          <v-card tile>
-            <v-card-text>
-              <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" />
-              <div class="mt-3">
-                You are signed in as <strong>{{ you.name }}</strong><br>
-                <span class="blue--text">{{ you.email }}</span><br>
-                <span v-if="you.roles?.includes('admin')">You are an <strong>admin</strong><br></span>
-                <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong><br></span>
-                <span>You are a <strong>{{ you.type }}</strong> user</span>
-              </div>
-            </v-card-text>
-            <v-card-actions>
-              <v-btn text @click="signOut">
-                sign out
-              </v-btn>
-            </v-card-actions>
-            <v-divider />
-            <v-card-actions>
-              <v-btn
-                v-if="you?.roles?.includes('td')"
-                text
-                @click="openUrl('/td')"
-              >
-                open TD page
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-menu>
-      </v-toolbar>
-    </v-card>
-    <div>
-      <v-card flat tile class="mb-3">
-        <div v-if="!table.status">
-          <v-card-title class="ml-0">
-            Play with bots or invite others to play
-            <v-spacer />
-            <v-btn
-              outlined
-              color="#0049bd"
-              @click="dialog = true"
-            >
-              start a game
-            </v-btn>
-          </v-card-title>
-        </div>
-        <div v-else-if="table.status === 't'">
-          <v-card-title class="ml-0">
-            Your tournament table is ready
-            <v-spacer />
-            <v-btn
-              outlined
-              color="#0049bd"
-              @click="openUrl(table.url)"
-            >
-              play
-            </v-btn>
-          </v-card-title>
-        </div>
-        <div v-else-if="table.status === 'hosting'">
-          <v-card-title class="ml-0">
-            You started a game {{ tableWith() }}
-            <v-spacer />
-            <v-btn
-              outlined
-              color="red"
-              @click="decline"
-            >
-              close
-            </v-btn>
-          </v-card-title>
-        </div>
-        <div v-else-if="table.status === 'invited'">
-          <v-card-title class="ml-0">
-            You've been invited to play {{ tableWith() }}
-            <v-spacer />
-            <v-btn
-              outlined
-              color="#0049bd"
-              class="mr-2"
-              @click="openUrl(table.url)"
-            >
-              play
-            </v-btn>
-            <v-btn
-              outlined
-              color="red"
-              @click="decline"
-            >
-              decline
-            </v-btn>
-          </v-card-title>
-        </div>
-      </v-card>
-      <!-- LOBBY -->
-      <v-card tile flat class="py-3 mb-3">
-        <v-card-text>
-          <v-row>
-            <v-col class="pa-0">
-              <v-card
-                id="chat-box"
-                height="216"
-                flat
-                tile
-                outlined
-                class="overflow-y-auto pt-1"
-                style="border-color: #0000006b;"
-              >
-                <div v-for="m in messages" :key="m.id" class="mb-1 mx-3">
-                  <div>
-                    <strong>{{ m.name }}</strong>
-                    <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1">
-                      <strong style="color: #78909C;">{{ m.title }}</strong>
-                    </v-chip>
-                    <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
-                  </div>
-                  <div>{{ m.text }}</div>
-                </div>
-              </v-card>
-              <v-form @submit.prevent="() => void 0" @submit="chat">
-                <v-text-field
-                  v-model="message"
-                  color="#0049bd"
-                  dense
-                  outlined
-                  clearable
-                  placeholder="Send a message..."
-                  hide-details
-                  append-icon="mdi-send"
-                  class="mt-3"
-                  style="background-color: white;border-radius: 0;"
-                  @click:append="chat"
-                />
-              </v-form>
-            </v-col>
-            <v-col cols="auto" class="pa-0 pl-3">
-              <v-card
-                flat
-                tile
-                outlined
-                height="216"
-                class="d-flex overflow-y-auto"
-                style="border-color: #0000006b;"
-              >
-                <v-card-text class="py-0 px-3">
-                  <div v-if="online('td').length" class="mt-2">
-                    <h3>TDs</h3><v-divider class="mb-1" />
-                    <div v-for="u in online('td')" :key="u.id">
-                      {{ u.text }}
-                    </div>
-                  </div>
-                  <div v-if="online('standard').length" class="mt-2">
-                    <h3>Members</h3><v-divider class="mb-1" />
-                    <div v-for="u in online('standard')" :key="u.id">
-                      {{ u.text }}
-                    </div>
-                  </div>
-                  <div v-if="online('guest').length" class="mt-2">
-                    <h3>Guests</h3><v-divider class="mb-1" />
-                    <div v-for="u in online('guest')" :key="u.id">
-                      {{ u.text }}
-                    </div>
-                  </div>
-                </v-card-text>
-              </v-card>
-              <div class="mt-5 ml-3">
-                <span class="caption">{{ users.length }} online</span>
-              </div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-      <div v-if="you.type === 'standard'">
-        <v-card
-          v-for="t in today"
-          :key="t.id"
-          tile
-          flat
-          outlined
-          min-width="375"
-          color="#c0d4e5"
-          class="mb-3"
-        >
-          <!-- NAME AND START TIME -->
-          <v-toolbar flat color="#00000000">
-            <v-icon color="black" class="pr-2">
-              mdi-trophy
-            </v-icon>
-            <h3>{{ t.name }}</h3>
-            <v-btn
-              v-if="you?.roles?.includes('td')"
-              small
-              icon
-              color="grey"
-              class="ml-3"
-              @click="openUrl(`/td?t=${t.id}`)"
-            >
-              <v-icon>mdi-pencil</v-icon>
-            </v-btn>
-            <v-spacer />
-            <h3>{{ t.startTime }}</h3>
-          </v-toolbar>
 
-          <!-- RULES AND INDICATOR -->
-          <v-toolbar flat color="#c0d4e5">
-            <v-chip v-for="r in t.rules" :key="r" label class="mr-1">
-              {{ r }}
-            </v-chip>
-            <v-spacer />
-            <v-chip v-if="t.open" label color="red" class="white--text">
-              closes in {{ ticks[t.id]?.close }}
-            </v-chip>
-            <v-chip v-else-if="t.wts" label color="green" class="white--text">
-              starts in {{ ticks[t.id]?.start }}
-            </v-chip>
-            <v-chip v-else-if="t.playing" label color="green" class="white--text">
-              playing now
-            </v-chip>
-            <v-chip v-else-if="t.later" label>
-              opens at {{ t.openTime }}
-            </v-chip>
-            <v-chip v-else-if="t.canceled" label>
-              canceled
-            </v-chip>
-            <span v-else-if="t.winners">
-              Won by <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>
-            </span>
-            <v-chip v-else-if="t.done" label color="red" class="white--text">
-              failed
-            </v-chip>
-          </v-toolbar>
-          <!-- <v-divider /> -->
-
-          <!-- SIGNUP ACTIONS         -->
-          <v-toolbar v-if="t.open || t.wts" flat>
-            <span v-if="t.signedUp">
-              You are <strong>signed up</strong>
-              <span v-if="t.partner">
-                with <strong>{{ nameOf(t.partner) }}</strong>
-              </span>
-              <span v-if="t.wts">
-                - please wait until <strong>{{ t.startTime }}</strong> ({{ ticks[t.id]?.start }})
-              </span>
-            </span>
-            <span v-else-if="t.open">
-              You are <strong>not signed up</strong>, you have {{ ticks[t.id]?.close }}
-            </span>
-            <span v-else>
-              You did not sign up
-            </span>
-            <v-spacer />
-          </v-toolbar>
-          <v-toolbar v-if="t.open" flat>
-            <!-- TO SIGN UP -->
-            <v-select
-              v-if="t.choosePartner"
-              v-model="t.newPartner"
-              dense
-              hide-details
-              outlined
-              label="PARTNER"
-              class="mr-2"
-              :items="otherUsers"
-              clearable
-            />
-            <v-btn
-              outlined
-              color="green"
-              class="mr-2"
-              height="40"
-              :loading="loading"
-              :disabled="t.signedUp && t.partner === t.newPartner"
-              @click="signUp(t)"
-            >
-              sign up
-            </v-btn>
-            <v-btn
-              outlined
-              color="red"
-              height="40"
-              class="mr-2"
-              :loading="loading"
-              :disabled="!t.signedUp"
-              @click="dropOut(t.id)"
-            >
-              drop out
-            </v-btn>
-            <v-spacer />
-            <v-spacer />
-            <span>
-              {{ t.count || 'No one' }} signed up
-            </span>
-          </v-toolbar>
-          <!-- THE LIST OF PEOPLE SIGNED UP WHILE IT'S OPEN OR WTS -->
-          <v-card v-if="(t.open || t.wts) && t.signups.length > 0" flat>
-            <v-card-text class="pb-0">
-              <v-chip
-                v-for="s in signupsFor(t)"
-                :key="s"
-                label
-                class="mr-1 mb-1 white--text"
-                color="green"
-              >
-                {{ s }}
-              </v-chip>
-            </v-card-text>
-          </v-card>
-          <!-- ONCE THE TOURNAMENT IS PLAYING -->
-          <v-toolbar v-if="t.isOn && t.signedUp" flat>
-            <span v-if="!t.inTourney">
-              Unfortunately, you were dropped from the tournament
-            </span>
-            <span v-if="!t.stillPlaying">
-              Better luck next time...
-            </span>
-            <span v-else-if="!t.hasRoom && t.hasBye">
-              You drew a <strong>bye</strong>, please wait for your first game
-            </span>
-            <span v-else-if="t.hasRoom">
-              Your partner is <strong>{{ partnerIn(t) }}</strong>
-              and you're playing against
-              <strong>{{ others(t)[0] }}</strong> and
-              <strong>{{ others(t)[1] }}</strong>
-            </span>
-          </v-toolbar>
-          <v-toolbar v-if="t.url && t.stillPlaying" flat>
-            <v-btn
-              outlined
-              color="green"
-              class="mr-2"
-              height="40"
-              @click="openUrl(t.url)"
-            >
-              go to your table
-            </v-btn>
-          </v-toolbar>
-          <!-- THE TOURNAMENT TRACKER -->
-          <v-card v-if="(t.playing || t.done) && t.games" flat tile class="mt-3 pb-1">
-            <v-sheet class="d-flex flex-column pt-3">
-              <v-row class="align-self-center">
-                <v-col v-for="(round, n) in t.games" :key="n" cols="auto">
-                  <div>
-                    <h5 class="text-center">
-                      ROUND {{ n + 1 }}
-                    </h5>
-                  </div>
-                  <div class="d-flex fill-height flex-column justify-space-around">
-                    <div v-for="game in round" :key="game.id">
-                      <v-card
-                        flat
-                        tile
-                        class="ml-3 my-1"
-                        outlined
-                        color="#8fa5b7"
-                      >
-                        <v-toolbar
-                          flat
-                          height="28"
-                          :color="gameColor(game)"
-                          class="white--text caption"
-                        >
-                          <span>
-                            {{ game.id }}
-                          </span>
-                          <v-btn
-                            v-if="game.room && !game.finished"
-                            small
-                            text
-                            color="white"
-                            @click="openUrl(`/play?watch=${game.room.token}`)"
-                          >
-                            watch
-                          </v-btn>
-                          <v-spacer />
-                          <span v-if="game.finished">finished</span>
-                          <div v-else-if="game.room">
-                            <span v-if="game.room.state === 'waiting'">waiting for players</span>
-                            <span v-else-if="game.room.state === 'playing' && game.room.idle">stuck</span>
-                            <span v-else-if="game.room.state === 'playing'">playing</span>
-                            <span v-else-if="game.room.state === 'paused'">paused</span>
-                            <span v-else>expired</span>
-                          </div>
-                          <span v-else>waiting</span>
-                        </v-toolbar>
-                        <v-sheet class="py-2">
-                          <v-chip v-if="!game.us && !game.them" label class="mx-4" color="#00000000">
-                            Waiting for winners
-                          </v-chip>
-                          <div v-else>
-                            <v-toolbar
-                              v-for="team in ['us', 'them']"
-                              :key="team"
-                              flat
-                              height="40"
-                            >
-                              <v-chip v-if="!game[team]" label color="grey lighten-4">
-                                waiting for winners
-                              </v-chip>
-                              <v-chip v-else-if="game[team] === 'bye'" label color="grey lighten-2">
-                                bye
-                              </v-chip>
-                              <div v-else>
-                                <v-chip
-                                  v-for="i in [0, 1]"
-                                  :key="i"
-                                  label
-                                  :color="chipColor(game, team, i)"
-                                  class="mr-1"
-                                >
-                                  {{ game[team][i] }}
-                                  <v-icon v-if="icon(game, team, i)" right small :color="icon(game, team, i)">
-                                    mdi-circle
-                                  </v-icon>
-                                </v-chip>
-                              </div>
-                              <v-spacer />
-                              <div class="ml-5">
-                                <h3 v-if="game.disq[team]" class="red--text">
-                                  F
-                                </h3>
-                                <h3 v-else-if="game.room">
-                                  {{ game.room[team].marks }}
-                                </h3>
-                              </div>
-                            </v-toolbar>
-                          </div>
-                        </v-sheet>
-                      </v-card>
-                    </div>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-sheet>
-          </v-card>
-          <!-- JUST A SPACER -->
-          <v-sheet v-if="t.open || t.wts || t.playing || t.done" height="12" class="pt-6" />
-        </v-card>
-      </div>
-    </div>
+    <!-- ************************************************************* -->
     <!-- THE DIALOG TO START A GAME -->
+    <!-- ************************************************************* -->
+
     <v-dialog v-model="dialog" max-width="800">
       <v-card>
         <v-toolbar flat color="#8fa5b7">
@@ -540,6 +88,528 @@
         </div>
       </v-card>
     </v-dialog>
+
+    <!-- ************************************************************* -->
+    <!-- TOOLBAR -->
+    <!-- ************************************************************* -->
+    <v-toolbar flat color="#0049bd" max-width="1000">
+      <v-img contain max-width="375" src="/logo-tight.png" />
+      <span class="caption white--text ml-2 mb-1 align-self-end">
+        <strong>{{ $config.version }}</strong>
+      </span>
+      <v-spacer />
+      <v-toolbar-title v-if="you.name" class="white--text">
+        <strong>Hi, {{ you.prefs?.displayName || you.name }}</strong>
+      </v-toolbar-title>
+      <v-menu offset-y>
+        <template #activator="{ on, attrs }">
+          <v-btn icon color="white" v-bind="attrs" v-on="on">
+            <v-icon>mdi-chevron-down</v-icon>
+          </v-btn>
+        </template>
+        <v-card tile>
+          <v-card-text>
+            <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" />
+            <div class="mt-3">
+              You are signed in as <strong>{{ you.name }}</strong><br>
+              <span class="blue--text">{{ you.email }}</span><br>
+              <span v-if="you.roles?.includes('admin')">You are an <strong>admin</strong><br></span>
+              <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong><br></span>
+              <span>You are a <strong>{{ you.type }}</strong> user</span>
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn text @click="signOut">
+              sign out
+            </v-btn>
+          </v-card-actions>
+          <v-divider />
+          <v-card-actions>
+            <v-btn
+              v-if="you?.roles?.includes('td')"
+              text
+              @click="openUrl('/td')"
+            >
+              open TD page
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-menu>
+    </v-toolbar>
+
+    <div class="d-flex flex-row">
+      <!-- ************************************************************* -->
+      <!-- LEFT HAND BAR -->
+      <!-- ************************************************************* -->
+
+      <div class="d-flex align-stretch my-3 mr-3">
+        <v-sheet min-width="256" width="256" class="d-flex flex-column">
+          <!-- ************************************************************* -->
+          <!-- START A GAME OR HOSTING -->
+          <!-- ************************************************************* -->
+          <v-card v-if="table.status === 'hosting'" tile class="pa-3 mb-3">
+            <div class="d-flex flex-column">
+              <p>
+                You started a game {{ tableWith() }}
+              </p>
+              <div class="d-flex flex-row">
+                <v-spacer />
+                <v-btn small class="red--text" @click="decline">
+                  <v-icon left>
+                    mdi-close-circle-outline
+                  </v-icon>
+                  close
+                </v-btn>
+              </div>
+            </div>
+          </v-card>
+          <v-card v-else tile class="pa-3 mb-3">
+            <div class="d-flex flex-row">
+              <div class="mr-3 align-self-center">
+                <strong>Start a game</strong>
+              </div>
+              <v-spacer />
+              <v-btn small class="align-self-center" @click="dialog = true">
+                <v-icon left>
+                  mdi-play
+                </v-icon>
+                play
+              </v-btn>
+            </div>
+          </v-card>
+
+          <!-- ************************************************************* -->
+          <!-- INVITATION -->
+          <!-- ************************************************************* -->
+          <v-card v-if="table.status === 'invited'" tile class="pa-3 mb-3">
+            <div class="d-flex flex-column">
+              <p class="body-1">
+                You have been <strong>invited</strong> to play a game {{ tableWith() }}
+              </p>
+              <div class="d-flex flex-row">
+                <v-spacer />
+                <v-btn small class="mr-3 green--text" @click="openUrl(table.url)">
+                  <v-icon left>
+                    mdi-play
+                  </v-icon>
+                  play
+                </v-btn>
+                <v-btn small class="red--text" @click="decline">
+                  <v-icon left>
+                    mdi-cancel
+                  </v-icon>
+                  decline
+                </v-btn>
+              </div>
+            </div>
+          </v-card>
+
+          <!-- ************************************************************* -->
+          <!-- GUEST MESSAGE -->
+          <!-- ************************************************************* -->
+          <v-card v-if="you.type === 'guest'" tile class="pa-3 mb-3">
+            <div class="d-flex flex-column">
+              <p class="body-1">
+                <strong>Welcome to fortee2, {{ you.name }}!</strong>
+              </p>
+              <p class="body-1">
+                Right now, you're a <strong>guest</strong>,
+                but once you become a member, you'll be able to play in our tournaments
+              </p>
+            </div>
+          </v-card>
+
+          <!-- ************************************************************* -->
+          <!-- ALL TOURNAMENT STUFF -->
+          <!-- ************************************************************* -->
+          <div v-else>
+            <!-- ************************************************************* -->
+            <!-- TOURNAMENTS -->
+            <!-- ************************************************************* -->
+            <v-card v-for="t in sortedTs()" :key="t.id" tile class="mb-3">
+              <v-toolbar
+                v-if="t.open || t.playing || t.wts"
+                flat
+                :color="tournamentColor(t)"
+                height="30"
+                class="white--text body-1"
+              >
+                <span v-if="t.open"><strong>open for {{ ticks[t.id]?.close }}</strong></span>
+                <span v-else-if="t.wts"><strong>starts in {{ ticks[t.id]?.start }}</strong></span>
+                <span v-else-if="t.playing"><strong>playing</strong></span>
+                <v-spacer />
+                <v-btn
+                  v-if="t.playing"
+                  text
+                  small
+                  color="white"
+                  @click="openUrl(`/track?t=${t.id}`)"
+                >
+                  track
+                  <v-icon small right>
+                    mdi-open-in-new
+                  </v-icon>
+                </v-btn>
+              </v-toolbar>
+              <div class="pa-3">
+                <!-- ************************************************************* -->
+                <!-- OPEN -->
+                <!-- ************************************************************* -->
+                <div v-if="t.open" class="d-flex flex-column body-1">
+                  <p>
+                    The <strong>{{ t.name }}</strong> tournament starting at {{ t.startTime }} is open for
+                    <v-chip label small :color="t.signedUp ? 'green' : 'red'" class="white--text">
+                      <strong>{{ ticks[t.id]?.close }}</strong>
+                    </v-chip>
+                  </p>
+                  <p v-if="t.signedUp">
+                    You are <strong>signed up</strong>
+                    <span v-if="t.partner">
+                      with <strong>{{ nameOf(t.partner) }}</strong>
+                    </span>
+                  </p>
+                  <p v-else>
+                    You are <strong>not signed up</strong>
+                  </p>
+                  <div v-if="t.choosePartner" class="mb-3">
+                    <v-select
+                      v-model="t.newPartner"
+                      dense
+                      solo
+                      hide-details
+                      label="choose your partner"
+                      :items="otherUsers"
+                      clearable
+                    />
+                  </div>
+                  <div class="d-flex flex-row mb-1">
+                    <v-btn
+                      class="green--text"
+                      small
+                      :loading="loading"
+                      :disabled="t.signedUp && t.partner === t.newPartner"
+                      @click="signUp(t)"
+                    >
+                      <v-icon left>
+                        mdi-account-check
+                      </v-icon>
+                      sign up
+                    </v-btn>
+                    <v-spacer />
+                    <v-btn
+                      small
+                      class="red--text"
+                      :loading="loading"
+                      :disabled="!t.signedUp"
+                      @click="dropOut(t.id)"
+                    >
+                      <v-icon left>
+                        mdi-account-off
+                      </v-icon>
+                      drop out
+                    </v-btn>
+                  </div>
+                  <p v-if="t.count === 0" class="mt-4">
+                    No one signed up yet
+                  </p>
+                  <v-expansion-panels v-else flat>
+                    <v-expansion-panel>
+                      <v-expansion-panel-header class="body-1 px-0">
+                        {{ t.count }} signed up
+                      </v-expansion-panel-header>
+                      <v-expansion-panel-content class="mx-0">
+                        <div class="mb-3">
+                          <v-chip
+                            v-for="s in signupsFor(t).sort()"
+                            :key="s"
+                            label
+                            small
+                            class="mr-1 mb-1 white--text"
+                            color="#0049bd"
+                          >
+                            <strong>{{ s }}</strong>
+                          </v-chip>
+                        </div>
+                      </v-expansion-panel-content>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </div>
+                <!-- ************************************************************* -->
+                <!-- WAITING TO START -->
+                <!-- ************************************************************* -->
+                <div v-else-if="t.wts" class="d-flex flex-column body-1">
+                  <p>
+                    The <strong>{{ t.name }}</strong> tournament starts in
+                    <v-chip label small :color="t.signedUp ? 'green' : 'red'" class="white--text">
+                      <strong>{{ ticks[t.id]?.start }}</strong>
+                    </v-chip>
+                  </p>
+                  <p v-if="t.signedUp">
+                    You <strong>signed up</strong>
+                    - wait for your first game to start
+                  </p>
+                  <p v-else>
+                    You did not sign up
+                  </p>
+                </div>
+
+                <!-- ************************************************************* -->
+                <!-- PLAYING -->
+                <!-- ************************************************************* -->
+                <div v-else-if="t.playing" class="d-flex flex-column body-1">
+                  <p>
+                    The <strong>{{ t.name }}</strong> tournament is playing now
+                  </p>
+                  <p v-if="!t.signedUp">
+                    You did not sign up
+                  </p>
+                  <p v-else-if="!t.inTourney">
+                    Unfortunately, <strong>you were dropped</strong>
+                    because an odd number of people signed up
+                  </p>
+                  <p v-else-if="!t.stillPlaying">
+                    You were <strong>eliminated</strong>, better luck next time
+                  </p>
+                  <div v-else-if="t.hasRoom">
+                    <p>
+                      Your table is ready and your partner is <strong>{{ t.actualPartner }}</strong>
+                    </p>
+                    <div class="d-flex flex-row">
+                      <v-btn
+                        small
+                        class="green--text"
+                        @click="openUrl(t.url)"
+                      >
+                        <v-icon left>
+                          mdi-account-arrow-right
+                        </v-icon>
+                        go to your table
+                      </v-btn>
+                      <v-icon class="ml-3" :color="blink ? 'green' : '#00000000'">
+                        mdi-arrow-left-circle
+                      </v-icon>
+                    </div>
+                  </div>
+                  <p v-else-if="t.hasBye">
+                    You drew a <strong>bye</strong>, wait for your next game to start
+                  </p>
+                  <p v-else-if="t.stillPlaying">
+                    You're still in it, wait for your next table to be ready
+                  </p>
+                </div>
+
+                <!-- ************************************************************* -->
+                <!-- FINISHED -->
+                <!-- ************************************************************* -->
+                <div v-else-if="t.done" class="d-flex flex-column body-1">
+                  <p v-if="t.winners">
+                    Congratulations to <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>
+                    for winning the <strong>{{ t.name }}</strong>
+                    tournament at {{ t.startTime }}
+                  </p>
+                  <p v-else>
+                    Unfortunately, something went wrong with the <strong>{{ t.name }}</strong>
+                    tournament at {{ t.startTime }}
+                  </p>
+                </div>
+
+                <!-- ************************************************************* -->
+                <!-- LATER -->
+                <!-- ************************************************************* -->
+                <div v-else-if="t.later" class="d-flex flex-column body-1">
+                  <p>
+                    <strong>{{ t.name }}</strong> opens for signup at <strong>{{ t.openTime }}</strong>
+                    and starts at {{ t.startTime }}
+                  </p>
+                </div>
+              </div>
+            </v-card>
+          </div>
+        </v-sheet>
+      </div>
+      <div class="d-flex">
+        <!-- LOBBY -->
+        <v-card tile class="mt-3 pa-3 pb-4" width="732" height="666">
+          <v-row class="pa-0 pb-3">
+            <v-col class="pl-3 pr-0">
+              <div class="d-flex pb-3 flex-column">
+                <v-card
+                  id="chat-box"
+                  flat
+                  tile
+                  height="596"
+                  class="overflow-y-auto"
+                >
+                  <!-- MAYBE A WAY TO SHOW IMPORTANT NOTIFICATIONS -->
+                  <!-- <v-menu v-model="testing" bottom offset-y :close-on-click="false" :close-on-content-click="false">
+                    <template #activator><div></div></template>
+                    <v-card><v-card-title>Hi there</v-card-title></v-card>
+                  </v-menu> -->
+
+                  <div v-for="m in messages" :key="m.id" class="mb-1">
+                    <div>
+                      <strong>{{ m.name }}</strong>
+                      <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1 pa-1">
+                        <strong style="color: #78909C;">{{ m.title }}</strong>
+                      </v-chip>
+                      <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
+                    </div>
+                    <div>{{ m.text }}</div>
+                  </div>
+                </v-card>
+              </div>
+              <v-form @submit.prevent="() => void 0" @submit="chat">
+                <v-text-field
+                  v-model="message"
+                  dense
+                  clearable
+                  placeholder="send a message..."
+                  hide-details
+                  append-icon="mdi-send"
+                  style="background-color: white; border-radius: 0; border-color: red;"
+                  @click:append="chat"
+                />
+              </v-form>
+            </v-col>
+            <v-col cols="auto" class="d-flex flex-row">
+              <v-divider vertical class="mx-3" />
+              <div class="d-flex flex-column fill-height">
+                <v-card
+                  flat
+                  tile
+                  height="596"
+                  class="d-flex overflow-y-auto"
+                >
+                  <v-card-text class="py-0 px-0">
+                    <div v-if="online('td').length" class="mb-2">
+                      <h3>TDs</h3><v-divider class="mb-1" />
+                      <div v-for="u in online('td')" :key="u.id">
+                        {{ u.text }}
+                      </div>
+                    </div>
+                    <div v-if="online('standard').length" class="mb-2">
+                      <h3>Members</h3><v-divider class="mb-1" />
+                      <div v-for="u in online('standard')" :key="u.id">
+                        {{ u.text }}
+                      </div>
+                    </div>
+                    <div v-if="online('guest').length" class="mb-2">
+                      <h3>Guests</h3><v-divider class="mb-1" />
+                      <div v-for="u in online('guest')" :key="u.id">
+                        {{ u.text }}
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+                <div>
+                  <div class="caption mt-6">
+                    {{ users.length }} online
+                  </div>
+                </div>
+              </div>
+            </v-col>
+          </v-row>
+        </v-card>
+        <!-- THE TOURNAMENT TRACKER -->
+        <!-- <v-card v-if="(t.playing || t.done) && t.games" flat tile class="mt-3 pb-1">
+          <v-sheet class="d-flex flex-column pt-3">
+            <v-row class="align-self-center">
+              <v-col v-for="(round, n) in t.games" :key="n" cols="auto">
+                <div>
+                  <h5 class="text-center">
+                    ROUND {{ n + 1 }}
+                  </h5>
+                </div>
+                <div class="d-flex fill-height flex-column justify-space-around">
+                  <div v-for="game in round" :key="game.id">
+                    <v-card
+                      flat
+                      tile
+                      class="ml-3 my-1"
+                      outlined
+                      color="#8fa5b7"
+                    >
+                      <v-toolbar
+                        flat
+                        height="28"
+                        :color="gameColor(game)"
+                        class="white--text caption"
+                      >
+                        <span>
+                          {{ game.id }}
+                        </span>
+                        <v-btn
+                          v-if="game.room && !game.finished"
+                          small
+                          text
+                          color="white"
+                          @click="openUrl(`/play?watch=${game.room.token}`)"
+                        >
+                          watch
+                        </v-btn>
+                        <v-spacer />
+                        <span v-if="game.finished">finished</span>
+                        <div v-else-if="game.room">
+                          <span v-if="game.room.state === 'waiting'">waiting for players</span>
+                          <span v-else-if="game.room.state === 'playing' && game.room.idle">stuck</span>
+                          <span v-else-if="game.room.state === 'playing'">playing</span>
+                          <span v-else-if="game.room.state === 'paused'">paused</span>
+                          <span v-else>expired</span>
+                        </div>
+                        <span v-else>waiting</span>
+                      </v-toolbar>
+                      <v-sheet class="py-2">
+                        <v-chip v-if="!game.us && !game.them" label class="mx-4" color="#00000000">
+                          Waiting for winners
+                        </v-chip>
+                        <div v-else>
+                          <v-toolbar
+                            v-for="team in ['us', 'them']"
+                            :key="team"
+                            flat
+                            height="40"
+                          >
+                            <v-chip v-if="!game[team]" label color="grey lighten-4">
+                              waiting for winners
+                            </v-chip>
+                            <v-chip v-else-if="game[team] === 'bye'" label color="grey lighten-2">
+                              bye
+                            </v-chip>
+                            <div v-else>
+                              <v-chip
+                                v-for="i in [0, 1]"
+                                :key="i"
+                                label
+                                :color="chipColor(game, team, i)"
+                                class="mr-1"
+                              >
+                                {{ game[team][i] }}
+                                <v-icon v-if="icon(game, team, i)" right small :color="icon(game, team, i)">
+                                  mdi-circle
+                                </v-icon>
+                              </v-chip>
+                            </div>
+                            <v-spacer />
+                            <div class="ml-5">
+                              <h3 v-if="game.disq[team]" class="red--text">
+                                F
+                              </h3>
+                              <h3 v-else-if="game.room">
+                                {{ game.room[team].marks }}
+                              </h3>
+                            </div>
+                          </v-toolbar>
+                        </div>
+                      </v-sheet>
+                    </v-card>
+                  </div>
+                </div>
+              </v-col>
+            </v-row>
+          </v-sheet>
+        </v-card> -->
+      </div>
+    </div>
   </div>
 </template>
 <script>
@@ -554,9 +624,9 @@ function format (t) {
     return Object.entries(time)
       .filter(val => val[1] !== 0)
       .map(([key, val]) => `${val}${key}`)
-      .join(' ') || 'no time'
+      .join(' ') || '1s'
   }
-  return 'no time'
+  return '1s'
 }
 const dtFormat = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short'
@@ -584,8 +654,11 @@ export default {
       ws: undefined,
       interval: undefined,
       ticks: {},
+      blink: false,
       reconnectS: 1,
-      refreshDialog: false
+      refreshDialog: false,
+
+      testing: true
     }
   },
   async fetch () {
@@ -722,7 +795,7 @@ export default {
       }, 'with ')
     },
     signupsFor (t) {
-      return t.signups.map(([s, p]) => `${s}${p ? '/' + p : ''}`)
+      return t.signups.map(([s, p]) => `${s}${p ? ' & ' + p : ''}`)
     },
     online (type) {
       return this.users.filter(user => user.type === type)
@@ -879,10 +952,23 @@ export default {
       }
       return '#8fa5b7'
     },
+    tournamentColor (t) {
+      if (t.playing) {
+        const problem = t.games?.some(round => round.some((game) => {
+          return !game.finished &&
+            (game.room?.state === 'paused' || game.room?.idle)
+        }))
+        if (problem) {
+          return 'orange'
+        }
+      }
+      return 'green'
+    },
     connected (t, name) {
       return false
     },
     tick () {
+      this.blink = !this.blink
       if (!this.interval) {
         this.interval = setInterval(() => this.tick(), 1000)
       }
@@ -912,6 +998,28 @@ export default {
     },
     reload () {
       window.location.reload()
+    },
+    sortedTs () {
+      return this.today.map((t) => {
+        // Whether the user is in the tourney.
+        // When the tourney is playing, true if the user signed up and didn't
+        // get dropped. Otherwise, true if the user signed up
+        const inIt = t.inTourney || t.signedUp
+
+        let order = Infinity
+
+        if (inIt && (t.playing || t.done || t.wts)) {
+          order = 0
+        } else if (t.open) {
+          order = 1
+        } else if (t.later) {
+          order = 2
+        } else {
+          order = 3
+        }
+
+        return { t, order }
+      }).sort((a, b) => a.order - b.order).map(({ t }) => t)
     }
   }
 }
