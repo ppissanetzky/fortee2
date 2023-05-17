@@ -145,7 +145,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
      * A token for this room
      */
 
-    public readonly token = makeToken(32, 'base64url');
+    public readonly token: string;
 
     public readonly id = GameRoom.ID++;
 
@@ -193,11 +193,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     constructor(options: GameRoomOptions) {
         super();
+        this.token = makeToken(16, 'base64url');
+        while (GameRoom.rooms.has(this.token)) {
+            this.token = makeToken(16, 'base64url');
+        }
+        GameRoom.rooms.set(this.token, this);
         this.options = options;
         const { rules, table } = options;
         this.table = table;
         this.host = expected(expected(table.host).name);
-        GameRoom.rooms.set(this.token, this);
         this.rules = rules;
         this.debug = this.debug.extend(String(this.id));
         this.debug('created %s for %j', this.token, table.table);
