@@ -18,10 +18,9 @@ import { TableBuilder } from './table-helper';
 import config from './config';
 import sanitize from 'sanitize-filename';
 import Tournament from './tournament';
-import { WebSocket } from 'ws';
-import { stringify } from './json';
 import { gameState } from './game-state';
 import ServerStatus from './server-status';
+import { writeStat } from './stats';
 
 
 const enum State {
@@ -246,6 +245,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 const start = Date.now();
                 socket.send('alive', null, 'readyToContinue').then(() => {
                     const time = Date.now() - start;
+                    writeStat('gr-latency', socket.userId, time);
                     const latency = this.latencies.get(socket.name);
                     if (!latency) {
                         this.latencies.set(socket.name, {time, count: 1});

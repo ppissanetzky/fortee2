@@ -5,6 +5,7 @@ import type { Bid , Bone, Team, Trump, Rules } from './core';
 import type { Status } from './driver';
 import Socket from './socket';
 import { GameError, GameIdle } from './outgoing-messages';
+import { writeStat } from './stats';
 
 interface ThingWithName {
     from?: string;
@@ -79,9 +80,11 @@ export default class RemotePlayer implements Player {
     }
 
     async bid(msg: { possible: Bid[] }): Promise<Bid> {
+        const start = Date.now();
         return this.socket.send('bid', msg, 'submitBid')
             .then((reply) => {
                 assert(reply);
+                writeStat('bid', this.id, Date.now() - start);
                 return reply.bid;
             });
     }
@@ -103,9 +106,11 @@ export default class RemotePlayer implements Player {
     }
 
     async call(msg: { possible: Trump[] }): Promise<Trump> {
+        const start = Date.now();
         return this.socket.send('call', msg, 'callTrump')
             .then((reply) => {
                 assert(reply);
+                writeStat('call', this.id, Date.now() - start);
                 return reply.trump;
             });
     }
@@ -119,12 +124,14 @@ export default class RemotePlayer implements Player {
     }
 
     async play(msg: { possible: Bone[], all: Bone[] }): Promise<Bone> {
+        const start = Date.now();
         if (this.rules?.renege) {
             msg.possible = msg.all;
         }
         return this.socket.send('play', msg, 'playBone')
             .then((reply) => {
                 assert(reply);
+                writeStat('play', this.id, Date.now() - start);
                 return reply.bone;
             });
     }
