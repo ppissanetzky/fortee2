@@ -10,6 +10,7 @@ import Dispatcher from './dispatcher';
 import type { GameStatus } from './tournament-driver';
 import User, { UserType } from './users';
 import config from './config';
+import ms from 'ms';
 
 interface Online {
     value: string;
@@ -166,9 +167,27 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
             userId: id,
             ws
         });
-        /** The client has an old version of the page */
+        /**
+         * The client has an old version of the page and it should disconnect
+         * in response to the mismatch message. But, if it doesn't, we log
+         * it out and close the socket.
+         */
         if (config.PRODUCTION && version !== config.FT2_VERSION) {
+
             this.pushToOne(id, 'mismatch', config.FT2_VERSION);
+
+            setTimeout(() => {
+                switch (ws.readyState) {
+                    case ws.CONNECTING:
+                    case ws.OPEN:
+                        this.debug('force logout', user.name, user.id, version);
+                        /**
+                         * 4000 should cause it to reload the index page, but it should
+                         * just sit there since we logged out the session
+                         */
+                        req.logout(() => ws.close(4000, 'too-old'));
+                }
+            }, ms('30s'));
         }
     }
 

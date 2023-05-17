@@ -21,9 +21,25 @@ const router = express.Router();
 
 export default router;
 
-/** The WS upgrade route */
+const upgrade = pusher.ps.upgrade();
 
-router.get('/tws', pusher.ps.upgrade());
+/** The WS upgrade route for the main page */
+
+router.get('/tws', upgrade);
+
+/** The tournament tracker upgrade */
+
+router.get('/track/:id', (req, res, next) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+        return res.sendStatus(400);
+    }
+    const t = Scheduler.get().tourneys.get(id);
+    if (!t) {
+        return res.sendStatus(404);
+    }
+    upgrade(req, res, next);
+});
 
 /**
  * The main page calls this both to get role information and to see whether
