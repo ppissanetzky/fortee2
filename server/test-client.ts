@@ -174,12 +174,12 @@ class Client {
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('5s')));
-    const start = new TexasTime(new Date(now + ms('6s')));
+    const close = new TexasTime(new Date(now + ms('25s')));
+    const start = new TexasTime(new Date(now + ms('50s')));
 
     const t = new Tournament({
         id: 0,
-        name: `Today's test tournament`,
+        name: `Nigh Time Trash (PN7)`,
         type: 1,
         signup_start_dt: open.toString(true),
         signup_end_dt: close.toString(true),
@@ -215,7 +215,7 @@ class Client {
             // connectDelay: _.random(1000, 10000),
              playDelay: _.random(500, 2000),
             // noShow: true
-            // noReply: i === 1,
+            noReply: i === 1,
         };
         new Client(t.id, options).connect();
         await delay(50);

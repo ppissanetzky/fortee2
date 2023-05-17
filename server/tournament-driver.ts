@@ -455,7 +455,7 @@ export class Status {
     readonly stillPlaying: boolean = false;
 
     /**
-     * The ID of the partner that the player got after signup
+     * The name of the partner that the player got after signup
      */
     readonly actualPartner?: string = undefined;
 
@@ -495,7 +495,8 @@ export class Status {
                 continue;
             }
             /** We found the partner */
-            this.actualPartner = team.other(userId);
+            const partner = team.other(userId);
+            this.actualPartner = partner ? User.getName(partner) : undefined;
 
             /** The user is definitely here */
             this.inTourney = true;
