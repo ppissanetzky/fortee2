@@ -105,15 +105,17 @@ app.get('/api/login/google', async (req, res) => {
         assert(email, 'User missing email');
 
         const id = `G-${sub}`;
-        const user = User.get(id) || User.add({
+        const user = User.login({
             id,
             name,
             email,
             source: 'google',
             type: 'guest',
+            displayName: name,
+            notes: null,
+            ourName: null,
             roles: [],
             prefs: {
-                displayName: name,
                 picture
             }
         });
@@ -144,9 +146,12 @@ if (!config.PRODUCTION) {
         if (!req.isAuthenticated()) {
             const bot = req.header('x-ft2-bot');
             if (bot) {
-                const user = User.get(bot) || User.add({
+                const user = User.login({
                     id: bot,
                     name: bot,
+                    displayName: bot,
+                    ourName: null,
+                    notes: null,
                     email: `${bot}@fortee2.com`,
                     source: 'test',
                     type: 'standard',
@@ -155,9 +160,19 @@ if (!config.PRODUCTION) {
                 });
                 return req.login(user, () => next());
             }
-            const user = User.get('pablo');
-            assert(user)
-            return req.login(user, () => next());
+            // const user = User.login({
+            //     id: 'pablo',
+            //     name: 'pablo',
+            //     displayName: 'pablo',
+            //     ourName: null,
+            //     notes: null,
+            //     email: `pablo@fortee2.com`,
+            //     source: 'test',
+            //     type: 'standard',
+            //     roles: ['td'],
+            //     prefs: {}
+            // });
+            // return req.login(user, () => next());
         }
         next();
     });
@@ -170,7 +185,7 @@ if (!config.PRODUCTION) {
  */
 
 app.use((req, res, next) => {
-    debug('%o', req.user);
+    debug('%j', req.user);
     if (req.isAuthenticated()) {
         if (req.user.isBlocked) {
             return res.sendStatus(403);

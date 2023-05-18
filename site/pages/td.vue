@@ -8,7 +8,10 @@
       <v-card v-if="user">
         <v-toolbar flat color="secondary" class="white--text mb-3">
           <v-toolbar-title>
-            {{ user.name }}
+            <div class="d-flex flex-column">
+              {{ user.name }}
+              <span class="caption">This "name" is from {{ user.source }}</span>
+            </div>
           </v-toolbar-title>
           <v-spacer />
           <v-btn small outlined color="white" @click="userDialog=false">
@@ -27,11 +30,32 @@
         </v-card-actions>
         <v-card-actions>
           <v-text-field
-            v-model="user.prefs.displayName"
+            v-model="user.displayName"
             dense
-            hide-details
             outlined
             label="Display name"
+            hint="This will be seen by everyone"
+            persistent-hint
+          />
+        </v-card-actions>
+        <v-card-actions>
+          <v-text-field
+            v-model="user.ourName"
+            dense
+            outlined
+            label="Real name"
+            hint="For us to track the real name if we know it. Will not be seen by anyone else"
+            persistent-hint
+          />
+        </v-card-actions>
+        <v-card-actions>
+          <v-textarea
+            v-model="user.notes"
+            dense
+            outlined
+            label="Notes"
+            hint="For us to track anything. Will not be seen by anyone else"
+            persistent-hint
           />
         </v-card-actions>
         <v-card-title v-if="you.roles?.includes('admin')">
@@ -323,11 +347,14 @@ export default {
         { value: 2, text: 'Choose' }
       ],
       userHeaders: [
-        { text: 'Name', value: 'name' },
-        { text: 'Display name', value: 'prefs.displayName' },
+        { text: 'External name', value: 'name' },
+        { text: 'Display name', value: 'displayName' },
+        { text: 'Real name', value: 'ourName' },
         { text: 'E-mail', value: 'email' },
         { text: 'Type', value: 'type' },
-        { text: 'Roles', value: 'roleList' }
+        { text: 'Last login', value: 'loginAge' },
+        { text: 'Roles', value: 'roleList' },
+        { text: 'Notes', value: 'hasNotes' }
       ],
       // Models
       search: undefined,

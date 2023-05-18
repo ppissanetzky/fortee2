@@ -9,7 +9,7 @@ import { Rules } from './core';
 import { makeDebug } from './utility';
 import { fa, fif, validateTournament } from './validate';
 import Scheduler from './tournament-scheduler';
-import User, { UserPrefs, UserRole, UserType } from './users';
+import User, { UserRole, UserType, UserUpdate } from './users';
 import ServerStatus from './server-status';
 
 const debug = makeDebug('td-router');
@@ -110,9 +110,10 @@ router.post('/save/user', express.json(), (req, res) => {
     debug('saving %j', body);
     const existing = User.get(body.id);
     fa(existing, 'Invalid user');
-    const { type , prefs } : { type: UserType, prefs: UserPrefs }= body;
+    const { type, displayName, ourName, notes } = body as UserUpdate;
+    fa(type, 'Missing user type');
     fif(!['guest', 'standard', 'blocked'].includes(type), 'Invalid type');
-    fa(prefs && _.isObject(prefs), 'Invalid prefs');
+    //fa(prefs && _.isObject(prefs), 'Invalid prefs');
     let roles: UserRole[] | undefined = undefined;
     if (req.user?.isAdmin) {
         roles = body.roles
@@ -120,7 +121,13 @@ router.post('/save/user', express.json(), (req, res) => {
         const possible = new Set<UserRole>(['admin', 'td']);
         fif(!roles.every((role) => possible.has(role)), 'Unknown role');
     }
-    existing.update(type, prefs, roles);
+    existing.update({
+        type,
+        displayName,
+        ourName,
+        roles,
+        notes
+    });
     res.json({});
 });
 

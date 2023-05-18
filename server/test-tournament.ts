@@ -52,9 +52,12 @@ for (let i = 0; i < 1; i++) {
 //t.signups = () => new Map(signups.map((n) => s(n)));
 
 for (const id of signups) {
-    User.add({
+    User.login({
         id,
         name: id,
+        displayName: id,
+        ourName: null,
+        notes: null,
         email: '',
         source: 'test',
         type: 'standard',

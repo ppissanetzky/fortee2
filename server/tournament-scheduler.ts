@@ -11,55 +11,8 @@ import config from './config';
 import * as db from './tournament-db';
 import TournamentDriver, { TournamentDriverEvents } from './tournament-driver';
 import { Rules } from './core';
-import User from './users';
 
 const debug = makeDebug('scheduler');
-
-function insertTestTourneys() {
-    if (config.PRODUCTION) {
-        return;
-    }
-    return;
-    db.run('delete from tournaments');
-    const now = TexasTime.today();
-    const d = now.date;
-    d.setMinutes(d.getMinutes());
-    const signup = new TexasTime(d).toString();
-    d.setMinutes(d.getMinutes() + 2);
-    const e = new TexasTime(d).toString();
-    d.setMinutes(d.getMinutes() + 1);
-    const s = new TexasTime(d).toString();
-
-    const t = new Tournament({
-        id: 0,
-        name: `Today's test tournament`,
-        type: 1,
-        signup_start_dt: signup,
-        signup_end_dt: e,
-        start_dt: s,
-        rules: JSON.stringify(new Rules()),
-        partner: 2,
-        seed: 0,
-        timezone: 'CST',
-        signup_opened: 0,
-        signup_closed: 0,
-        started: 0,
-        scheduled: 0,
-        finished: 0,
-        ladder_id: 0,
-        ladder_name: '',
-        lmdtm: '',
-        invitation: 0,
-        recurring: 0,
-        invitees: '',
-        prize: '',
-        winners: '',
-        recurring_source: 0,
-        host: 'bots'
-    });
-    t.saveWith({});
-}
-
 
 interface SchedulerEvents extends TournamentDriverEvents {
     signupOpen: Tournament;
@@ -188,7 +141,6 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     }
 
     private loadToday(): void {
-        insertTestTourneys();
 
         const today = TexasTime.today();
 

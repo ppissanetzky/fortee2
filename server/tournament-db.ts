@@ -1,21 +1,13 @@
-import _ from 'lodash';
 
-import { Database, Params } from './db';
+import { Database, DatabaseConnection, Params } from './db';
 import type { TournamentRow, Signups } from './tournament';
 import TexasTime from './texas-time';
 
-export interface TournamentRowWithCount extends TournamentRow {
-    readonly count: number;
-}
+const database = new Database('tournaments', 4);
 
-export interface UserInfo {
-    id: string;
-    name: string;
-    prefs: Record<string, any>;
-    roles: string[];
+export function connect(): DatabaseConnection {
+    return database.connect();
 }
-
-const database = new Database('tournaments', 3);
 
 export function all(query: string, params?: Params) {
     return database.all(query, params);
@@ -75,26 +67,6 @@ export function deleteSignup(id: number, user: string): boolean {
     return changed !== 0;
 }
 
-export function getTournaments(date: TexasTime, limit: number): TournamentRowWithCount[] {
-    return database.all(
-        `
-        SELECT tournaments.*, counts.count AS count
-        FROM tournaments, counts
-        WHERE
-            date(start_dt) = date($date)
-            AND time(start_dt) >= time($date, '-10 minutes')
-            AND recurring = 0
-            AND (finished = 0
-                OR (finished = 1 AND datetime('now') < datetime(lmdtm, '+10 minutes'))
-            )
-            AND counts.id = tournaments.id
-        ORDER BY start_dt
-        LIMIT $limit
-        `
-        , { date: date.toString(), limit }
-    );
-}
-
 export function getSignupsForUser(date: TexasTime, user: string): Map<number, string | null> {
     const rows = database.all(
         `
@@ -109,12 +81,10 @@ export function getSignupsForUser(date: TexasTime, user: string): Map<number, st
     return new Map(rows.map(({id, partner}) => [id, partner]));
 }
 
-export function getTournament(id: number): TournamentRowWithCount | undefined {
+export function getTournament(id: number): TournamentRow | undefined {
     return database.first(
         `
-        SELECT tournaments.*, counts.count AS count
-        FROM tournaments, counts
-        WHERE tournaments.id = $id AND counts.id = tournaments.id
+        SELECT * FROM tournaments WHERE id = $id
         `
         , { id });
 }

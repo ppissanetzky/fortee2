@@ -99,7 +99,7 @@
       </span>
       <v-spacer />
       <v-toolbar-title v-if="you.name" class="white--text">
-        <strong>Hi, {{ you.prefs?.displayName || you.name }}</strong>
+        <strong>Hi, {{ you.displayName || you.name }}</strong>
       </v-toolbar-title>
       <v-menu offset-y>
         <template #activator="{ on, attrs }">
@@ -109,13 +109,19 @@
         </template>
         <v-card tile>
           <v-card-text>
-            <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" />
-            <div class="mt-3">
+            <!-- <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" /> -->
+            <div>
               You are signed in as <strong>{{ you.name }}</strong><br>
               <span class="blue--text">{{ you.email }}</span><br>
-              <span v-if="you.roles?.includes('admin')">You are an <strong>admin</strong><br></span>
-              <span v-if="you.roles?.includes('td')">You are a <strong>TD</strong><br></span>
-              <span>You are a <strong>{{ you.type }}</strong> user</span>
+              <span>You are a <strong>{{ you.type }}</strong> user</span><br>
+              <div v-if="you.roles?.length" class="mt-3">
+                <v-chip v-if="you.roles?.includes('admin')" small label>
+                  admin
+                </v-chip>
+                <v-chip v-if="you.roles?.includes('td')" small label>
+                  TD
+                </v-chip>
+              </div>
             </div>
           </v-card-text>
           <v-card-actions>
