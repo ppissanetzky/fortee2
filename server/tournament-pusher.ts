@@ -24,6 +24,7 @@ export interface TournamentUpdate {
     closeTime: string;
     utcCloseTime: number;
     choosePartner: boolean;
+    fullRules: Rules;
     rules: string[];
     signups: Signup[];
     /** How many players are signed up for this one */
@@ -43,7 +44,7 @@ function makeTournamentUpdate(t: Tournament): TournamentUpdate {
     const games = t.driver?.gameStatus || null;
     const signups = Array.from(t.signups.entries()).map(([s, p]) =>
         [User.getName(s), p ? User.getName(p) : null] as Signup);
-
+    const rules = Rules.fromAny(t.rules);
     return {
         id: t.id,
         name: t.name,
@@ -53,7 +54,8 @@ function makeTournamentUpdate(t: Tournament): TournamentUpdate {
         closeTime: t.closeTime,
         utcCloseTime: t.utcCloseTime,
         choosePartner: t.choosePartner,
-        rules: Rules.fromAny(t.rules).parts(),
+        fullRules: rules.toJSON(),
+        rules: rules.parts(),
         signups,
         /** How many players are signed up for this one */
         count: t.signups.size,

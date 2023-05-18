@@ -440,6 +440,20 @@
                     and starts at {{ t.startTime }}
                   </p>
                 </div>
+                <v-divider class="my-3" />
+                <div>
+                  <v-menu offset-x>
+                    <template #activator="{ on, attrs }">
+                      <v-btn small v-bind="attrs" v-on="on">
+                        <v-icon left>
+                          mdi-text-box-check-outline
+                        </v-icon>
+                        rules
+                      </v-btn>
+                    </template>
+                    <human-rules v-model="t.fullRules" />
+                  </v-menu>
+                </div>
               </div>
             </v-card>
           </div>

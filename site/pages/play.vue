@@ -34,20 +34,18 @@
           </div>
         </div>
         <v-spacer />
-        <div v-if="rules" class="d-flex white--text align-end pa-2 pr-3 mb-1">
-          <h4 v-if="watching" class="mr-3">
-            Watching
-          </h4>
-          <v-chip
-            v-for="r in rules"
-            :key="r"
-            label
-            small
-            color="white"
-            class="mr-1 pa-2"
-          >
-            <span style="color: #0049bd;">{{ r }}</span>
-          </v-chip>
+        <div v-if="rules" class="d-flex align-end pa-2 pr-3 mb-1">
+          <v-menu offset-y>
+            <template #activator="{ on, attrs }">
+              <v-btn small outlined class="white--text" v-bind="attrs" v-on="on">
+                <v-icon left>
+                  mdi-text-box-check-outline
+                </v-icon>
+                rules
+              </v-btn>
+            </template>
+            <human-rules v-model="rules" />
+          </v-menu>
         </div>
       </v-sheet>
 
@@ -568,7 +566,7 @@ export default {
           break
 
         case 'startingGame':
-          this.rules = message.desc
+          this.rules = message.rules
           break
 
         case 'youEnteredGameRoom':
