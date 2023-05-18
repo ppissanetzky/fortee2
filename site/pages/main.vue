@@ -233,16 +233,17 @@
             <!-- TOURNAMENTS -->
             <!-- ************************************************************* -->
             <v-card v-for="t in sortedTs()" :key="t.id" tile class="mb-3">
-              <v-toolbar
-                v-if="t.open || t.playing || t.wts"
+              <v-sheet
                 flat
-                :color="tournamentColor(t)"
+                :color="tournamentColor(t) "
                 height="30"
-                class="white--text body-1"
+                class="d-flex flex-row white--text overline pa-0 py-1 pl-3 ma-0 align-center"
               >
-                <span v-if="t.open"><strong>open for {{ ticks[t.id]?.close }}</strong></span>
-                <span v-else-if="t.wts"><strong>starts in {{ ticks[t.id]?.start }}</strong></span>
-                <span v-else-if="t.playing"><strong>playing</strong></span>
+                <span v-if="t.open">open for {{ ticks[t.id]?.close }}</span>
+                <span v-else-if="t.wts">starts in {{ ticks[t.id]?.start }}</span>
+                <span v-else-if="t.playing">playing</span>
+                <span v-else-if="t.done">finished</span>
+                <span v-else>starts at {{ t.startTime }}</span>
                 <v-spacer />
                 <v-btn
                   v-if="t.playing"
@@ -252,11 +253,30 @@
                   @click="openUrl(`/track?t=${t.id}`)"
                 >
                   track
-                  <v-icon small right>
+                  <v-icon small right class="ma-0">
                     mdi-open-in-new
                   </v-icon>
                 </v-btn>
-              </v-toolbar>
+                <v-menu offset-x>
+                  <template #activator="{ on, attrs }">
+                    <v-btn text small color="white" v-bind="attrs" v-on="on">
+                      rules
+                      <v-icon x-small right class="ma-0">
+                        mdi-chevron-right
+                      </v-icon>
+                    </v-btn>
+<!--
+                    <v-btn small >
+                      <v-icon left>
+                        mdi-text-box-check-outline
+                      </v-icon>
+                      rules
+                    </v-btn> -->
+                  </template>
+                  <human-rules v-model="t.fullRules" />
+                </v-menu>
+
+              </v-sheet>
               <div class="pa-3">
                 <!-- ************************************************************* -->
                 <!-- OPEN -->
@@ -443,22 +463,7 @@
                 <div v-else-if="t.later" class="d-flex flex-column body-1">
                   <p>
                     <strong>{{ t.name }}</strong> opens for signup at <strong>{{ t.openTime }}</strong>
-                    and starts at {{ t.startTime }}
                   </p>
-                </div>
-                <v-divider class="my-3" />
-                <div>
-                  <v-menu offset-x>
-                    <template #activator="{ on, attrs }">
-                      <v-btn small v-bind="attrs" v-on="on">
-                        <v-icon left>
-                          mdi-text-box-check-outline
-                        </v-icon>
-                        rules
-                      </v-btn>
-                    </template>
-                    <human-rules v-model="t.fullRules" />
-                  </v-menu>
                 </div>
               </div>
             </v-card>
@@ -1036,8 +1041,15 @@ export default {
         if (waiting) {
           return 'orange'
         }
+        return 'green'
       }
-      return 'green'
+      if (t.open) {
+        return 'green'
+      }
+      if (t.later) {
+        return 'secondary'
+      }
+      return '#0049bd'
     },
     connected (t, name) {
       return false

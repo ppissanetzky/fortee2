@@ -170,12 +170,11 @@ class Client {
 }
 
 (async () => {
-    db.run('DELETE FROM tournaments');
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('5s')));
-    const start = new TexasTime(new Date(now + ms('10s')));
+    const close = new TexasTime(new Date(now + ms('1m')));
+    const start = new TexasTime(new Date(now + ms('70s')));
 
     const t = new Tournament({
         id: 0,
