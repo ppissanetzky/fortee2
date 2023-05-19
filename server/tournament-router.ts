@@ -147,6 +147,11 @@ router.get('/decline/:token', (req, res) => {
     res.sendStatus(200);
 });
 
+// router.post('/ss', express.json(), (req, res) => {
+//     console.log(JSON.stringify(req.body));
+//     res.sendStatus(200);
+// });
+
 /** The TD router */
 
 router.use('/td', tdRouter);

@@ -97,6 +97,7 @@
       <span class="caption white--text ml-2 mb-1 align-self-end">
         <strong>{{ $config.version }}</strong>
       </span>
+      <!-- <v-btn @click="screenShot">ss</v-btn> -->
       <v-spacer />
       <v-toolbar-title v-if="you.name" class="white--text">
         <strong>Hi, {{ you.displayName || you.name }}</strong>
@@ -1112,6 +1113,21 @@ export default {
         return { t, order }
       }).sort((a, b) => a.order - b.order).map(({ t }) => t)
     }
+    // async screenShot () {
+    //   try {
+    //     const canvas = document.createElement('canvas')
+    //     const context = canvas.getContext('2d')
+    //     const video = document.createElement('video')
+    //     const captureStream = await navigator.mediaDevices.getDisplayMedia()
+    //     video.srcObject = captureStream
+    //     context.drawImage(video, 0, 0, window.width, window.height)
+    //     const data = canvas.toDataURL('image/png')
+    //     captureStream.getTracks().forEach(track => track.stop())
+    //     this.$axios.$post('/api/tournaments/ss', { data })
+    //   } catch (err) {
+    //     console.error('Error ', err)
+    //   }
+    // }
   }
 }
 </script>
