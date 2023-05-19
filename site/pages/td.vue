@@ -201,18 +201,16 @@
       </v-card>
     </v-dialog>
     <!-- MAIN  -->
-    <v-toolbar>
-      <v-toolbar-title>TD</v-toolbar-title>
-      <template #extension>
-        <v-tabs v-model="tab">
-          <v-tabs-slider />
-          <v-tab>Users</v-tab>
-          <v-tab>Today's</v-tab>
-          <v-tab>Recurring</v-tab>
-          <v-tab>Status</v-tab>
-        </v-tabs>
-      </template>
-    </v-toolbar>
+    <v-card tile class="mb-3">
+      <v-tabs v-model="tab" background-color="#c0d4e5">
+        <v-tabs-slider />
+        <v-tab>Users</v-tab>
+        <v-tab>Today's Ts</v-tab>
+        <v-tab>Recurring Ts</v-tab>
+        <v-tab>Server status</v-tab>
+        <v-tab>Stats</v-tab>
+      </v-tabs>
+    </v-card>
 
     <v-tabs-items v-model="tab">
       <!-- USERS -->
@@ -318,6 +316,59 @@
           </v-simple-table>
         </div>
       </v-tab-item>
+      <!-- STATS -->
+      <v-tab-item>
+        <v-toolbar flat>
+          <v-select
+            v-model="statType"
+            :items="statList"
+            hide-details
+            dense
+            outlined
+            label="Type"
+          />
+          <v-text-field
+            v-model="statSearch"
+            append-icon="mdi-magnify"
+            label="Search"
+            single-line
+            hide-details
+            dense
+            outlined
+            clearable
+            class="px-4"
+          />
+          <v-select
+            v-model="statSince"
+            :items="['1 day', '1 week', '1 month', '1 year']"
+            hide-details
+            dense
+            outlined
+            clearable
+            label="Duration"
+          />
+        </v-toolbar>
+        <div class="d-flex flex-row">
+          <v-sheet max-width="375" class="ml-3">
+            <v-data-table
+              :items="stats"
+              :headers="statsHeaders"
+              :search="statSearch"
+              :custom-sort="statSort"
+              @click:row="(row) => { statSearch = row.name }"
+            />
+          </v-sheet>
+          <v-sheet max-width="375" class="ml-16">
+            <v-data-table
+              :items="statsMinMax"
+              :headers="statsHeaders"
+              hide-default-footer
+              :disable-sort="true"
+              @click:row="(row) => { statSearch = row.name }"
+            />
+          </v-sheet>
+        </div>
+      </v-tab-item>
     </v-tabs-items>
   </div>
 </template>
@@ -330,6 +381,10 @@ export default {
       todays: [],
       users: [],
       status: [],
+      statList: [],
+      stats: [],
+      statsMinMax: [],
+      statsFormat: undefined,
       headers: [
         { text: 'Name', value: 'name' },
         { text: 'Every', value: 'every', groupable: true },
@@ -356,6 +411,7 @@ export default {
         { text: 'Roles', value: 'roleList' },
         { text: 'Notes', value: 'hasNotes' }
       ],
+      statsHeaders: [],
       // Models
       search: undefined,
       userSearch: undefined,
@@ -368,7 +424,10 @@ export default {
       tab: undefined,
       sure: false,
       everyFilter: [],
-      userType: 'all'
+      userType: 'all',
+      statType: undefined,
+      statSearch: undefined,
+      statSince: undefined
     }
   },
   async fetch () {
@@ -385,6 +444,9 @@ export default {
         this.edit(f)
       }
     }
+    this.$axios.$get('/api/tournaments/stats/list').then((list) => {
+      this.statList = list
+    })
   },
   computed: {
     recurring () {
@@ -408,6 +470,12 @@ export default {
     },
     async userType () {
       await this.loadUsers()
+    },
+    async statType () {
+      await this.loadStats()
+    },
+    async statSince () {
+      await this.loadStats()
     }
   },
   methods: {
@@ -426,6 +494,62 @@ export default {
     },
     async loadStatus () {
       this.status = await this.$axios.$get('/api/tournaments/td/status')
+    },
+    async loadStats () {
+      if (!this.statType) {
+        return
+      }
+      const query = this.statSince ? `?s=${encodeURIComponent(this.statSince)}` : ''
+      const url = `/api/tournaments/stats/read/${encodeURIComponent(this.statType)}${query}`
+
+      const { name, units, format, stats } = await this.$axios.$get(url)
+
+      this.stats = stats
+
+      this.statsHeaders = [
+        { text: name, value: 'name' },
+        {
+          text: units,
+          value: 'f',
+          align: 'end'
+        }
+      ]
+
+      let min = 0
+      let max = 0
+      let sum = 0
+
+      const nf = new Intl.NumberFormat(undefined, format)
+
+      stats.forEach((stat, index) => {
+        const { value } = stat
+        stat.f = nf.format(value)
+        sum += value
+        if (value <= stats[min].value) {
+          min = index
+        }
+        if (value >= stats[max].value) {
+          max = index
+        }
+      })
+      this.statsMinMax = [
+        { name: 'average', value: sum / stats.length, f: nf.format(sum / stats.length) },
+        { ...stats[min], name: `lowest:  ${stats[min].name}` },
+        { ...stats[max], name: `highest: ${stats[max].name}` }
+      ]
+    },
+    statSort (items, [name], [isDesc]) {
+      items.sort((a, b) => {
+        let n = 0
+        if (name === 'name') {
+          n = a.name.localeCompare(b.name)
+        }
+        if (name === 'f') {
+          n = b.value - a.value
+        }
+        return isDesc ? -n : n
+      })
+      return items
     },
     edit (t) {
       this.editing = JSON.parse(JSON.stringify(t))

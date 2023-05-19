@@ -10,6 +10,7 @@ import GameRoom from './game-room';
 import Socket from './socket';
 import TournamentPusher from './tournament-pusher';
 import tdRouter from './td-router';
+import statsRouter from './stats';
 import { fail, fif, fa, validateRules, AppError } from './validate';
 import User from './users';
 
@@ -155,6 +156,10 @@ router.get('/decline/:token', (req, res) => {
 /** The TD router */
 
 router.use('/td', tdRouter);
+
+/** The stats router */
+
+router.use('/stats', statsRouter);
 
 /**-----------------------------------------------------------------------------
  * MUST BE LAST

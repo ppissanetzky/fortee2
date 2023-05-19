@@ -27,6 +27,7 @@
     "node-fetch": "^2.6.9",
     "nodemon": "^2.0.16",
     "openid-client": "^5.4.0",
+    "parse-duration": "^1.0.3",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",

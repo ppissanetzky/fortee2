@@ -71,7 +71,7 @@ export class DatabaseConnection {
 export class Database {
 
     private readonly name: string;
-    private readonly file: string;
+    public readonly file: string;
     private readonly version: number;
     private migrated: boolean;
 

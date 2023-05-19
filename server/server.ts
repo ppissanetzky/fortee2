@@ -160,19 +160,19 @@ if (!config.PRODUCTION) {
                 });
                 return req.login(user, () => next());
             }
-            // const user = User.login({
-            //     id: 'pablo',
-            //     name: 'pablo',
-            //     displayName: 'pablo',
-            //     ourName: null,
-            //     notes: null,
-            //     email: `pablo@fortee2.com`,
-            //     source: 'test',
-            //     type: 'standard',
-            //     roles: ['td'],
-            //     prefs: {}
-            // });
-            // return req.login(user, () => next());
+            const user = User.login({
+                id: 'pablo',
+                name: 'pablo',
+                displayName: 'pablo',
+                ourName: null,
+                notes: null,
+                email: `pablo@fortee2.com`,
+                source: 'test',
+                type: 'standard',
+                roles: ['td'],
+                prefs: {}
+            });
+            return req.login(user, () => next());
         }
         next();
     });
