@@ -201,9 +201,8 @@
       </v-card>
     </v-dialog>
     <!-- MAIN  -->
-    <v-card tile class="mb-3">
-      <v-tabs v-model="tab" background-color="#c0d4e5">
-        <v-tabs-slider />
+    <v-card flat tile class="mb-3">
+      <v-tabs v-model="tab" background-color="#c0d4e5" grow>
         <v-tab>Users</v-tab>
         <v-tab>Today's Ts</v-tab>
         <v-tab>Recurring Ts</v-tab>
