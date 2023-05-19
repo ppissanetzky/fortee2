@@ -121,10 +121,6 @@ export class Game {
         const users = this.driver.teams
             .reduce((result, team) => ([...result, ...team.users]), [] as string[])
             .map((userId) => ({userId, status: new Status(this.driver, userId)}));
-        makeDebug('caca')('status %j', {
-            losers: Array.from(this.driver.losers),
-            users
-        });
     }
 
     gameOver(winners: string[]) {
@@ -149,7 +145,7 @@ export class Game {
     teamLost(team: Team) {
         assert(team);
         if (!team.isBye) {
-            team.users.forEach((userId) => this.driver.losers.add(userId));
+            team.users.forEach((userId) => this.driver.stillIn.delete(userId));
         }
     }
 
@@ -462,12 +458,6 @@ export class Status {
     readonly inTourney: boolean = false;
 
     /**
-     * True if the player made it into the tournament and had a bye, even
-     * if the player already lost or the tournament is over
-     */
-    readonly hasBye: boolean = false;
-
-    /**
      * Whether the player is still playing in the tournament:
      *  made it in and has not lost yet
      */
@@ -508,37 +498,23 @@ export class Status {
         this.winners = driver.winners;
         this.failed = driver.failed;
 
-        for (const team of driver.teams) {
-            if (team.has(userId)) {
-                /** We found the partner */
-                const partner = team.other(userId);
-                this.actualPartner = partner ? User.getName(partner) : undefined;
+        /** The partner name */
+        this.actualPartner = driver.players.get(userId);
 
-                /** The user is definitely here */
-                this.inTourney = true;
+        /** The user is definitely here */
+        this.inTourney = driver.players.has(userId);
 
-                /**
-                 * Since the user is in, they are still playing if they have
-                 * not lost yet
-                 */
-                this.stillPlaying = !driver.losers.has(userId);
-
-                /** Done */
-                break;
-            }
-        }
+        /** Still playing */
+        this.stillPlaying = driver.stillIn.has(userId);
 
         for (const game of driver.games.values()) {
-            /** The user had a bye in this game */
-            const { bye } = game;
-            if (bye && bye.has(userId)) {
-                this.hasBye = true;
-            }
-            const { room } = game;
-            if (room) {
-                this.hasRoom = true;
-                this.url = room.url;
-                this.positions = [...room.positions];
+            if (game.has(userId) && !game.finished) {
+                const { room } = game;
+                if (room) {
+                    this.hasRoom = true;
+                    this.url = room.url;
+                    this.positions = [...room.positions];
+                }
             }
         }
     }
@@ -551,6 +527,12 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
     /** An array of player pairs in no particular order */
     public readonly teams: Team[];
 
+    /** All the players that are in the tourney, maps userId to partner name */
+    public readonly players = new Map<string, string>();
+
+    /** All the user IDs for players that are still in the tourney */
+    public readonly stillIn = new Set<string>();
+
     /** If there was an odd number of players, one gets dropped */
     public readonly dropped: string | undefined;
 
@@ -559,9 +541,6 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
 
     /** The rounds */
     public readonly rounds: Game[][];
-
-    /** User IDs that lost their games */
-    public readonly losers = new Set<string>();
 
     /** The names of the winners, once it is over */
     public winners?: string[] = undefined;
@@ -577,6 +556,14 @@ export default class TournamentDriver extends Dispatcher<TournamentDriverEvents>
         this.debug = makeDebug('t-driver').extend(`t${t.id}`);
         [this.teams, this.dropped] = this.pickTeams();
         [this.games, this.rounds] = this.createBracket();
+
+        this.teams.forEach(({ users }) => {
+            const [ a, b ] = users;
+            this.players.set(a, User.getName(b));
+            this.players.set(b, User.getName(a));
+            this.stillIn.add(a);
+            this.stillIn.add(b);
+        });
     }
 
     get canceled(): boolean {
