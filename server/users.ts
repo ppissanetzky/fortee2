@@ -1,9 +1,9 @@
 import * as db from './tournament-db';
 import Dispatcher from './dispatcher';
 import GameRoom from './game-room';
-import { expected } from './utility';
+import { expected, formatDuration } from './utility';
 import type { DatabaseConnection } from './db';
-import { parseISO, formatISO, formatDistanceToNow } from 'date-fns';
+import { parseISO, formatISO } from 'date-fns';
 
 export interface UserPrefs {
     picture?: string;
@@ -60,7 +60,7 @@ function decodeRow(row: any): ExtendedUserRow {
     row.roles = row.roles ? row.roles.split(',') : [];
     row.prefs = row.prefs ? JSON.parse(row.prefs) : {};
     row.lastLogin = row.lastLogin ? parseISO(row.lastLogin).getTime() : 0;
-    row.loginAge = row.lastLogin ? formatDistanceToNow(new Date(row.lastLogin)) : '';
+    row.loginAge = row.lastLogin ? formatDuration(Date.now() - row.lastLogin) : '';
     row.hasNotes = row.notes ? 'yes' : '';
     return row as ExtendedUserRow;
 }
