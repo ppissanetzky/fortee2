@@ -118,6 +118,13 @@ export class Game {
 
     update() {
         this.driver.emit('gameUpdate', this.status);
+        const users = this.driver.teams
+            .reduce((result, team) => ([...result, ...team.users]), [] as string[])
+            .map((userId) => ({userId, status: new Status(this.driver, userId)}));
+        makeDebug('caca')('status %j', {
+            losers: Array.from(this.driver.losers),
+            users
+        });
     }
 
     gameOver(winners: string[]) {
@@ -139,6 +146,14 @@ export class Game {
         this.update();
     }
 
+    teamLost(team: Team) {
+        assert(team);
+        if (!team.isBye) {
+            team.users.forEach((userId) => this.driver.losers.add(userId));
+        }
+    }
+
+
     async advanceTeam(team: Team): Promise<void> {
         assert(team);
         assert(this.teams.includes(team));
@@ -146,6 +161,7 @@ export class Game {
         this.finished = true;
         const winners = team.users;
         this.gameOver(winners);
+        this.teamLost(this.otherTeam(team));
         const { next_game } = this;
         if (!next_game) {
             return this.tournamentOver(team);
@@ -319,7 +335,10 @@ export class Game {
                  * teams get disqualified
                  */
 
-                this.teams.forEach((team) => team.disq = true);
+                this.teams.forEach((team) => {
+                    team.disq = true;
+                    this.teamLost(team);
+                });
 
                 /** This is the final game, so the tournament has no winners */
                 if (!next_game) {
@@ -489,29 +508,32 @@ export class Status {
         this.winners = driver.winners;
         this.failed = driver.failed;
 
-        for (const game of driver.games.values()) {
-            const team = game.has(userId);
-            if (!team) {
-                continue;
+        for (const team of driver.teams) {
+            if (team.has(userId)) {
+                /** We found the partner */
+                const partner = team.other(userId);
+                this.actualPartner = partner ? User.getName(partner) : undefined;
+
+                /** The user is definitely here */
+                this.inTourney = true;
+
+                /**
+                 * Since the user is in, they are still playing if they have
+                 * not lost yet
+                 */
+                this.stillPlaying = !driver.losers.has(userId);
+
+                /** Done */
+                break;
             }
-            /** We found the partner */
-            const partner = team.other(userId);
-            this.actualPartner = partner ? User.getName(partner) : undefined;
+        }
 
-            /** The user is definitely here */
-            this.inTourney = true;
-
+        for (const game of driver.games.values()) {
             /** The user had a bye in this game */
             const { bye } = game;
             if (bye && bye.has(userId)) {
                 this.hasBye = true;
             }
-
-            /** Still playing */
-            if (!game.finished) {
-                this.stillPlaying = true;
-            }
-
             const { room } = game;
             if (room) {
                 this.hasRoom = true;

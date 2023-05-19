@@ -213,7 +213,7 @@
           <!-- ************************************************************* -->
           <!-- GUEST MESSAGE -->
           <!-- ************************************************************* -->
-          <v-card v-if="you.type === 'guest'" tile class="pa-3 mb-3">
+          <v-card v-if="guest" tile class="pa-3 mb-3">
             <div class="d-flex flex-column">
               <p class="body-1">
                 <strong>Welcome to fortee2, {{ you.name }}!</strong>
@@ -228,7 +228,7 @@
           <!-- ************************************************************* -->
           <!-- ALL TOURNAMENT STUFF -->
           <!-- ************************************************************* -->
-          <div v-else>
+          <div>
             <!-- ************************************************************* -->
             <!-- TOURNAMENTS -->
             <!-- ************************************************************* -->
@@ -265,17 +265,9 @@
                         mdi-chevron-right
                       </v-icon>
                     </v-btn>
-<!--
-                    <v-btn small >
-                      <v-icon left>
-                        mdi-text-box-check-outline
-                      </v-icon>
-                      rules
-                    </v-btn> -->
                   </template>
                   <human-rules v-model="t.fullRules" />
                 </v-menu>
-
               </v-sheet>
               <div class="pa-3">
                 <!-- ************************************************************* -->
@@ -288,52 +280,57 @@
                       <strong>{{ ticks[t.id]?.close }}</strong>
                     </v-chip>
                   </p>
-                  <p v-if="t.signedUp">
-                    You are <strong>signed up</strong>
-                    <span v-if="t.partner">
-                      with <strong>{{ nameOf(t.partner) }}</strong>
-                    </span>
+                  <p v-if="guest">
+                    As a <strong>guest</strong>, you cannot sign up for tournaments
                   </p>
-                  <p v-else>
-                    You are <strong>not signed up</strong>
-                  </p>
-                  <div v-if="t.choosePartner" class="mb-3">
-                    <v-select
-                      v-model="t.newPartner"
-                      dense
-                      solo
-                      hide-details
-                      label="choose your partner"
-                      :items="otherUsers"
-                      clearable
-                    />
-                  </div>
-                  <div class="d-flex flex-row mb-1">
-                    <v-btn
-                      class="green--text"
-                      small
-                      :loading="loading"
-                      :disabled="t.signedUp && t.partner === t.newPartner"
-                      @click="signUp(t)"
-                    >
-                      <v-icon left>
-                        mdi-account-check
-                      </v-icon>
-                      sign up
-                    </v-btn>
-                    <v-spacer />
-                    <v-btn
-                      small
-                      class="red--text"
-                      :loading="loading"
-                      :disabled="!t.signedUp"
-                      @click="dropOut(t.id)"
-                    >
-                      <v-icon left>
-                        mdi-account-off
-                      </v-icon>
-                      drop out
-                    </v-btn>
+                  <div v-else>
+                    <p v-if="t.signedUp">
+                      You are <strong>signed up</strong>
+                      <span v-if="t.partner">
+                        with <strong>{{ nameOf(t.partner) }}</strong>
+                      </span>
+                    </p>
+                    <p v-else>
+                      You are <strong>not signed up</strong>
+                    </p>
+                    <div v-if="t.choosePartner" class="mb-3">
+                      <v-select
+                        v-model="t.newPartner"
+                        dense
+                        solo
+                        hide-details
+                        label="choose your partner"
+                        :items="otherUsers"
+                        clearable
+                      />
+                    </div>
+                    <div class="d-flex flex-row mb-1">
+                      <v-btn
+                        class="green--text"
+                        small
+                        :loading="loading"
+                        :disabled="t.signedUp && t.partner === t.newPartner"
+                        @click="signUp(t)"
+                      >
+                        <v-icon left>
+                          mdi-account-check
+                        </v-icon>
+                        sign up
+                      </v-btn>
+                      <v-spacer />
+                      <v-btn
+                        small
+                        class="red--text"
+                        :loading="loading"
+                        :disabled="!t.signedUp"
+                        @click="dropOut(t.id)"
+                      >
+                        <v-icon left>
+                          mdi-account-off
+                        </v-icon>
+                        drop out
+                      </v-btn>
+                    </div>
                   </div>
                   <p v-if="t.count === 0" class="mt-4">
                     No one signed up yet
@@ -370,13 +367,15 @@
                       <strong>{{ ticks[t.id]?.start }}</strong>
                     </v-chip>
                   </p>
-                  <p v-if="t.signedUp">
-                    You <strong>signed up</strong>
-                    - wait for your first game to start
-                  </p>
-                  <p v-else>
-                    You did not sign up
-                  </p>
+                  <div v-if="!guest">
+                    <p v-if="t.signedUp">
+                      You <strong>signed up</strong>
+                      - wait for your first game to start
+                    </p>
+                    <p v-else>
+                      You did not sign up
+                    </p>
+                  </div>
                 </div>
 
                 <!-- ************************************************************* -->
@@ -386,42 +385,44 @@
                   <p>
                     The <strong>{{ t.name }}</strong> tournament is playing now
                   </p>
-                  <p v-if="!t.signedUp">
-                    You did not sign up
-                  </p>
-                  <p v-else-if="!t.inTourney">
-                    Unfortunately, <strong>you were dropped</strong>
-                    because an odd number of people signed up
-                  </p>
-                  <p v-else-if="!t.stillPlaying">
-                    You were <strong>eliminated</strong>, better luck next time
-                  </p>
-                  <div v-else-if="t.hasRoom">
-                    <p>
-                      Your table is ready and your partner is <strong>{{ t.actualPartner }}</strong>
+                  <div v-if="!guest && t.isOn">
+                    <p v-if="!t.signedUp">
+                      You did not sign up
                     </p>
-                    <div class="d-flex flex-row">
-                      <v-btn
-                        small
-                        class="green--text"
-                        @click="openUrl(t.url)"
-                      >
-                        <v-icon left>
-                          mdi-account-arrow-right
+                    <p v-else-if="!t.inTourney">
+                      Unfortunately, <strong>you were dropped</strong>
+                      because an odd number of people signed up
+                    </p>
+                    <p v-else-if="!t.stillPlaying">
+                      You were <strong>eliminated</strong>, better luck next time
+                    </p>
+                    <div v-else-if="t.hasRoom">
+                      <p>
+                        Your table is ready and your partner is <strong>{{ t.actualPartner }}</strong>
+                      </p>
+                      <div class="d-flex flex-row">
+                        <v-btn
+                          small
+                          class="green--text"
+                          @click="openUrl(t.url)"
+                        >
+                          <v-icon left>
+                            mdi-account-arrow-right
+                          </v-icon>
+                          go to your table
+                        </v-btn>
+                        <v-icon class="ml-3" :color="blink ? 'green' : '#00000000'">
+                          mdi-arrow-left-circle
                         </v-icon>
-                        go to your table
-                      </v-btn>
-                      <v-icon class="ml-3" :color="blink ? 'green' : '#00000000'">
-                        mdi-arrow-left-circle
-                      </v-icon>
+                      </div>
                     </div>
+                    <p v-else-if="t.hasBye">
+                      You drew a <strong>bye</strong>, wait for your next game to start
+                    </p>
+                    <p v-else-if="t.stillPlaying">
+                      You're still in it, wait for your next table to be ready
+                    </p>
                   </div>
-                  <p v-else-if="t.hasBye">
-                    You drew a <strong>bye</strong>, wait for your next game to start
-                  </p>
-                  <p v-else-if="t.stillPlaying">
-                    You're still in it, wait for your next table to be ready
-                  </p>
                   <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
                     <span class="caption mb-1">Table status</span>
                     <div class="d-flex flex-row">
@@ -721,6 +722,9 @@ export default {
   computed: {
     otherUsers () {
       return this.users.filter(({ value }) => value !== this.you.id)
+    },
+    guest () {
+      return this.you?.type === 'guest'
     }
   },
   methods: {

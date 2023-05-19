@@ -173,8 +173,8 @@ class Client {
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('1m')));
-    const start = new TexasTime(new Date(now + ms('70s')));
+    const close = new TexasTime(new Date(now + ms('10s')));
+    const start = new TexasTime(new Date(now + ms('12s')));
 
     const t = new Tournament({
         id: 0,
@@ -211,8 +211,8 @@ class Client {
 
     for (let i = 0; i < 12; ++i) {
         const options: Options = {
-            connectDelay: _.random(1000, 10000),
-            playDelay: _.random(500, 3000),
+            //connectDelay: _.random(1000, 10000),
+            playDelay: _.random(500, 600),
             // noShow: true
             // noReply: i === 1,
         };
