@@ -45,7 +45,7 @@ const MINUTE = ms('1m');
 
 export function formatDuration(nms: number): string {
     if (nms < 0) {
-        return `${nms}ms`;
+        return `${nms} ms`;
     }
     return prettyMilliseconds(nms, {
         separateMilliseconds: nms < MINUTE
