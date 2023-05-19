@@ -2,10 +2,14 @@ import { jest, expect, test, describe } from '@jest/globals';
 import _ from 'lodash';
 
 import * as db from '../tournament-db';
+import User from '../users';
 
 jest.mock('../tournament-db');
+jest.mock('../users');
 
 const getSignups = jest.spyOn(db, 'getSignups');
+
+jest.spyOn(User, 'getName').mockReturnValue('');
 
 import Tournament from '../tournament';
 import TournamentDriver, { Team } from '../tournament-driver';
