@@ -417,13 +417,11 @@
                         </v-icon>
                       </div>
                     </div>
-                    <p v-else-if="t.hasBye">
-                      You drew a <strong>bye</strong>, wait for your next game to start
-                    </p>
                     <p v-else-if="t.stillPlaying">
-                      You're still in it, wait for your next table to be ready
+                      Please wait for your next table to be ready
                     </p>
                   </div>
+                  <!-- ROW OF TABLE-STATUS SQUARES -->
                   <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
                     <span class="caption mb-1">Table status</span>
                     <div class="d-flex flex-row">
