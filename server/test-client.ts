@@ -44,6 +44,7 @@ class Client {
     private ws?: WebSocket;
     private tourney?: TournamentUpdate;
     private options: Options;
+    private joined?: string;
 
     constructor(tid: number, options: Options) {
         this.tid = tid;
@@ -119,6 +120,10 @@ class Client {
             if (this.options.noShow) {
                 return;
             }
+            if (this.joined === t.token) {
+                return;
+            }
+            this.joined = t.token;
             const response = await fetch(`${URL}/api/tournaments/me`, {
                 headers: this.headers,
                 redirect: 'manual'
