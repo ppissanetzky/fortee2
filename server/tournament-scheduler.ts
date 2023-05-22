@@ -76,7 +76,12 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     }
 
     public static tourneys(): Tournament[] {
-        return _.sortBy(Array.from(this.get().tourneys.values()), 'utcStartTime');
+        const scheduler = this.get();
+        scheduler.dump();
+        const results = _.sortBy(Array.from(scheduler.tourneys.values()), 'utcStartTime');
+        debug('Returning', results.length);
+        debug('Returning %j', results);
+        return results;
     }
 
     private static instance?: Scheduler;
@@ -97,6 +102,13 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         this.emit('reload', undefined);
     }
 
+    private dump() {
+        debug('Have', this.tourneys.size);
+        for (const t of this.tourneys.values()) {
+            debug(t.id, t.name, t.startTime, t.recurring_source);
+        }
+    }
+
     public reloadOne(tid: number): boolean {
         const isNew = !this.tourneys.has(tid);
         const today = TexasTime.today();
@@ -108,11 +120,15 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
         if (t.state !== State.LATER) {
             return false;
         }
+        debug('Loaded %j', t);
         /** Remove existing timers for this one */
         this.timeouts.delete(tid);
 
         /** Change it in our map */
+        this.dump();
         this.tourneys.set(tid, t);
+        debug('Added', t.id, tid, t.name);
+        this.dump();
         const m = Math.max(5000, today.msUntil(TexasTime.parse(t.signup_start_dt)));
         debug('signup in', ms(m), 'for', tid, t.signup_start_dt, t.name);
         this.timeouts.add(tid, () => this.openSignup(expected(t)), m);
