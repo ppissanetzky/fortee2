@@ -10,6 +10,7 @@ import { expected, makeDebug } from './utility';
 import nextBotName from './bot-names';
 import ms from 'ms';
 import User from './users';
+import { writeStat } from './stats';
 
 function user(id: string) {
     return {id, name: User.getName(id)};
@@ -118,9 +119,6 @@ export class Game {
 
     update() {
         this.driver.emit('gameUpdate', this.status);
-        const users = this.driver.teams
-            .reduce((result, team) => ([...result, ...team.users]), [] as string[])
-            .map((userId) => ({userId, status: new Status(this.driver, userId)}));
     }
 
     gameOver(winners: string[]) {
@@ -134,7 +132,11 @@ export class Game {
     tournamentOver(winners: Team): void {
         assert(!this.next_game);
         this.finished = true;
-        this.driver.winners = winners.users.map((userId) => User.getName(userId));
+        this.driver.winners = winners.users.map((userId) => {
+            writeStat('t-play', userId, 1);
+            writeStat('t-win', userId, 1);
+            return User.getName(userId);
+        });
         this.driver.emit('tournamentOver', {
             t: this.driver.t,
             winners
@@ -145,7 +147,10 @@ export class Game {
     teamLost(team: Team) {
         assert(team);
         if (!team.isBye) {
-            team.users.forEach((userId) => this.driver.stillIn.delete(userId));
+            team.users.forEach((userId) => {
+                writeStat('t-play', userId, 1);
+                this.driver.stillIn.delete(userId);
+            });
         }
     }
 

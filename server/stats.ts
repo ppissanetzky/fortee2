@@ -13,6 +13,14 @@ const db = new Database('stats', 1).connect();
 
 db.run('ATTACH DATABASE $file AS t', { file: tdb.file });
 
+export type StatType =
+    'gr-latency' |
+    'bid' |
+    'call' |
+    'play' |
+    't-play' |
+    't-win';
+
 /** The definition of a stat */
 
 interface Stat {
@@ -27,57 +35,68 @@ function convertMs(n: number): number {
     return n / 1000;
 }
 
-const STATS = new Map<string, Stat>([
-    [
-        'gr-latency', {
-            name: 'Game latency',
-            units: 'ms',
-            format: {maximumFractionDigits: 0},
-            group: 'avg',
-            convert(n) {
-                return Math.floor(n)
-            }
+function noConvert(n: number): number {
+    return n;
+}
+
+const STATS: Record<StatType, Stat> = {
+
+    'gr-latency': {
+        name: 'Game latency',
+        units: 'ms',
+        format: {maximumFractionDigits: 0},
+        group: 'avg',
+        convert(n) {
+            return Math.floor(n)
         }
-    ],
-    [
-        'bid', {
-            name: 'Bid time',
-            units: 'sec',
-            format: {minimumFractionDigits: 3},
-            group: 'avg',
-            convert: convertMs
-        }
-    ],
-    [
-        'call', {
-            name: 'Trump call time',
-            units: 'sec',
-            format: {minimumFractionDigits: 3},
-            group: 'avg',
-            convert: convertMs
-        }
-    ],
-    [
-        'play', {
-            name: 'Play time',
-            units: 'sec',
-            format: {minimumFractionDigits: 3},
-            group: 'avg',
-            convert: convertMs
-        }
-    ]
-]);
+    },
+    'bid': {
+        name: 'Bid time',
+        units: 'sec',
+        format: {minimumFractionDigits: 3},
+        group: 'avg',
+        convert: convertMs
+    },
+    'call': {
+        name: 'Trump call time',
+        units: 'sec',
+        format: {minimumFractionDigits: 3},
+        group: 'avg',
+        convert: convertMs
+    },
+    'play': {
+        name: 'Play time',
+        units: 'sec',
+        format: {minimumFractionDigits: 3},
+        group: 'avg',
+        convert: convertMs
+    },
+    't-play': {
+        name: 'Tournaments played',
+        units: 'count',
+        format: {maximumFractionDigits: 0},
+        group: 'sum',
+        convert: noConvert
+    },
+    't-win': {
+        name: 'Tournaments won',
+        units: 'count',
+        format: {maximumFractionDigits: 0},
+        group: 'sum',
+        convert: noConvert
+    }
+};
 
 const INSERT = db.statement(
     `INSERT INTO stats VALUES ($type, unixepoch(), $key, $value)`);
 
-export function writeStat(type: string, key: string, value: number) {
+export function writeStat(type: StatType, key: string, value: number) {
     process.nextTick(() => {
         INSERT.run({type, key, value});
     });
 }
 
-function read(type: string, stat: Stat, sinceMs = 0) {
+function read(type: StatType, stat: Stat, sinceMs = 0) {
     const group = stat.group === 'avg' ? 'AVG' : 'SUM';
     const rows = db.all(
         `
@@ -97,7 +116,7 @@ function read(type: string, stat: Stat, sinceMs = 0) {
 }
 
 router.get('/list', (req, res) => {
-    res.json(Array.from(STATS.entries()).map(([key, stat]) => ({
+    res.json(Array.from(Object.entries(STATS)).map(([key, stat]) => ({
         value: key,
         text: stat.name
     })));
@@ -105,7 +124,7 @@ router.get('/list', (req, res) => {
 
 router.get('/read/:type', (req, res) => {
     const { params: { type }, query: { s } } = req;
-    const stat = STATS.get(type);
+    const stat = STATS[type as StatType];
     if (!stat) {
         return res.sendStatus(404);
     }
@@ -117,6 +136,6 @@ router.get('/read/:type', (req, res) => {
         name: stat.name,
         units: stat.units,
         format: stat.format,
-        stats: read(type, stat, since)
+        stats: read(type as StatType, stat, since)
     });
 });

@@ -514,28 +514,32 @@ export default {
         }
       ]
 
-      let min = 0
-      let max = 0
-      let sum = 0
+      if (stats.length === 0) {
+        this.statsMinMax = []
+      } else {
+        let min = 0
+        let max = 0
+        let sum = 0
 
-      const nf = new Intl.NumberFormat(undefined, format)
+        const nf = new Intl.NumberFormat(undefined, format)
 
-      stats.forEach((stat, index) => {
-        const { value } = stat
-        stat.f = nf.format(value)
-        sum += value
-        if (value <= stats[min].value) {
-          min = index
-        }
-        if (value >= stats[max].value) {
-          max = index
-        }
-      })
-      this.statsMinMax = [
-        { name: 'average', value: sum / stats.length, f: nf.format(sum / stats.length) },
-        { ...stats[min], name: `lowest:  ${stats[min].name}` },
-        { ...stats[max], name: `highest: ${stats[max].name}` }
-      ]
+        stats.forEach((stat, index) => {
+          const { value } = stat
+          stat.f = nf.format(value)
+          sum += value
+          if (value <= stats[min].value) {
+            min = index
+          }
+          if (value >= stats[max].value) {
+            max = index
+          }
+        })
+        this.statsMinMax = [
+          { name: 'average', value: sum / stats.length, f: nf.format(sum / stats.length) },
+          { ...stats[min], name: `lowest:  ${stats[min].name}` },
+          { ...stats[max], name: `highest: ${stats[max].name}` }
+        ]
+      }
     },
     statSort (items, [name], [isDesc]) {
       items.sort((a, b) => {
