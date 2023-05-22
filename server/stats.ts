@@ -139,3 +139,20 @@ router.get('/read/:type', (req, res) => {
         stats: read(type as StatType, stat, since)
     });
 });
+
+/** Returns a collection of stat tables that are public */
+
+router.get('/public', (req, res) => {
+    /** Tournament winner history */
+    // const winners = tdb.all(
+    //     `
+    //     SELECT * FROM tournaments
+    //     WHERE
+    //         recurring = 0 AND finished = 1
+    //         AND winners IS NOT NULL AND winners != ''
+    //     ORDER BY
+    //         date(start_dt) DESC
+    //     `
+    // )
+    res.sendStatus(404);
+});
