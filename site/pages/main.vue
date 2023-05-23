@@ -468,6 +468,27 @@
               </div>
             </v-card>
           </div>
+          <!-- ************************************************************* -->
+          <!-- DONATION MESSAGE -->
+          <!-- ************************************************************* -->
+          <v-card v-if="!guest && showDonation" tile class="mb-3">
+            <v-sheet
+              flat
+              color="#c0d4e5"
+              height="30"
+              class="d-flex flex-row overline pa-0 py-1 pl-3 ma-0 align-center"
+            >
+              <span>thank you</span>
+            </v-sheet>
+            <div class="d-flex flex-column pa-3">
+              <p class="body-1">
+                Although fortee2 is free to play, it costs <strong>$30 a month</strong> to keep it running.
+                Consider <a href="https://www.paypal.com/donate/?business=HS465FN6SX8XG&no_recurring=0&item_name=fortee2.com+maintenance+costs.+&currency_code=USD" target="_blank">
+                  making a donation</a>
+                to help cover the cost.
+              </p>
+            </div>
+          </v-card>
         </v-sheet>
       </div>
       <div class="d-flex">
@@ -700,7 +721,7 @@ export default {
       blink: false,
       reconnectS: 1,
       refreshDialog: false,
-
+      showDonation: Math.random() < 0.50,
       testing: true
     }
   },
