@@ -10,7 +10,6 @@ import { OAuth2Client } from 'google-auth-library';
 import config from './config';
 import { makeDebug } from './utility';
 import setupAuthentication from './authentication';
-import connectToSlack from './slack';
 import { HttpServer } from './http-server';
 import passport from 'passport';
 import tournamentRouter from './tournament-router';
@@ -199,10 +198,6 @@ app.use((req, res, next) => {
 /** Create the web server */
 
 HttpServer.create(app);
-
-/** Connect to Slack */
-
-connectToSlack();
 
 /** Where the game room sockets connect */
 

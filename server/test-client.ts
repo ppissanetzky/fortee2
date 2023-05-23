@@ -33,6 +33,7 @@ interface Options {
     connectDelay?: number;
     noReply?: boolean;
     playDelay?: number;
+    signUpWith?: string;
 }
 
 class Client {
@@ -102,7 +103,8 @@ class Client {
             return;
         }
         if (this.tourney.open && !status.signedUp) {
-            this.json(`/api/tournaments/signup/${this.tid}/null`)
+            const partner = this.options.signUpWith ?? 'null';
+            this.json(`/api/tournaments/signup/${this.tid}/${partner}`)
         }
         if (status.winners) {
             if (status.winners?.includes(this.name)) {
@@ -178,8 +180,8 @@ class Client {
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('10s')));
-    const start = new TexasTime(new Date(now + ms('12s')));
+    const close = new TexasTime(new Date(now + ms('20m')));
+    const start = new TexasTime(new Date(now + ms('22m')));
 
     const t = new Tournament({
         id: 0,
@@ -214,12 +216,13 @@ class Client {
         headers: { ['x-ft2-bot']: 'pablo' }
     });
 
-    for (let i = 0; i < 12; ++i) {
+    for (let i = 0; i < 3; ++i) {
         const options: Options = {
             //connectDelay: _.random(1000, 10000),
             playDelay: _.random(500, 600),
-            // noShow: true
-            // noReply: i === 1,
+            noShow: true,
+            noReply: i === 3,
+            signUpWith: i === 2 ? 'pablo' : undefined,
         };
         new Client(t.id, options).connect();
         await delay(50);
