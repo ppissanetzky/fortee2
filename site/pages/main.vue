@@ -161,7 +161,7 @@
               </p>
               <div class="d-flex flex-row">
                 <v-spacer />
-                <v-btn small class="red--text" @click="decline">
+                <v-btn small outlined class="red--text" @click="decline">
                   <v-icon left>
                     mdi-close-circle-outline
                   </v-icon>
@@ -176,7 +176,7 @@
                 <strong>Start a game</strong>
               </div>
               <v-spacer />
-              <v-btn small class="align-self-center" @click="dialog = true">
+              <v-btn small outlined class="align-self-center" @click="dialog = true">
                 <v-icon left>
                   mdi-play
                 </v-icon>
@@ -195,13 +195,13 @@
               </p>
               <div class="d-flex flex-row">
                 <v-spacer />
-                <v-btn small class="mr-3 green--text" @click="openUrl(table.url)">
+                <v-btn small outlined class="mr-3 green--text" @click="openUrl(table.url)">
                   <v-icon left>
                     mdi-play
                   </v-icon>
                   play
                 </v-btn>
-                <v-btn small class="red--text" @click="decline">
+                <v-btn small outlined class="red--text" @click="decline">
                   <v-icon left>
                     mdi-cancel
                   </v-icon>
@@ -290,15 +290,33 @@
                       <span v-if="t.partner">
                         with <strong>{{ nameOf(t.partner) }}</strong>
                       </span>
+                      <span v-else-if="t.choosePartner">
+                        with <strong>no partner</strong>
+                      </span>
                     </p>
                     <p v-else>
                       You are <strong>not signed up</strong>
                     </p>
+                    <div v-if="partnerMismatch(t)" class="mb-5">
+                      <span>
+                        <strong>{{ partnerMismatch(t) }}</strong> signed up with you as partner,
+                        do you want to sign up with {{ partnerMismatch(t) }}?
+                        <v-btn
+                          x-small
+                          outlined
+                          color="black"
+                          :loading="loading"
+                          @click="signUp(t, partnerMismatch(t))"
+                        >
+                          yes
+                        </v-btn>
+                      </span>
+                    </div>
                     <div v-if="t.choosePartner" class="mb-3">
                       <v-select
                         v-model="t.newPartner"
                         dense
-                        solo
+                        outlined
                         hide-details
                         label="choose your partner"
                         :items="otherUsers"
@@ -309,6 +327,7 @@
                       <v-btn
                         class="green--text"
                         small
+                        outlined
                         :loading="loading"
                         :disabled="t.signedUp && t.partner === t.newPartner"
                         @click="signUp(t)"
@@ -321,6 +340,7 @@
                       <v-spacer />
                       <v-btn
                         small
+                        outlined
                         class="red--text"
                         :loading="loading"
                         :disabled="!t.signedUp"
@@ -404,6 +424,7 @@
                       <div class="d-flex flex-row">
                         <v-btn
                           small
+                          outlined
                           class="green--text"
                           @click="openUrl(t.url)"
                         >
@@ -843,6 +864,10 @@ export default {
       const item = this.users.find(({ value }) => value === id)
       return item?.text
     },
+    idOf (name) {
+      const item = this.users.find(({ text }) => text === name)
+      return item?.value
+    },
     tableWith () {
       const w = this.table.with
       if (!w) {
@@ -864,12 +889,26 @@ export default {
     signupsFor (t) {
       return t.signups.map(([s, p]) => `${s}${p ? ' & ' + p : ''}`)
     },
+    partnerMismatch (t) {
+      if (t.open && t.choosePartner && !t.partner) {
+        // The first signup with me as a partner
+        const theirs = t.signups.find(([s, p]) => p === this.you.name)
+        if (theirs) {
+          // The name of the person that signed up with me
+          return theirs[0]
+        }
+      }
+    },
     online (type) {
       return this.users.filter(user => user.type === type)
     },
-    async signUp (t) {
-      const { id, newPartner } = t
+    async signUp (t, partnerName) {
+      const { id } = t
       this.loading = true
+      let { newPartner } = t
+      if (partnerName) {
+        newPartner = this.idOf(partnerName)
+      }
       const url = `/api/tournaments/signup/${id}/${newPartner || 'null'}`
       const { error } = await this.$axios.$get(url)
       if (error) {
