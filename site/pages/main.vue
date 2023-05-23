@@ -428,7 +428,7 @@
                       <v-sheet
                         v-for="g in tablesFor(t)"
                         :key="g.id"
-                        width="20"
+                        width="32"
                         height="20"
                         class="mr-1 mb-1"
                         :color="gameColor(g)"
@@ -1013,6 +1013,11 @@ export default {
         if (state === 'playing' && idle) {
           return 'S'
         }
+      }
+      if (game.room) {
+        return ['us', 'them']
+          .map(team => game.disq[team] ? 'F' : game.room[team].marks)
+          .join('-')
       }
       return ''
     },
