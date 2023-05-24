@@ -9,10 +9,10 @@ import Socket from './socket';
 import Player from './player';
 import RemotePlayer from './remote-player';
 import ProductionBot from './production-bot';
-import GameDriver, { Rules, SaveWithMetadata, TimeOutError, Status,
-    GameDriverEvents, StopError, Game } from './driver';
+import GameDriver, { Rules, TimeOutError, Status,
+    GameDriverEvents, StopError, Game, Team } from './driver';
 import type { EndOfHand, GameIdle, GameMessages, RoomUpdate } from './outgoing-messages';
-import { SaveHelper } from './core/save-game';
+import saveGame, { SaveHelper, SaveWithMetadata } from './core/save-game';
 import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
 import config from './config';
@@ -87,7 +87,7 @@ export interface GameRoomEvents extends GameDriverEvents {
     gameResumed: void;
     gameOver: {
         bots: number;
-        save: SaveHelper;
+        winningTeam: Team;
     },
     gameError: unknown;
     expired: GameRoomStatus;
@@ -401,6 +401,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
     }
 
     private async run() {
+        const started = Date.now();
         let reason = 'game-over';
         try {
             this.emit('gameStarted', undefined);
@@ -444,13 +445,11 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                     socket.send(type as keyof GameMessages, message));
             });
 
-            const save = await driver.run();
-
-            this.saveGame(save);
+            await driver.run();
 
             this.emit('gameOver', {
                 bots: this.bots.size,
-                save: new SaveHelper(save),
+                winningTeam: expected(driver.game.winningTeam),
             });
         }
         catch (error) {
@@ -469,6 +468,14 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             }
         }
         finally {
+            this.saveGame({
+                ...saveGame(expected(this.game)),
+                bots: this.players.filter(({human}) => !human).map(({name}) => name),
+                started,
+                ended: Date.now(),
+                chat: this.chat,
+                tid: this.t?.id
+            });
             this.state = State.OVER;
             this.players = [];
             this.game = undefined;
@@ -623,10 +630,11 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
     private async saveGame(save: SaveWithMetadata) {
         try {
-            const name = sanitize(new Date(save.started).toISOString(), {
+            const date = new Date(save.started).toISOString();
+            const players = save.players.join('-').toLowerCase();
+            const name = sanitize(`${date}-${players}` , {
                 replacement: '-'
             }).replace('.', '-') + '.json';
-            save.chat = this.chat;
             const contents = JSON.stringify(save);
             await fs.writeFile(path.join(config.FT2_SAVE_PATH, name), contents);
             this.debug('saved', name);

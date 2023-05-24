@@ -6,7 +6,6 @@ import saveGame, { type Save } from './core/save-game';
 import ms from 'ms';
 import Dispatcher from './dispatcher';
 import { GameMessages, StartingGame } from './outgoing-messages';
-import { ChatMessage } from './game-room';
 
 export { Rules, Bid, Bone, Trump, Game, Team };
 
@@ -67,17 +66,6 @@ export class Status {
 
 type Callback = (player: Player) => void;
 
-export interface SaveWithMetadata extends Save {
-    /* Which players were bots */
-    bots: string[];
-    /** The time that the game started */
-    started: number;
-    /** The time it ended */
-    ended: number;
-    /** Chat messages */
-    chat: ChatMessage[];
-}
-
 export class TimeOutError extends Error {}
 export class StopError extends Error {}
 
@@ -117,14 +105,14 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
         this.game = new Game(table, rules);
     }
 
-    public async run(): Promise<SaveWithMetadata> {
+    public async run(): Promise<void> {
         assert(!this.ran);
         this.ran = true;
         try {
             const started = Date.now();
             this.lastTime = started;
 
-            const save = await new Promise<Save>((resolve, reject) => {
+            await new Promise<Save>((resolve, reject) => {
                 let interval: NodeJS.Timer;
                 if (this.maxIdleMs > 0) {
                     const tick = ms('30s')
@@ -161,17 +149,6 @@ export default class GameDriver extends Dispatcher<GameDriverEvents & GameMessag
                 };
                 this.next().then(finished, reject);
             });
-            const ended = Date.now();
-            const bots = this.players.filter(({human}) => !human)
-                .map(({name}) => name);
-            const chat: ChatMessage[] = [];
-            return {
-                ...save,
-                started,
-                ended,
-                bots,
-                chat
-            };
         }
         finally {
             this.emitter.removeAllListeners();

@@ -372,8 +372,8 @@ export class Game {
                 this.update();
             });
 
-            room.once('gameOver', ({save}) => {
-                const team = save.winnerIndices.includes(0)
+            room.once('gameOver', ({winningTeam}) => {
+                const team = winningTeam === 'US'
                     ? this.teams[0] : this.teams[1];
                 resolve(this.advanceTeam(team));
             });

@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import { Game, Bone, Rules } from '.';
 import { expected } from '../utility';
+import type { ChatMessage } from '../game-room';
 import { Table, printTable } from 'console-table-printer';
 import chalk from 'chalk';
 
@@ -45,6 +46,19 @@ export interface Save {
     players: string[];
     hands: Hand[];
     marks: Marks;
+}
+
+export interface SaveWithMetadata extends Save {
+    /* Which players were bots */
+    bots: string[];
+    /** The time that the game started */
+    started: number;
+    /** The time it ended */
+    ended: number;
+    /** Chat messages */
+    chat: ChatMessage[];
+    /** Tournament ID */
+    tid?: number;
 }
 
 export default function saveGame(game: Game): Save {
