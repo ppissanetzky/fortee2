@@ -1,9 +1,15 @@
+import { readFile } from 'node:fs/promises';
 import _ from 'lodash';
 import express from 'express';
 import parseDuration from 'parse-duration';
 
 import { Database } from './db';
 import { database as tdb } from './tournament-db';
+import path from 'node:path';
+import config from './config';
+import { SaveWithMetadata } from './core/save-game';
+import { getUnixTime } from 'date-fns';
+import Tournament from './tournament';
 
 const router = express.Router();
 
@@ -155,4 +161,59 @@ router.get('/public', (req, res) => {
     //     `
     // )
     res.sendStatus(404);
+});
+
+router.get('/game/search', async (req, res) => {
+    const { query: { d, q } } = req;
+    const date = _.isString(d) ? parseInt(d, 10) : undefined;
+    if (!date || isNaN(date)) {
+        return res.sendStatus(400);
+    }
+    const search = _.isString(q) ? q.toLowerCase() : undefined;
+    if (!search) {
+        return res.sendStatus(400);
+    }
+    const results = tdb.all(
+        `
+        SELECT gid, started, players, score, tid
+        FROM games
+        WHERE
+            date(started, 'unixepoch') = date($date, 'unixepoch')
+            AND like($search, players)
+        ORDER BY started
+        `, {
+            date: getUnixTime(date),
+            search: `%${search}%`
+        }
+    )
+    res.json({
+        results,
+    });
+});
+
+router.get('/game/:gid', async (req, res) => {
+    const { params: { gid } } = req;
+    if (!gid || !_.isString(gid)) {
+        return res.sendStatus(400);
+    }
+    const row = tdb.first(
+        `
+        SELECT fname, tournaments.*
+        FROM games
+        LEFT JOIN tournaments ON tid = tournaments.id
+        WHERE gid = $gid
+        `,
+        { gid: parseInt(gid, 10)});
+    if (!row) {
+        return res.sendStatus(404);
+    }
+    const { fname } = row;
+    delete row.fname;
+    const contents = await readFile(
+        path.join(config.FT2_SAVE_PATH, fname), 'utf-8');
+    const save = JSON.parse(contents) as SaveWithMetadata;
+    res.json({
+        t: row,
+        save
+    });
 });

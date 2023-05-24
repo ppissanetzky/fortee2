@@ -219,7 +219,7 @@ class Client {
     for (let i = 0; i < 8; ++i) {
         const options: Options = {
             //connectDelay: _.random(1000, 10000),
-            playDelay: _.random(100, 200),
+            playDelay: _.random(100, 101),
             //noShow: true,
             //noReply: i === 3,
             //signUpWith: i === 2 ? 'pablo' : undefined,

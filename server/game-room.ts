@@ -12,7 +12,7 @@ import ProductionBot from './production-bot';
 import GameDriver, { Rules, TimeOutError, Status,
     GameDriverEvents, StopError, Game, Team } from './driver';
 import type { EndOfHand, GameIdle, GameMessages, RoomUpdate } from './outgoing-messages';
-import saveGame, { SaveHelper, SaveWithMetadata } from './core/save-game';
+import saveGame, { SaveWithMetadata } from './core/save-game';
 import Dispatcher from './dispatcher';
 import { TableBuilder } from './table-helper';
 import config from './config';
@@ -21,6 +21,8 @@ import Tournament from './tournament';
 import { gameState } from './game-state';
 import ServerStatus from './server-status';
 import { writeStat } from './stats';
+import * as db from './tournament-db';
+import { getUnixTime } from 'date-fns';
 
 
 const enum State {
@@ -637,6 +639,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             }).replace('.', '-') + '.json';
             const contents = JSON.stringify(save);
             await fs.writeFile(path.join(config.FT2_SAVE_PATH, name), contents);
+            db.run(`
+                INSERT INTO games VALUES (null, $name, $started, $players, $score, $tid)
+            `, {
+                name,
+                started: getUnixTime(save.started),
+                players: save.players.join(','),
+                score: `${save.marks.US}-${save.marks.THEM}`,
+                tid: save.tid ?? null
+            });
             this.debug('saved', name);
         }
         catch(error) {

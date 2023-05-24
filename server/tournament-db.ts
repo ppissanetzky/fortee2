@@ -3,7 +3,7 @@ import { Database, DatabaseConnection, Params } from './db';
 import type { TournamentRow, Signups } from './tournament';
 import TexasTime from './texas-time';
 
-export const database = new Database('tournaments', 4);
+export const database = new Database('tournaments', 5);
 
 export function connect(): DatabaseConnection {
     return database.connect();
