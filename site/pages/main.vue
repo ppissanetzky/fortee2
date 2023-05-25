@@ -102,10 +102,13 @@
       <v-toolbar-title v-if="you.name" class="white--text">
         <strong>Hi, {{ myName }}</strong>
       </v-toolbar-title>
+      <!-- ************************************************************* -->
+      <!-- ACCOUNT MENU -->
+      <!-- ************************************************************* -->
       <v-menu offset-y>
         <template #activator="{ on, attrs }">
           <v-btn icon color="white" v-bind="attrs" v-on="on">
-            <v-icon>mdi-chevron-down</v-icon>
+            <v-icon>mdi-account</v-icon>
           </v-btn>
         </template>
         <v-card tile>
@@ -140,6 +143,27 @@
               open TD page
             </v-btn>
           </v-card-actions>
+        </v-card>
+      </v-menu>
+      <!-- ************************************************************* -->
+      <!-- STATS MENU -->
+      <!-- ************************************************************* -->
+      <v-menu offset-y>
+        <template #activator="{ on, attrs }">
+          <v-btn icon color="white" v-bind="attrs" v-on="on">
+            <v-icon>mdi-chart-bar</v-icon>
+          </v-btn>
+        </template>
+        <v-card tile>
+          <v-list dense>
+            <v-list-item-group color="#0049bd">
+              <v-list-item @click="openUrl('/game-review')">
+                <v-list-item-content>
+                  Game Review
+                </v-list-item-content>
+              </v-list-item>
+            </v-list-item-group>
+          </v-list>
         </v-card>
       </v-menu>
     </v-toolbar>
@@ -360,6 +384,9 @@
                     <v-expansion-panel>
                       <v-expansion-panel-header class="body-1 px-0">
                         {{ t.count }} signed up
+                        <span v-if="t.count < 8">
+                          - need {{ 8 - t.count }} more
+                        </span>
                       </v-expansion-panel-header>
                       <v-expansion-panel-content class="mx-0">
                         <div class="mb-3">

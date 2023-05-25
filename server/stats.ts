@@ -165,30 +165,29 @@ router.get('/public', (req, res) => {
 
 router.get('/game/search', async (req, res) => {
     const { query: { d, q } } = req;
-    const date = _.isString(d) ? parseInt(d, 10) : undefined;
-    if (!date || isNaN(date)) {
+    const date = _.isString(d) ? d : undefined;
+    if (!date) {
         return res.sendStatus(400);
     }
     const search = _.isString(q) ? q.toLowerCase() : undefined;
     if (!search) {
         return res.sendStatus(400);
     }
-    const results = tdb.all(
+    const games = tdb.all(
         `
-        SELECT gid, started, players, score, tid
+        SELECT gid, games.started, games.players, games.score, tournaments.name AS t
         FROM games
+        LEFT JOIN tournaments ON tid = tournaments.id
         WHERE
-            date(started, 'unixepoch') = date($date, 'unixepoch')
-            AND like($search, players)
-        ORDER BY started
+            date(games.started, 'unixepoch') = date($date)
+            AND like($search, games.players)
+        ORDER BY games.started
         `, {
-            date: getUnixTime(date),
+            date,
             search: `%${search}%`
         }
     )
-    res.json({
-        results,
-    });
+    res.json({games});
 });
 
 router.get('/game/:gid', async (req, res) => {
