@@ -1,7 +1,7 @@
 import { Bid, Bone, Game, Rules, Team, Trump } from './core';
 
 export interface GameState {
-    rules: string[];
+    rules: Rules;
     US: {
         marks: number;
         points: number;
@@ -97,7 +97,7 @@ export function gameState(game: Game, target?: string): GameState {
             .map(({trick_bones}) => trick_bones);
     }
     return {
-        rules: game.rules.parts(),
+        rules: game.rules.toJSON(),
         US: {
             marks: game.marks.US,
             points: hand?.points.US || 0
