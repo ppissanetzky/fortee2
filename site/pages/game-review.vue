@@ -107,80 +107,85 @@
       </v-list>
     </v-sheet>
     <v-card v-if="review" tile flat class="py-3" max-width="1000">
-      <v-simple-table>
-        <template #default>
-          <tbody>
-            <tr v-for="(hand, i) in review.save.hands" :key="i">
-              <td style="border-top: 2px solid black; border-right: 2px solid black; border-left: 2px solid black; padding: 0;">
-                <v-simple-table>
-                  <template #default>
-                    <tbody class="body-1">
-                      <tr style="background-color: #c0d4e5;">
-                        <td colspan="4" style="border: 0px; padding-left: 9px;">
-                          <strong>Hand {{ i + 1 }}</strong>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td
-                          v-for="(bid, k) in hand.bids"
-                          :key="k"
-                          style="padding-left: 9px; border: 0px"
-                        >
-                          {{ nameOf(bid[0]) }}
-                          <span v-if="hand.high[0] === bid[0]">
-                            <strong>{{ bid[1] }}</strong>
-                            on
-                            <strong>{{ hand.trump }}</strong>
-                          </span>
-                          <span v-else>{{ bid[1] }}</span>
-                          <div class="d-flex flex-row py-1">
-                            <v-img
-                              v-for="bone in hand.bones.find(([d]) => d == bid[0])[1]"
-                              :key="bone"
-                              :src="`/${bone}v.png`"
-                              contain
-                              max-width="28"
-                              class="mr-1"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                      <tr v-for="(trick, l) in hand.tricks" :key="l">
-                        <td v-for="(bone, m) in trick.bones" :key="m" style="border: 0px; padding-left: 9px;">
-                          <div class="d-flex flex-column py-1">
-                            <span class="mb-1">
-                              {{ nameOf(bone[0]) }}
-                              <strong v-if="trick.winner === bone[0]">
-                                {{ trick.points }} {{ trick.points === 1 ? 'point' : 'points' }}
-                              </strong>
-                            </span>
-                            <v-img
-                              :src="`/${bone[1]}v.png`"
-                              contain
-                              max-width="28"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding-left: 9px;" colspan="4">
-                          <span v-if="hand.renege">
-                            {{ nameOf(hand.renege) }} <strong>reneged</strong>
-                          </span>
-                          <span v-else>
-                            {{ nameOf(hand.high[0]) }}
-                            <strong>{{ hand.made ? 'made the bid' : 'got set' }}</strong>
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </template>
-                </v-simple-table>
-              </td>
-            </tr>
-          </tbody>
-        </template>
-      </v-simple-table>
+      <div v-if="review.save.hands?.length === 0">
+        <p>There is no data about this game</p>
+      </div>
+      <div v-else>
+        <v-tabs
+          v-model="tab"
+          background-color="#0049bd"
+          dark
+          center-active
+          show-arrows
+        >
+          <v-tab v-for="(hand, i) in review.save.hands" :key="i">
+            Hand {{ i +1 }}
+          </v-tab>
+        </v-tabs>
+        <v-tabs-items v-model="tab">
+          <v-tab-item v-for="(hand, i) in review.save.hands" :key="i" class="mt-3 mb-6">
+            <v-simple-table>
+              <template #default>
+                <tbody class="body-1">
+                  <tr>
+                    <td
+                      v-for="(bid, k) in hand.bids"
+                      :key="k"
+                      style="padding-left: 9px; border: 0px"
+                    >
+                      {{ nameOf(bid[0]) }}
+                      <span v-if="hand.high[0] === bid[0]">
+                        <strong>{{ bid[1] }}</strong>
+                        on
+                        <strong>{{ hand.trump }}</strong>
+                      </span>
+                      <span v-else>{{ bid[1] }}</span>
+                      <div class="d-flex flex-row py-1">
+                        <v-img
+                          v-for="bone in hand.bones.find(([d]) => d == bid[0])[1]"
+                          :key="bone"
+                          :src="`/${bone}v.png`"
+                          contain
+                          max-width="28"
+                          class="mr-1"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-for="(trick, l) in hand.tricks" :key="l">
+                    <td v-for="(bone, m) in trick.bones" :key="m" style="border: 0px; padding-left: 9px;">
+                      <div class="d-flex flex-column py-1">
+                        <span class="mb-1">
+                          {{ nameOf(bone[0]) }}
+                          <strong v-if="trick.winner === bone[0]">
+                            {{ trick.points }} {{ trick.points === 1 ? 'point' : 'points' }}
+                          </strong>
+                        </span>
+                        <v-img
+                          :src="`/${bone[1]}v.png`"
+                          contain
+                          max-width="28"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-left: 9px;" colspan="4">
+                      <span v-if="hand.renege">
+                        {{ nameOf(hand.renege) }} <strong>reneged</strong>
+                      </span>
+                      <span v-else>
+                        {{ nameOf(hand.high[0]) }}
+                        <strong>{{ hand.made ? 'made the bid' : 'got set' }}</strong>
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </template>
+            </v-simple-table>
+          </v-tab-item>
+        </v-tabs-items>
+      </div>
     </v-card>
   </div>
 </template>
@@ -202,8 +207,7 @@ export default {
         { text: 'Tournament', value: 't' },
         { text: '', value: 'data-table-expand' }
       ],
-      expanded: [],
-      singleExpand: false
+      tab: undefined
     }
   },
   async fetch () {
@@ -217,6 +221,7 @@ export default {
   },
   watch: {
     async game () {
+      this.tab = 0
       const g = this.games[this.game]
       if (g && !g.review) {
         const url = `/api/tournaments/stats/game/${g.gid}`
