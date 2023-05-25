@@ -127,8 +127,8 @@ export default class TournamentPusher {
             .on('gameOver', ({t}) => this.updateAll(t))
             .on('tournamentOver', ({t}) => this.updateAll(t))
             .on('gameUpdate', (status) => this.ps.pushToAll('game', status))
-            .on('updated', (t) => this.updateAll(t))
 
+            .on('updated', () => this.refresh())
             .on('added', () => this.refresh())
             .on('reload', () => this.refresh())
             .on('dropped', () => this.refresh())
@@ -157,7 +157,11 @@ export default class TournamentPusher {
         const tourneys = Array.from(this.scheduler.tourneys.values())
             .filter((t) => t.state !== State.CANCELED)
         /** We only send the next 3 to keep the clutter down */
-        return _.sortBy(tourneys, 'utcStartTime').slice(0, 3);
+        const result = _.sortBy(tourneys, (t) => t.utcStartTime);
+        for (const t of result) {
+            debug(t.name, t.start_dt, t.utcStartTime);
+        }
+        return result.slice(0, 3);
     }
 
     /** A user just connected */

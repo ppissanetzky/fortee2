@@ -65,7 +65,8 @@ router.get('/', (req, res) => {
 });
 
 router.get('/today', (req, res) => {
-    const tournaments = Scheduler.tourneys().map((t) => toJson(t));
+    const tournaments = _.sortBy(Scheduler.tourneys(), 'utcStartTime')
+        .map((t) => toJson(t));
     res.json({tournaments});
 });
 

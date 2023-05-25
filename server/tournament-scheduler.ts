@@ -105,7 +105,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     private dump() {
         debug('Have', this.tourneys.size);
         for (const t of this.tourneys.values()) {
-            debug(t.id, t.name, t.startTime, t.recurring_source);
+            debug(t.id, t.name, t.startTime, t.recurring_source, t.utcStartTime);
         }
     }
 
