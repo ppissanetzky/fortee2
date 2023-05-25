@@ -154,7 +154,7 @@
             <v-icon>mdi-chart-bar</v-icon>
           </v-btn>
         </template>
-        <v-card tile>
+        <v-card tile class="pa-1">
           <v-list dense>
             <v-list-item-group color="#0049bd">
               <v-list-item @click="openUrl('/game-review')">
@@ -385,7 +385,7 @@
                       <v-expansion-panel-header class="body-1 px-0">
                         {{ t.count }} signed up
                         <span v-if="t.count < 8">
-                          - need {{ 8 - t.count }} more
+                          , need {{ 8 - t.count }} more
                         </span>
                       </v-expansion-panel-header>
                       <v-expansion-panel-content class="mx-0">
