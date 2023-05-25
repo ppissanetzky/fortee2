@@ -100,7 +100,7 @@
       <!-- <v-btn @click="screenShot">ss</v-btn> -->
       <v-spacer />
       <v-toolbar-title v-if="you.name" class="white--text">
-        <strong>Hi, {{ you.displayName || you.name }}</strong>
+        <strong>Hi, {{ myName }}</strong>
       </v-toolbar-title>
       <v-menu offset-y>
         <template #activator="{ on, attrs }">
@@ -217,7 +217,7 @@
           <v-card v-if="guest" tile class="pa-3 mb-3">
             <div class="d-flex flex-column">
               <p class="body-1">
-                <strong>Welcome to fortee2, {{ you.name }}!</strong>
+                <strong>Welcome to fortee2, {{ myName }}!</strong>
               </p>
               <p class="body-1">
                 Right now, you're a <strong>guest</strong>,
@@ -761,6 +761,9 @@ export default {
     }
   },
   computed: {
+    myName () {
+      return this.you.displayName || this.you.name
+    },
     otherUsers () {
       return this.users.filter(({ value }) => value !== this.you.id)
     },
@@ -890,9 +893,13 @@ export default {
       return t.signups.map(([s, p]) => `${s}${p ? ' & ' + p : ''}`)
     },
     partnerMismatch (t) {
-      if (t.open && t.choosePartner && !t.partner) {
+      if (t.open && t.choosePartner) {
+        const name = this.myName
+        if (t.signups.some(([s, p]) => s === name && p)) {
+          return
+        }
         // The first signup with me as a partner
-        const theirs = t.signups.find(([s, p]) => p === this.you.name)
+        const theirs = t.signups.find(([s, p]) => p === name)
         if (theirs) {
           // The name of the person that signed up with me
           return theirs[0]
@@ -991,21 +998,6 @@ export default {
     },
     openUrl (url) {
       window.open(url, '_blank')
-    },
-    partnerIn (t) {
-      const { positions } = t
-      if (positions && this.you.name) {
-        const i = positions.indexOf(this.you.name)
-        return positions[[2, 3, 0, 1][i]]
-      }
-    },
-    others (t) {
-      const { positions } = t
-      if (positions && this.you.name) {
-        const us = [this.you.name, this.partnerIn(t)]
-        return positions.filter(name => !us.includes(name))
-      }
-      return []
     },
     marks (game, team) {
       if (game.disq[team]) {
