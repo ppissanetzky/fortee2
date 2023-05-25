@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import _ from 'lodash';
+import { opendir, readFile } from 'node:fs/promises';
+import _, { add } from 'lodash';
 import express from 'express';
 import parseDuration from 'parse-duration';
 
@@ -10,6 +10,8 @@ import config from './config';
 import { SaveWithMetadata } from './core/save-game';
 import { getUnixTime } from 'date-fns';
 import Tournament from './tournament';
+import { makeDebug } from './utility';
+import ms from 'ms';
 
 const router = express.Router();
 
@@ -216,3 +218,44 @@ router.get('/game/:gid', async (req, res) => {
         save
     });
 });
+
+/** Back-fill the database with game files on disk */
+
+setTimeout(async () => {
+    const debug = makeDebug('games-bf');
+    debug('started');
+    let added = 0;
+    const existing = new Set<string>(db.all('SELECT fname FROM games', {})
+        .map(({fname}) => fname));
+    const dir = await opendir(config.FT2_SAVE_PATH);
+    for await (const dirent of dir) {
+        const { name } = dirent;
+        if (name.endsWith('.json')) {
+            if (existing.has(name)) {
+                continue;
+            }
+            debug('loading', name);
+            try {
+                const contents = await readFile(
+                    path.join(config.FT2_SAVE_PATH, name), 'utf-8');
+                const save = JSON.parse(contents) as SaveWithMetadata;
+                db.run(`
+                    INSERT INTO games
+                    VALUES (null, $name, $started, $players, $score, $tid)
+                    `,
+                    {
+                        name,
+                        started: getUnixTime(save.started),
+                        players: save.players.join(','),
+                        score: `${save.marks?.US}-${save.marks?.THEM}`,
+                        tid: save.tid ?? null
+                    });
+                added++;
+            }
+            catch (error) {
+                debug('failed to process', name, error);
+            }
+        }
+    }
+    debug('done, added', added);
+}, ms('5s'));
