@@ -153,9 +153,6 @@
                               <strong v-if="trick.winner === bone[0]">
                                 {{ trick.points }} {{ trick.points === 1 ? 'point' : 'points' }}
                               </strong>
-                              <strong v-else-if="hand.renege === bone[0]">
-                                reneged
-                              </strong>
                             </span>
                             <v-img
                               :src="`/${bone[1]}v.png`"
