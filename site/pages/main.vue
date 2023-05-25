@@ -516,6 +516,41 @@
               </div>
             </v-card>
           </div>
+          <v-card tile class="mb-3">
+            <div class="pa-0">
+              <v-sheet color="secondary" class="px-3 mb-1 overline white--text">
+                tournament schedule
+              </v-sheet>
+              <v-tabs
+                v-model="tab"
+                show-arrows
+                center-active
+              >
+                <v-tab v-for="t in today.filter(({ later }) => later)" :key="t.id">
+                  {{ t.startTime }}
+                </v-tab>
+              </v-tabs>
+              <v-tabs-items v-model="tab">
+                <v-tab-item v-for="t in today.filter(({ later }) => later)" :key="t.id" class="pa-3">
+                  <p class="mt-2">
+                    <strong>{{ t.name }}</strong> opens for signup at <strong>{{ t.openTime }}</strong>
+                  </p>
+                  <v-menu offset-x>
+                    <template #activator="{ on, attrs }">
+                      <v-btn outlined small color="secondary" v-bind="attrs" v-on="on">
+                        rules
+                        <v-icon x-small right class="ma-0">
+                          mdi-chevron-right
+                        </v-icon>
+                      </v-btn>
+                    </template>
+                    <human-rules v-model="t.fullRules" />
+                  </v-menu>
+                </v-tab-item>
+              </v-tabs-items>
+            </div>
+          </v-card>
+
           <!-- ************************************************************* -->
           <!-- DONATION MESSAGE -->
           <!-- ************************************************************* -->
@@ -770,7 +805,8 @@ export default {
       reconnectS: 1,
       refreshDialog: false,
       showDonation: Math.random() < 0.50,
-      testing: true
+      testing: true,
+      tab: undefined
     }
   },
   async fetch () {
@@ -1174,7 +1210,7 @@ export default {
       window.location.reload()
     },
     sortedTs () {
-      return this.today.filter(({ canceled }) => !canceled).map((t) => {
+      return this.today.filter(({ canceled, later }) => !canceled && !later).map((t) => {
         // Whether the user is in the tourney.
         // When the tourney is playing, true if the user signed up and didn't
         // get dropped. Otherwise, true if the user signed up

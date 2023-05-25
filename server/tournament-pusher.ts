@@ -156,12 +156,7 @@ export default class TournamentPusher {
     private nextTourneys(): Tournament[] {
         const tourneys = Array.from(this.scheduler.tourneys.values())
             .filter((t) => t.state !== State.CANCELED)
-        /** We only send the next 3 to keep the clutter down */
-        const result = _.sortBy(tourneys, (t) => t.utcStartTime);
-        for (const t of result) {
-            debug(t.name, t.start_dt, t.utcStartTime);
-        }
-        return result.slice(0, 3);
+        return _.sortBy(tourneys, (t) => t.utcStartTime);
     }
 
     /** A user just connected */
