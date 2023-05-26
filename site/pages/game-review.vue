@@ -15,7 +15,7 @@
     </v-toolbar>
     <v-sheet class="d-flex flex-column pt-3" max-width="1000">
       <div class="px-3">
-        <p>To search for a game, enter the date and part of any player's name. Once you find the game, select it to review it.</p>
+        <p>To search for a game, enter the date and part of any player's name</p>
       </div>
       <v-toolbar>
         <v-menu
@@ -80,7 +80,15 @@
         </v-btn>
       </v-toolbar>
     </v-sheet>
-    <v-sheet class="pt-3" max-width="1000">
+    <div class="mx-4 mt-3 caption">
+      <p v-if="games.length === 0">
+        Nothing found
+      </p>
+      <p v-else>
+        Found {{ games.length }}
+      </p>
+    </div>
+    <v-sheet class="overflow-y-auto" max-width="1000" max-height="300">
       <v-list dense>
         <v-list-item-group
           v-model="game"
