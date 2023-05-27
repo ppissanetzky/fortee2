@@ -67,7 +67,7 @@ export default function saveGame(game: Game): Save {
             index, _.sortBy(Bone.toList(bones)).reverse(),
         ]),
         bids: array(hand.first_bidder).map((index) => [
-            index, hand.bids[index].toString(),
+            index, hand.bids[index]?.toString() || '',
         ]),
         high: [hand.high_bidder, hand.high_bid.toString()],
         trump: expected(hand.trump).toString(),
@@ -75,7 +75,7 @@ export default function saveGame(game: Game): Save {
             bones: array(trick.trick_leader)
                 /** In Nello, there will be a hole in the trick */
                 .filter((index) => trick.trick_bones[index])
-                .map((index) => [index, trick.trick_bones[index].toString()]),
+                .map((index) => [index, trick.trick_bones[index]?.toString()]),
             winner: trick.trick_winner,
             points: trick.trick_points
         })),

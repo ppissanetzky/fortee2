@@ -470,14 +470,18 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
             }
         }
         finally {
-            this.saveGame({
-                ...saveGame(expected(this.game)),
-                bots: this.players.filter(({human}) => !human).map(({name}) => name),
-                started,
-                ended: Date.now(),
-                chat: this.chat,
-                tid: this.t?.id
-            });
+            try {
+                this.saveGame({
+                    ...saveGame(expected(this.game)),
+                    bots: this.players.filter(({human}) => !human).map(({name}) => name),
+                    started,
+                    ended: Date.now(),
+                    chat: this.chat,
+                    tid: this.t?.id
+                });
+            } catch (error) {
+                this.debug('Failed to save game', error);
+            }
             this.state = State.OVER;
             this.players = [];
             this.game = undefined;
