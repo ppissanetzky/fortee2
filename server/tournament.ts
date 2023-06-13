@@ -69,13 +69,10 @@ export default class Tournament implements Readonly<TournamentRow> {
 
     #signups?: Signups;
 
-    public readonly utcStartTime: number;
-
     public driver?: TournamenDriver;
 
     constructor(row: TournamentRow) {
         this.row = row;
-        this.utcStartTime = TexasTime.toUTC(this.row.start_dt);
     }
 
     toJSON() {
@@ -107,6 +104,10 @@ export default class Tournament implements Readonly<TournamentRow> {
     get winners(): string { return this.row.winners; }
     get recurring_source(): number { return this.row.recurring_source; }
     get host(): string | null { return this.row.host; }
+
+    get utcStartTime(): number {
+        return TexasTime.toUTC(this.row.start_dt);
+    }
 
     get state(): State {
         if (this.finished) {
