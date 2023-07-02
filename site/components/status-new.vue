@@ -21,7 +21,7 @@
                 v-if="thinking"
                 indeterminate
                 size="40"
-                :color="value.connected? '#0049bd' : '#ff3600'"
+                :color="value.connected? '#0049bd33' : '#ff360033'"
               />
               <div v-else-if="value.bid && !value.trump">
                 <h2 class="black-text">
