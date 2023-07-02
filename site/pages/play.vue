@@ -20,14 +20,14 @@
             <div v-if="bidWinner">
               <div v-if="teamFor(bidWinner) === 'US'">
                 <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-                <span v-if="trump[bidWinner]" class="subtitle-1"> on <strong>{{ trump[bidWinner] }}</strong></span>
+                <span v-if="trump" class="subtitle-1"> on <strong>{{ trump }}</strong></span>
               </div>
               <v-sheet v-else width="0" height="28" />
             </div>
             <div v-if="bidWinner">
               <div v-if="teamFor(bidWinner) === 'THEM'">
                 <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-                <span v-if="trump[bidWinner]" class="subtitle-1"> on <strong>{{ trump[bidWinner] }}</strong></span>
+                <span v-if="trump" class="subtitle-1"> on <strong>{{ trump }}</strong></span>
               </div>
               <v-sheet v-else width="0" height="28" />
             </div>
@@ -385,7 +385,7 @@ export default {
       bids: {},
       bidWinner: undefined,
       waitingForTrump: undefined,
-      trump: {},
+      trump: undefined,
       waitingForPlay: undefined,
       plays: {},
       trickWinner: undefined,
@@ -610,7 +610,7 @@ export default {
           this.US.points = undefined
           this.THEM.points = undefined
           this.bids = {}
-          this.trump = {}
+          this.trump = undefined
           this.bidWinner = undefined
           this.pile = { US: [], THEM: [] }
           this.send('readyToStartHand', null, ack)
@@ -668,14 +668,14 @@ export default {
             this.waitingForTrump = this.youAre
             this.pointTo = [this.youAre]
             const trump = await this.prompt('Call trumps', message.possible)
-            this.trump = { [this.youAre]: trump }
+            this.trump = trump
             this.send('callTrump', { trump: `#trump:${trump}` }, ack)
           }
           break
 
         case 'trumpSubmitted':
           this.waitingForTrump = undefined
-          this.trump = { [message.from]: message.trump }
+          this.trump = message.trump
           this.showTitle(`Trumps are ${message.trump}`)
           this.pointTo = [message.from]
           break
@@ -817,7 +817,7 @@ export default {
         waitingForBid: this.waitingForBid === name,
         bid: this.bids[name],
         waitingForTrump: this.waitingForTrump === name,
-        trump: this.trump[name],
+        trump: this.trump,
         waitingForPlay: this.waitingForPlay === name,
         play: this.plays[name],
         trickWinner: this.trickWinner === name,
