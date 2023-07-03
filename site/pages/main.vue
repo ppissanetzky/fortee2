@@ -157,6 +157,11 @@
         <v-card tile class="pa-1">
           <v-list dense>
             <v-list-item-group color="#0049bd">
+              <v-list-item @click="openUrl('/stats')">
+                <v-list-item-content>
+                  Stats
+                </v-list-item-content>
+              </v-list-item>
               <v-list-item @click="openUrl('/game-review')">
                 <v-list-item-content>
                   Game Review

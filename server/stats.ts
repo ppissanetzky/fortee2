@@ -2,6 +2,7 @@ import { opendir, readFile } from 'node:fs/promises';
 import _ from 'lodash';
 import express from 'express';
 import parseDuration from 'parse-duration';
+import ms from 'ms';
 
 import { Database } from './db';
 import { database as tdb } from './tournament-db';
@@ -10,7 +11,7 @@ import config from './config';
 import { SaveWithMetadata } from './core/save-game';
 import { getUnixTime } from 'date-fns';
 import { makeDebug } from './utility';
-import ms from 'ms';
+import { getPublicStats, getPublicStatsList } from './public-stats';
 
 const router = express.Router();
 
@@ -147,21 +148,19 @@ router.get('/read/:type', (req, res) => {
     });
 });
 
-/** Returns a collection of stat tables that are public */
+/** Returns a list of stats that are public */
 
-router.get('/public', (req, res) => {
-    /** Tournament winner history */
-    // const winners = tdb.all(
-    //     `
-    //     SELECT * FROM tournaments
-    //     WHERE
-    //         recurring = 0 AND finished = 1
-    //         AND winners IS NOT NULL AND winners != ''
-    //     ORDER BY
-    //         date(start_dt) DESC
-    //     `
-    // )
-    res.sendStatus(404);
+router.get('/public/list', (req, res) => {
+    res.json(getPublicStatsList());
+});
+
+router.get('/public/:id', (req, res) => {
+    const { params: { id }, query: { s } } = req;
+    const result = getPublicStats(id, s);
+    if (!result) {
+        return res.sendStatus(404);
+    }
+    res.json(result);
 });
 
 router.get('/game/search', async (req, res) => {
