@@ -38,19 +38,22 @@ const STATS: PublicStat[] = [
         headers: [
             {text: 'Tournament', value: 'name'},
             {text: 'Date', value: 'start_dt'},
+            {text: 'Signups', value: 'signups', align: 'end'},
             {text: 'Winners', value: 'winners'}
         ],
         generate(since) {
             return db.all(
-            `
-                SELECT name, start_dt, winners
+                `
+                SELECT name, start_dt, count(distinct(signups.user)) AS signups, replace(winners, ',' , ' & ') AS winners
                 FROM tournaments
+                LEFT OUTER JOIN signups ON signups.id = tournaments.id
                 WHERE
                     started = 1 AND
                     finished = 1 AND
                     recurring = 0 AND
                     winners LIKE '%,%' AND
                     datetime(start_dt, 'utc') > datetime('now', $since)
+                GROUP BY name, start_dt, winners
                 ORDER BY
                     datetime(start_dt) DESC
             `,
