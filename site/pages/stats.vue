@@ -33,6 +33,7 @@
           label="Duration"
         />
       </v-toolbar>
+      <span class="mx-7"><i>{{ statDesc }}</i></span>
       <div>
         <v-sheet>
           <v-data-table
@@ -50,6 +51,7 @@ export default {
     return {
       you: {},
       statType: undefined,
+      statDesc: undefined,
       statList: [],
       statSince: '1 week',
       stats: [],
@@ -75,13 +77,14 @@ export default {
         return
       }
       const url = `/api/tournaments/stats/public/${this.statType}`
-      const { headers, rows } = await this.$axios.$get(url, {
+      const { headers, desc, rows } = await this.$axios.$get(url, {
         params: {
           s: this.statSince
         }
       })
       this.statsHeaders = headers
       this.stats = rows
+      this.statDesc = desc
     }
   }
 }

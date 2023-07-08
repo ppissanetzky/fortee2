@@ -27,6 +27,7 @@ export interface PublicStatHeader {
 export interface PublicStat {
     id: string;
     name: string;
+    desc?: string;
     headers: PublicStatHeader[];
     generate(since: string): any[];
 }
@@ -59,6 +60,32 @@ const STATS: PublicStat[] = [
             `,
             {since});
         }
+    },
+    {
+        id: 'tsc',
+        name: 'Tournament signup count',
+        desc: 'Includes only tournaments with at least one signup',
+        headers: [
+            {text: 'Tournament', value: 'name'},
+            {text: 'Date', value: 'start_dt'},
+            {text: 'Signups', value: 'signups', align: 'end'}
+        ],
+        generate(since) {
+            return db.all(
+                `
+                SELECT name, start_dt, count(distinct(signups.user)) AS signups
+                FROM tournaments
+                LEFT OUTER JOIN signups ON signups.id = tournaments.id
+                WHERE
+                    recurring = 0 AND
+                    datetime(start_dt, 'utc') > datetime('now', $since)
+                GROUP BY name, start_dt
+                HAVING signups > 0
+                ORDER BY
+                    datetime(start_dt) DESC
+            `,
+            {since});
+        }
     }
 ];
 
@@ -73,6 +100,6 @@ export function getPublicStats(id: string, duration: any) {
     }
     const since = durationToModifier(duration);
     const rows = stat.generate(since);
-    const { headers } = stat;
-    return {headers, rows};
+    const { headers, desc } = stat;
+    return {headers, desc, rows};
 }
