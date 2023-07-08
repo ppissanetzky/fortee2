@@ -123,6 +123,14 @@ function read(type: StatType, stat: Stat, sinceMs = 0) {
     return rows;
 }
 
+export function readStat(type: StatType, sinceMs: number) {
+    const stat = STATS[type];
+    if (!type) {
+        return;
+    }
+    return read(type, stat, sinceMs);
+}
+
 router.get('/list', (req, res) => {
     res.json(Array.from(Object.entries(STATS)).map(([key, stat]) => ({
         value: key,

@@ -1,21 +1,23 @@
 import _ from 'lodash';
 import parseDuration from 'parse-duration';
+import ms from 'ms';
 
 import * as db from './tournament-db';
+import { readStat } from './stats';
 
 /**
  * Converts a duration string from parse-duration to a SQLite modifier
  * @see https://github.com/jkroso/parse-duration#readme
 */
 
-function durationToModifier(duration: any): string {
+function durationToModifier(duration: any): [string, number] {
     if (duration && _.isString(duration)) {
-        const ms = parseDuration(duration);
-        if (ms && _.isSafeInteger(ms)) {
-            return `-${Math.floor(Math.abs(ms) / 1000)} seconds`;
+        const m = parseDuration(duration);
+        if (m && _.isSafeInteger(m)) {
+            return [`-${Math.floor(Math.abs(m) / 1000)} seconds`, Math.abs(m)];
         }
     }
-    return '-7 days';
+    return ['-7 days', ms('7d')];
 }
 
 export interface PublicStatHeader {
@@ -29,7 +31,7 @@ export interface PublicStat {
     name: string;
     desc?: string;
     headers: PublicStatHeader[];
-    generate(since: string): any[];
+    generate(since: string, m: number): any[];
 }
 
 const STATS: PublicStat[] = [
@@ -86,6 +88,21 @@ const STATS: PublicStat[] = [
             `,
             {since});
         }
+    },
+    {
+        id: 'uw',
+        name: 'Tournament wins',
+        headers: [
+            {text: 'Name', value: 'name'},
+            {text: 'Wins', value: 'value'},
+        ],
+        generate(since, m) {
+            const rows = readStat('t-win', m);
+            if (!rows) {
+                return [];
+            }
+            return _.sortBy(rows, 'value').reverse();
+        }
     }
 ];
 
@@ -98,8 +115,8 @@ export function getPublicStats(id: string, duration: any) {
     if (!stat) {
         return;
     }
-    const since = durationToModifier(duration);
-    const rows = stat.generate(since);
+    const [since, m] = durationToModifier(duration);
+    const rows = stat.generate(since, m);
     const { headers, desc } = stat;
     return {headers, desc, rows};
 }
