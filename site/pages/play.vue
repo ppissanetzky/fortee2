@@ -511,6 +511,9 @@ export default {
               case 'game-error':
                 this.showTitle('There was an error with the game')
                 break
+              case 'new-connection':
+                this.showTitle('You connected from another tab')
+                break
             }
           } else {
             setTimeout(() => {

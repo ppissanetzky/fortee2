@@ -38,7 +38,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.connected.has(userId);
     }
 
-    private static connected = new Set<string>();
+    private static connected = new Map<string, Socket>();
 
     static upgrade(watching: boolean) {
         return async (req: Request, res: Response, next: NextFunction) => {
@@ -55,27 +55,30 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(400);
             }
 
-            if (!watching) {
-                if (this.connected.has(user.id)) {
-                    debug(`user %j already connected`, user);
-                    return res.sendStatus(403);
-                }
-            }
-
             if (!GameRoom.rooms.has(gameRoomToken)) {
                 debug('invalid room', gameRoomToken);
                 return res.sendStatus(404);
             }
 
+            if (!watching) {
+                const existing = this.connected.get(user.id);
+                if (existing) {
+                    debug(`user %j already connected : disconnecting old connection`, user);
+                    existing.close('new-connection');
+                    const reason = await existing.gone;
+                    debug(`closed %j with %s`, user, reason);
+                }
+            }
+
             try {
                 const [ws] = await WsServer.get().upgrade(req);
-                if (!watching) {
-                    this.connected.add(user.id);
-                    ws.once('close', () => this.connected.delete(user.id));
-                }
                 /** Create a socket for it */
                 const type = watching ? SocketType.WATCHER : SocketType.PLAYER;
-                new Socket(type, user, ws, gameRoomToken);
+                const socket = new Socket(type, user, ws, gameRoomToken);
+                if (!watching) {
+                    this.connected.set(user.id, socket);
+                    socket.gone.then(() => this.connected.delete(user.id));
+                }
             }
             catch (error) {
                 next(error);
