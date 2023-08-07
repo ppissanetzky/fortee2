@@ -512,6 +512,7 @@ export default {
                 this.showTitle('There was an error with the game')
                 break
               case 'new-connection':
+                this.showSnack('You connected from another tab, this one will not work', Infinity)
                 this.showTitle('You connected from another tab')
                 break
             }
