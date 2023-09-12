@@ -110,8 +110,10 @@ export function validateTournament(t: Record<string, any>): Tournament {
 
     /** It is a new tournament */
     if (!t.id) {
-        fif(TexasTime.minutesUntil(open) <= 0,
-            'The tournament should open at least one minute from now');
+        if (!t.recurring) {
+            fif(TexasTime.minutesUntil(open) <= 0,
+                'The tournament should open at least one minute from now');
+        }
         fif(t.recurring_source !== 0, 'It should not have a recurring source');
     }
 
