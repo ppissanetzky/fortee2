@@ -38,6 +38,8 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.connected.has(userId);
     }
 
+    private static ID = 1;
+
     private static connected = new Map<string, Socket>();
 
     static upgrade(watching: boolean) {
@@ -47,7 +49,9 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 return res.sendStatus(401);
             }
 
-            const debug = makeDebug('socket').extend(user.name);
+            const id = String(Socket.ID++);
+
+            const debug = makeDebug('socket').extend(id).extend(user.name);
 
             const gameRoomToken = token;
             if (!gameRoomToken) {
@@ -74,7 +78,7 @@ export default class Socket extends Dispatcher<IncomingMessages> {
                 const [ws] = await WsServer.get().upgrade(req);
                 /** Create a socket for it */
                 const type = watching ? SocketType.WATCHER : SocketType.PLAYER;
-                const socket = new Socket(type, user, ws, gameRoomToken);
+                const socket = new Socket(id, type, user, ws, gameRoomToken);
                 if (!watching) {
                     this.connected.set(user.id, socket);
                     socket.gone.then(() => this.connected.delete(user.id));
@@ -128,10 +132,11 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         return this.user.name;
     }
 
-    private constructor(type: SocketType, user: User, ws: WebSocket, gameRoomToken: string) {
+    private constructor(id: string, type: SocketType, user: User, ws: WebSocket, gameRoomToken: string) {
         super();
         this.type = type;
         this.user = user;
+        this.debug = this.debug.extend(id);
         if (type === SocketType.WATCHER) {
             this.debug = this.debug.extend('watching');
         }
@@ -152,6 +157,12 @@ export default class Socket extends Dispatcher<IncomingMessages> {
         if (!room) {
             this.debug(`room ${gameRoomToken} not found`);
             this.close('bad-room');
+            return;
+        }
+
+        if (type === SocketType.PLAYER && room.names.has(user.name)) {
+            this.debug(`already in room ${room.id}`);
+            this.close('new-connection');
             return;
         }
 
