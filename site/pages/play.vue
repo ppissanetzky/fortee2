@@ -410,6 +410,14 @@ export default {
     }
   },
   fetch () {
+    /** Preload all the bone images */
+    for (let i = 0; i < 7; i++) {
+      for (let j = i; j < 7; j++) {
+        const [a, b] = [i, j].sort().reverse()
+        new Image().src = `${a}.${b}.png`
+        new Image().src = `${a}.${b}v.png`
+      }
+    }
     const { watch, join } = this.$route.query
     if (join) {
       this.join = join
