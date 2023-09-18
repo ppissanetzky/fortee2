@@ -533,9 +533,18 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         if (socket.isWatcher) {
             return this.addWatcher(socket);
         }
-        assert(!this.names.has(name), `User "${name}" exists`);
-        assert(!this.full, 'Game room is full');
-        assert(this.invited.has(name), `User "${name}" has not been invited`);
+        if (!this.invited.has(name)) {
+            this.debug(`${name} has not been invited`);
+            return socket.close('game-error');
+        }
+        if (this.sockets.has(name)) {
+            this.debug(`${name} is already in the room`);
+            return socket.close('new-connection');
+        }
+        if (this.full) {
+            this.debug('room is full');
+            return socket.close('game-error');
+        }
         this.debug('joined', name);
         this.sockets.set(name, socket);
         this.emit('userJoined', userId);

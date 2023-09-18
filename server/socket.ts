@@ -160,12 +160,6 @@ export default class Socket extends Dispatcher<IncomingMessages> {
             return;
         }
 
-        if (type === SocketType.PLAYER && room.names.has(user.name)) {
-            this.debug(`already in room ${room.id}`);
-            this.close('new-connection');
-            return;
-        }
-
         ws.on('error', (error) => this.debug('error', error));
 
         ws.on('message', (data) => {
