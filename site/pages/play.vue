@@ -204,8 +204,8 @@
             </v-card>
             <v-sheet
               v-else-if="choiceTitle && choices && choices.length > 1 && !watching && !paused"
-              class="d-flex mt-3 align-self-center"
-              max-width="140"
+              class="d-flex mt-6 align-self-center"
+              max-width="200"
             >
               <v-select
                 v-model="choice"
@@ -213,9 +213,17 @@
                 :label="choiceTitle"
                 hide-details
                 dense
-                outlined
-                max-width="140"
+                max-width="160"
               />
+              <v-btn
+                text
+                class="ml-3"
+                color="primary"
+                :disabled="!choice"
+                @click="choiceMade"
+              >
+                ok
+              </v-btn>
             </v-sheet>
           </v-sheet>
         </div>
@@ -458,14 +466,6 @@ export default {
       return '#00000000'
     }
   },
-  watch: {
-    choice (value) {
-      if (this.choose && !this.watching) {
-        this.choose(value)
-      }
-    }
-  },
-  mounted () {},
   methods: {
     connect () {
       const version = encodeURIComponent(this.$config.version)
@@ -540,6 +540,11 @@ export default {
         this.showTitle('There was a problem connecting')
         this.paused = true
         this.over = true
+      }
+    },
+    choiceMade () {
+      if (this.choose && !this.watching) {
+        this.choose(this.choice)
       }
     },
     send (type, message, ack) {
