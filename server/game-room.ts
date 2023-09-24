@@ -492,17 +492,26 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                 this.debug('game over, removing %s for %j', this.token, this.table);
             }
 
+            /** Will remove all listeners */
+            this.emit('closed', undefined);
+
             /**
-             * Close all the sockets now. This will help with players leaving
-             * tabs open and being unable to get into the next game.
+             * Close all the sockets now after a short delay if there are any
+             * left, so they can say 'gg' to everyone.
              */
 
-            this.all((socket) => socket.close(reason));
-            this.sockets.clear();
-
-            /** Will remove all listeners */
-
-            this.emit('closed', undefined);
+            if (this.sockets.size > 0) {
+                const delay = '30s';
+                this.sendChat('', `The game is over, chat will close in ${delay}`);
+                setTimeout(() => {
+                    this.sendChat('', 'Bye...');
+                }, ms(delay) - ms('1s'));
+                setTimeout(() => {
+                    this.debug('closing sockets');
+                    this.all((socket) => socket.close(reason));
+                    this.sockets.clear();
+                }, ms(delay));
+            }
         }
     }
 

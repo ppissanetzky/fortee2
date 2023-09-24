@@ -259,6 +259,7 @@
               append-icon="mdi-send"
               class="d-flex mt-1 body-2"
               style="background-color: white;border-radius: 0;"
+              :disabled="!ws"
               @click:append="chat"
             />
           </v-form>
@@ -764,7 +765,7 @@ export default {
               .map(({ name }) => name)
             this.pointTo = players
             this.showTitle(`${players.join(' and ')} won the game!`)
-            this.ws = undefined
+            this.showSnack('The game is over, you can close this tab', Infinity)
             this.paused = true
             this.over = true
             this.connected = []
