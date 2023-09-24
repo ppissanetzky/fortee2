@@ -64,6 +64,10 @@ export default class Chatter {
         });
     }
 
+    public systemMessage(text: string) {
+        this.chat(text, undefined, '');
+    }
+
     private chat(name: string, title: string | undefined, text: string) {
         const message = {
             t: Date.now(),

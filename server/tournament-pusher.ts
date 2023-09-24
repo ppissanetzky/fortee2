@@ -119,7 +119,10 @@ export default class TournamentPusher {
         this.scheduler
             .on('registered', ({t}) => this.updateAll(t))
             .on('unregistered', ({t}) => this.updateAll(t))
-            .on('signupOpen', (t) => this.updateAll(t))
+            .on('signupOpen', (t) => {
+                this.updateAll(t);
+                this.chatter.systemMessage(`The ${t.name} tournament is now open`);
+            })
             .on('signupClosed', (t) => this.updateAll(t))
             .on('canceled', (t) => this.updateAll(t))
             .on('failed', (t) => this.updateAll(t))
