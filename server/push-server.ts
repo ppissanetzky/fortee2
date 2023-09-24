@@ -210,7 +210,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     public pushToAll<T extends Key>(type: T, message: PushMessages[T]) {
         const payload = JSON.stringify({ type, message });
         for (const {user: {id, name}, sockets} of this.connections.values()) {
-            this.debug('=>', id, name, type);
+            // this.debug('=>', id, name, type);
             for (const ws of sockets.values()) {
                 ws.send(payload);
             }
@@ -224,7 +224,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         const list = ids.map((id) => this.connections.get(id));
         for (const c of list) {
             if (c) {
-                this.debug('=>', c.user.id, c.user.name, type);
+                // this.debug('=>', c.user.id, c.user.name, type);
                 for (const ws of c.sockets.values()) {
                     ws.send(payload);
                 }
@@ -242,7 +242,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         for (const {user: {id, name}, sockets} of this.connections.values()) {
             const message = cb(id);
             if (message) {
-                this.debug('=>', id, name, type);
+                // this.debug('=>', id, name, type);
                 const payload = JSON.stringify({type, message});
                 for (const ws of sockets.values()) {
                     ws.send(payload);
