@@ -1,5 +1,98 @@
 <template>
   <v-container fluid>
+
+    <!-- ************************************************************* -->
+    <!-- DIALOG TO REFRESH ON VERSION MISMATCH -->
+    <!-- ************************************************************* -->
+    <v-dialog v-model="refreshDialog" persistent max-width="300">
+      <v-card>
+        <v-card-title>
+          <p class="body-1">
+            There is a new version available!
+          </p>
+        </v-card-title>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn outlined small @click="reload">
+            refresh
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ************************************************************* -->
+    <!-- THE DIALOG TO START A GAME -->
+    <!-- ************************************************************* -->
+
+    <v-dialog v-model="dialog" max-width="800">
+      <v-card>
+        <v-toolbar flat color="#8fa5b7">
+          <v-toolbar-title class="white--text pl-1">
+            <strong>Start a game</strong>
+          </v-toolbar-title>
+          <v-spacer />
+          <v-btn small icon color="white" class="mr-1" @click="dialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        <div class="px-2">
+          <div class="pa-3">
+            Choose other players to invite, or leave them blank to play with bots
+          </div>
+          <v-card-actions>
+            <v-select
+              v-model="left"
+              dense
+              hide-details
+              outlined
+              label="left"
+              :items="otherUsers"
+              clearable
+              class="mr-2"
+            />
+            <v-select
+              v-model="partner"
+              dense
+              hide-details
+              outlined
+              label="partner"
+              :items="otherUsers"
+              clearable
+              class="mr-2"
+            />
+            <v-select
+              v-model="right"
+              dense
+              hide-details
+              outlined
+              label="right"
+              :items="otherUsers"
+              clearable
+            />
+          </v-card-actions>
+          <Rules v-model="rules" />
+          <v-card-actions class="py-6">
+            <div class="red--text">
+              <strong>{{ error }}</strong>
+            </div>
+            <v-spacer />
+            <v-btn
+              outlined
+              color="#0049bd"
+              :disabled="!!error"
+              :loading="loading"
+              @click="play"
+            >
+              play
+            </v-btn>
+          </v-card-actions>
+        </div>
+      </v-card>
+    </v-dialog>
+
+    <!-- ************************************************************* -->
+    <!-- TOOLBAR -->
+    <!-- ************************************************************* -->
     <v-row>
       <v-col>
         <v-toolbar flat color="#0049bd" min-width="768">
@@ -12,6 +105,147 @@
           <v-toolbar-title v-if="you.name" class="white--text">
             <strong>Hi, {{ myName }}</strong>
           </v-toolbar-title>
+          <!-- ************************************************************* -->
+          <!-- ACCOUNT MENU -->
+          <!-- ************************************************************* -->
+          <v-menu offset-y>
+            <template #activator="{ on, attrs }">
+              <v-btn icon color="white" v-bind="attrs" v-on="on">
+                <v-icon>mdi-account</v-icon>
+              </v-btn>
+            </template>
+            <v-card tile>
+              <v-card-text>
+                <!-- <v-img :src="you.prefs?.picture" contain aspect-ratio="1" max-width="96" /> -->
+                <div>
+                  You are signed in as <strong>{{ you.name }}</strong><br>
+                  <span class="blue--text">{{ you.email }}</span><br>
+                  <span>You are a <strong>{{ you.type }}</strong> user</span><br>
+                  <div v-if="you.roles?.length" class="mt-3">
+                    <v-chip v-if="you.roles?.includes('admin')" small label>
+                      admin
+                    </v-chip>
+                    <v-chip v-if="you.roles?.includes('td')" small label>
+                      TD
+                    </v-chip>
+                  </div>
+                </div>
+              </v-card-text>
+              <v-card-actions>
+                <v-btn text @click="signOut">
+                  sign out
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-menu>
+        </v-toolbar>
+        <v-divider />
+        <!-- ************************************************************* -->
+        <!-- BOTTOM TOOLBAR -->
+        <!-- ************************************************************* -->
+        <v-toolbar flat dense color="#0049bd" min-width="768" class="white-text">
+          <!-- HOSTING A GAME (OR WITH BOTS) -->
+          <div v-if="table.status === 'hosting'" class="d-flex flex-row">
+            <span class="white--text mr-3">
+              You started a game {{ tableWith() }}
+            </span>
+            <v-btn small color="white" class="red--text" @click="decline">
+              close
+              <v-icon right>
+                mdi-close-circle-outline
+              </v-icon>
+            </v-btn>
+          </div>
+
+          <!-- INVITED TO PLAY WITH OTHERS -->
+          <div v-else-if="table.status === 'invited'" class="d-flex flex-row">
+            <span class="white--text mr-3">
+              You have been <strong>invited</strong> to play a game {{ tableWith() }}
+            </span>
+            <v-btn small color="white" class="mr-3 green--text" @click="openUrl(table.url)">
+              play
+              <v-icon right>
+                mdi-play
+              </v-icon>
+            </v-btn>
+            <v-btn small color="white" class="red--text" @click="decline">
+              decline
+              <v-icon right>
+                mdi-cancel
+              </v-icon>
+            </v-btn>
+          </div>
+
+          <!-- START A GAME -->
+          <div v-else>
+            <v-btn small color="white" class="align-self-center" @click="dialog = true">
+              play
+              <v-icon right>
+                mdi-play
+              </v-icon>
+            </v-btn>
+          </div>
+
+          <!-- SPACER BEFORE BUTTONS ON THE RIGHT -->
+          <v-spacer />
+
+          <!-- STATS BUTTON -->
+          <v-btn small outlined color="white" class="mr-3" @click="openUrl('/stats')">
+            stats
+            <v-icon right>
+              mdi-chart-bar
+            </v-icon>
+          </v-btn>
+
+          <!-- GAME REVIEW BUTTON -->
+          <v-btn small outlined color="white" class="mr-3" @click="openUrl('/game-review')">
+            games
+            <v-icon right>
+              mdi-table-search
+            </v-icon>
+          </v-btn>
+
+          <!-- DONATE BUTTON -->
+          <v-menu v-if="!guest" offset-y>
+            <template #activator="{ on, attrs }">
+              <v-btn small outlined color="white" v-bind="attrs" v-on="on">
+                <v-icon small>
+                  mdi-hand-heart-outline
+                </v-icon>
+              </v-btn>
+            </template>
+            <!-- ************************************************************* -->
+            <!-- DONATION MESSAGE -->
+            <!-- ************************************************************* -->
+            <v-card tile max-width="240">
+              <v-sheet
+                flat
+                color="#c0d4e5"
+                height="30"
+                class="d-flex flex-row overline pa-0 py-1 pl-3 ma-0 align-center"
+              >
+                <span>thank you</span>
+              </v-sheet>
+              <div class="d-flex flex-column pa-3">
+                <p class="body-1">
+                  Although fortee2 is free to play, it costs <strong>$30 a month</strong> to keep it running.
+                  Consider <a href="https://www.paypal.com/donate/?business=HS465FN6SX8XG&no_recurring=0&item_name=fortee2.com+maintenance+costs.+&currency_code=USD" target="_blank">
+                    making a donation</a>
+                  to help cover the cost.
+                </p>
+              </div>
+            </v-card>
+          </v-menu>
+
+          <!-- OPEN TD PAGE BUTTON -->
+          <v-btn
+            v-if="you?.roles?.includes('td')"
+            icon
+            color="white"
+            @click="openUrl('/td')"
+          >
+            <v-icon>mdi-cog-outline</v-icon>
+          </v-btn>
         </v-toolbar>
       </v-col>
     </v-row>
@@ -85,7 +319,7 @@
           <!-- RIGHT -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
             <v-sheet color="white" class="d-flex flex-grow-1 flex-column overflow-y-auto pr-3" max-height="666">
-              <v-card v-for="t in today.slice(0, limit)" :key="t.id" tile class="mb-3 ma-1">
+              <v-card v-for="t in today.slice(0, limit)" :key="t.id" tile class="ma-1">
                 <v-sheet :color="tournamentColor(t)" class="d-flex flex-row white--text overline px-2 align-center">
                   <div>{{ t.startTime }}</div>
                   <v-divider color="white" vertical class="mx-2" />
@@ -327,7 +561,7 @@
                     <!-- ************************************************************* -->
                     <!-- LATER -->
                     <!-- ************************************************************* -->
-                    <div v-else-if="t.later" class="d-flex flex-column body-1">
+                    <div v-else class="d-flex flex-column body-1">
                       <p>
                         <strong>{{ t.name }}</strong>
                       </p>
@@ -803,29 +1037,8 @@ export default {
     },
     reload () {
       window.location.reload()
-    },
-    sortedTs () {
-      return this.today.filter(({ canceled, later }) => !canceled && !later).map((t) => {
-        // Whether the user is in the tourney.
-        // When the tourney is playing, true if the user signed up and didn't
-        // get dropped. Otherwise, true if the user signed up
-        const inIt = t.inTourney || t.signedUp
-
-        let order = Infinity
-
-        if (inIt && (t.playing || t.done || t.wts)) {
-          order = 0
-        } else if (t.open) {
-          order = 1
-        } else if (t.later) {
-          order = 2
-        } else {
-          order = 3
-        }
-
-        return { t, order }
-      }).sort((a, b) => a.order - b.order).map(({ t }) => t)
     }
+
     // async screenShot () {
     //   try {
     //     const canvas = document.createElement('canvas')
