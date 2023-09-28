@@ -257,24 +257,24 @@
             <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3" height="650">
               <div v-if="online('td').length" class="mb-2">
                 <h3>TDs</h3><v-divider class="mb-1" />
-                <div v-for="u in online('td')" :key="u.id">
+                <div v-for="u in online('td')" :key="u.id" class="text-no-wrap">
                   {{ u.text }}
                 </div>
               </div>
               <div v-if="online('standard').length" class="mb-2">
                 <h3>Members</h3><v-divider class="mb-1" />
-                <div v-for="u in online('standard')" :key="u.id">
+                <div v-for="u in online('standard')" :key="u.id" class="text-no-wrap">
                   {{ u.text }}
                 </div>
               </div>
               <div v-if="online('guest').length" class="mb-2">
                 <h3>Guests</h3><v-divider class="mb-1" />
-                <div v-for="u in online('guest')" :key="u.id">
+                <div v-for="u in online('guest')" :key="u.id" class="text-no-wrap">
                   {{ u.text }}
                 </div>
               </div>
             </v-sheet>
-            <span class="caption">
+            <span class="caption text-no-wrap">
               {{ users.length }} online
             </span>
           </v-sheet>
