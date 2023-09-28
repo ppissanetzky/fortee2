@@ -1,6 +1,5 @@
 <template>
   <v-container fluid>
-
     <!-- ************************************************************* -->
     <!-- DIALOG TO REFRESH ON VERSION MISMATCH -->
     <!-- ************************************************************* -->
@@ -321,15 +320,18 @@
             <v-sheet color="white" class="d-flex flex-grow-1 flex-column overflow-y-auto pr-3" max-height="666">
               <v-card v-for="t in today.slice(0, limit)" :key="t.id" tile class="ma-1">
                 <v-sheet :color="tournamentColor(t)" class="d-flex flex-row white--text overline px-2 align-center">
-                  <div>{{ t.startTime }}</div>
+                  <div class="text-no-wrap">
+                    {{ t.startTime }}
+                  </div>
                   <v-divider color="white" vertical class="mx-2" />
-                  <span v-if="t.open">open for {{ ticks[t.id]?.close }}</span>
-                  <span v-else-if="t.wts">starts in {{ ticks[t.id]?.start }}</span>
-                  <span v-else-if="t.playing">playing</span>
-                  <span v-else-if="t.canceled">canceled</span>
-                  <span v-else-if="t.done">finished</span>
-                  <span v-else>opens at {{ t.openTime }}</span>
-
+                  <div class="text-no-wrap">
+                    <span v-if="t.open">open for {{ ticks[t.id]?.close }}</span>
+                    <span v-else-if="t.wts">starts in {{ ticks[t.id]?.start }}</span>
+                    <span v-else-if="t.playing">playing</span>
+                    <span v-else-if="t.canceled">canceled</span>
+                    <span v-else-if="t.done">finished</span>
+                    <span v-else>opens at {{ t.openTime }}</span>
+                  </div>
                   <v-spacer />
                   <v-btn
                     v-if="t.playing"
@@ -476,7 +478,7 @@
                     <!-- PLAYING -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.playing" class="d-flex flex-column body-1">
-                      <span><strong>{{ t.name }}</strong></span>
+                      <p><strong>{{ t.name }}</strong></p>
                       <div v-if="!guest && t.isOn">
                         <div v-if="!t.signedUp" />
                         <p v-else-if="!t.inTourney">
@@ -535,7 +537,7 @@
                     <!-- FINISHED -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.done" class="d-flex flex-column body-1">
-                      <span><strong>{{ t.name }}</strong></span>
+                      <p><strong>{{ t.name }}</strong></p>
                       <p v-if="t.winners">
                         Congratulations to <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>!
                       </p>
