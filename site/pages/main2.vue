@@ -358,7 +358,7 @@
                     <!-- OPEN -->
                     <!-- ************************************************************* -->
                     <div v-if="t.open" class="d-flex flex-column body-1">
-                      <span><strong>{{ t.name }}</strong></span>
+                      <p><strong>{{ t.name }}</strong></p>
                       <p v-if="guest">
                         As a <strong>guest</strong>, you cannot sign up for tournaments
                       </p>
@@ -594,7 +594,7 @@ export default {
     return {
       you: {},
       today: [],
-      limit: 5,
+      limit: Infinity,
       users: [],
       table: {},
       messages: [],

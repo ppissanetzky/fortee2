@@ -6,16 +6,16 @@
     </div> -->
     <div class="d-flex flex-row body-1">
       <div class="d-flex flex-column mr-6">
-        <div v-for="r in list.yes" :key="r">
-          <v-icon color="green" class="mr-1">
+        <div v-for="r in list.yes" :key="r" class="text-no-wrap">
+          <v-icon small color="green" class="mr-1">
             mdi-check
           </v-icon>
           {{ r }}
         </div>
       </div>
       <div class="d-flex flex-column">
-        <div v-for="r in list.no" :key="r">
-          <v-icon color="red" class="mr-1">
+        <div v-for="r in list.no" :key="r" class="text-no-wrap">
+          <v-icon small color="red" class="mr-1">
             mdi-close
           </v-icon>
           {{ r }}

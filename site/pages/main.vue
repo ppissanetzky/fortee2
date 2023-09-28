@@ -97,6 +97,9 @@
       <span class="caption white--text ml-2 mb-1 align-self-end">
         <strong>{{ $config.version }}</strong>
       </span>
+      <v-btn small outlined color="white" class="ml-6" @click="$router.push('/main2')">
+        Try the new version
+      </v-btn>
       <!-- <v-btn @click="screenShot">ss</v-btn> -->
       <v-spacer />
       <v-toolbar-title v-if="you.name" class="white--text">
