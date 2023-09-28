@@ -319,7 +319,7 @@
           <v-sheet color="white" class="d-flex fill-height flex-column">
             <v-sheet color="white" class="d-flex flex-grow-1 flex-column overflow-y-auto pr-3" max-height="666">
               <v-card v-for="t in today.slice(0, limit)" :key="t.id" tile class="ma-1">
-                <v-sheet :color="tournamentColor(t)" class="d-flex flex-row white--text overline px-2 align-center">
+                <v-sheet :color="tournamentColor(t)" class="d-flex flex-row white--text overline px-2 align-center text-no-wrap">
                   <div class="text-no-wrap">
                     {{ t.startTime }}
                   </div>
