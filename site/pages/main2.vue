@@ -254,7 +254,7 @@
         <v-sheet height="666" min-width="768" class="d-flex flex-row">
           <!-- LEFT SIDE -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
-            <v-sheet color="white" class="d-flex flex-grow-1 flex-column">
+            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3" height="650">
               <div v-if="online('td').length" class="mb-2">
                 <h3>TDs</h3><v-divider class="mb-1" />
                 <div v-for="u in online('td')" :key="u.id">
@@ -358,9 +358,7 @@
                     <!-- OPEN -->
                     <!-- ************************************************************* -->
                     <div v-if="t.open" class="d-flex flex-column body-1">
-                      <p>
-                        <strong>{{ t.name }}</strong>
-                      </p>
+                      <span><strong>{{ t.name }}</strong></span>
                       <p v-if="guest">
                         As a <strong>guest</strong>, you cannot sign up for tournaments
                       </p>
@@ -465,16 +463,11 @@
                     <!-- WAITING TO START -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.wts" class="d-flex flex-column body-1">
-                      <p>
-                        <strong>{{ t.name }}</strong>
-                      </p>
+                      <span><strong>{{ t.name }}</strong></span>
                       <div v-if="!guest">
                         <p v-if="t.signedUp">
                           You <strong>signed up</strong>
                           - wait for your first game to start
-                        </p>
-                        <p v-else>
-                          You did not sign up
                         </p>
                       </div>
                     </div>
@@ -483,13 +476,9 @@
                     <!-- PLAYING -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.playing" class="d-flex flex-column body-1">
-                      <p>
-                        <strong>{{ t.name }}</strong>
-                      </p>
+                      <span><strong>{{ t.name }}</strong></span>
                       <div v-if="!guest && t.isOn">
-                        <p v-if="!t.signedUp">
-                          You did not sign up
-                        </p>
+                        <div v-if="!t.signedUp" />
                         <p v-else-if="!t.inTourney">
                           Unfortunately, <strong>you were dropped</strong>
                           because an odd number of people signed up
@@ -524,14 +513,13 @@
                       </div>
                       <!-- ROW OF TABLE-STATUS SQUARES -->
                       <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
-                        <span class="caption mb-1">Table status</span>
-                        <div class="d-flex flex-row">
+                        <div class="d-flex flex-row align-center">
+                          <span class="caption mr-3">Table status</span>
                           <v-sheet
                             v-for="g in tablesFor(t)"
                             :key="g.id"
                             width="32"
-                            height="20"
-                            class="mr-1 mb-1"
+                            class="mr-1 fill-height"
                             :color="gameColor(g)"
                             @click="g.room && !g.finished? openUrl(`/play?watch=${g.room.token}`) : undefined"
                           >
@@ -547,9 +535,7 @@
                     <!-- FINISHED -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.done" class="d-flex flex-column body-1">
-                      <p>
-                        <strong>{{ t.name }}</strong>
-                      </p>
+                      <span><strong>{{ t.name }}</strong></span>
                       <p v-if="t.winners">
                         Congratulations to <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>!
                       </p>
@@ -562,9 +548,7 @@
                     <!-- LATER -->
                     <!-- ************************************************************* -->
                     <div v-else class="d-flex flex-column body-1">
-                      <p>
-                        <strong>{{ t.name }}</strong>
-                      </p>
+                      <span><strong>{{ t.name }}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -796,7 +780,9 @@ export default {
       }
     },
     online (type) {
-      return this.users.filter(user => user.type === type)
+      return this.users
+        .filter(user => user.type === type)
+        .sort((a, b) => a.text.localeCompare(b.text))
     },
     async signUp (t, partnerName) {
       const { id } = t
