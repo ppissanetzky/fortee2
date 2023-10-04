@@ -192,13 +192,12 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     }
 
     private pushOnline(userId?: string) {
-        const message: Online[] =
-            _.sortBy(Array.from(this.connections.values())
-            .map(({user}) => ({
-                value: user.id,
-                text: user.name,
-                type: user.isTD ? 'td' : user.type
-            })), 'text');
+        const users: Online[] = Array.from(this.connections.values()).map(({user}) => ({
+            value: user.id,
+            text: user.name,
+            type: user.isTD ? 'td' : user.type
+        }));
+        const message = _.sortBy(users, ({text}) => text.toLowerCase());
         if (userId) {
             this.pushToOne(userId, 'online', message);
         }

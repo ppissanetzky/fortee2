@@ -784,7 +784,6 @@ export default {
     online (type) {
       return this.users
         .filter(user => user.type === type)
-        .sort((a, b) => a.text.localeCompare(b.text))
     },
     async signUp (t, partnerName) {
       const { id } = t
