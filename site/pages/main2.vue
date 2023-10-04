@@ -433,19 +433,22 @@
                           </v-btn>
                         </div>
                       </div>
-                      <p v-if="t.count === 0" class="mt-4">
+                      <p v-if="t.count === 0" class="mt-3 my-0">
                         No one signed up yet
                       </p>
                       <v-expansion-panels v-else flat>
                         <v-expansion-panel>
-                          <v-expansion-panel-header class="body-1 px-0">
-                            {{ t.count }} signed up
-                            <span v-if="t.count < 8">
-                              , need {{ 8 - t.count }} more
+                          <v-expansion-panel-header class="body-1 px-0 py-0">
+                            <span>
+                              <strong>{{ t.count }}</strong>
+                              signed up
+                              <span v-if="t.count < 8">
+                                - need <strong>{{ 8 - t.count }}</strong> more
+                              </span>
                             </span>
                           </v-expansion-panel-header>
                           <v-expansion-panel-content class="mx-0">
-                            <div class="mb-3">
+                            <v-sheet max-width="400">
                               <v-chip
                                 v-for="s in signupsFor(t).sort()"
                                 :key="s"
@@ -456,7 +459,7 @@
                               >
                                 <strong>{{ s }}</strong>
                               </v-chip>
-                            </div>
+                            </v-sheet>
                           </v-expansion-panel-content>
                         </v-expansion-panel>
                       </v-expansion-panels>
