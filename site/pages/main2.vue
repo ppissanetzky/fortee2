@@ -662,7 +662,7 @@ export default {
     },
     connect () {
       const version = encodeURIComponent(this.$config.version)
-      let url = `wss://${window.location.hostname}/api/tournaments/tws?v=${version}`
+      let url = `wss://${window.location.hostname}/api/tournaments/tws?v=${version}&from=main2`
       if (process.env.NUXT_ENV_DEV) {
         url = `ws://${window.location.hostname}:4004/api/tournaments/tws?v=${version}`
       }
