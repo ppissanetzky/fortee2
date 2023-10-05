@@ -519,7 +519,7 @@
                       <!-- ROW OF TABLE-STATUS SQUARES -->
                       <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
                         <div class="d-flex flex-row align-center">
-                          <span class="caption mr-3">Table status</span>
+                          <span class="mr-3">Tables</span>
                           <v-sheet
                             v-for="g in tablesFor(t)"
                             :key="g.id"
