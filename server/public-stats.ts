@@ -103,6 +103,31 @@ const STATS: PublicStat[] = [
             }
             return _.sortBy(rows, 'value').reverse();
         }
+    },
+    {
+        id: 'tsp',
+        name: 'Tournaments made',
+        headers: [
+            {text: 'Date', value: 'day'},
+            {text: 'Made', value: 'made', align: 'end'},
+            {text: 'Total', value: 'total', align: 'end'},
+            {text: 'Percent', value: 'percent', align: 'end'},
+        ],
+        generate(since, m) {
+            return db.all(
+                `
+                    SELECT
+                        date(start_dt) as day,
+                        total(tournaments.started) AS made,
+                        count(tournaments.id) as total,
+                        format('%6.2f', 100 * total(tournaments.started) / count(tournaments.id)) as percent
+                    FROM tournaments
+                    WHERE recurring = 0 AND
+                        date(start_dt, 'utc') > date('now', $since)
+                    GROUP BY 1 ORDER BY 1 DESC
+                `,
+                {since});
+        }
     }
 ];
 
