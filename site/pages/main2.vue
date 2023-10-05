@@ -253,7 +253,7 @@
         <v-sheet height="666" min-width="768" class="d-flex flex-row">
           <!-- LEFT SIDE -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
-            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3" height="650">
+            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3 mr-3" height="650">
               <div v-if="online('td').length" class="mb-2">
                 <h3>TDs</h3><v-divider class="mb-1" />
                 <div v-for="u in online('td')" :key="u.id" class="text-no-wrap">
