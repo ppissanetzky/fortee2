@@ -177,7 +177,41 @@
                 </div>
               </div>
               <!-- MY STATUS -->
-              <StatusNew v-model="me" :name="false" class="ma-3 align-self-center" />
+              <div
+                v-if="choiceTitle && choices && choices.length > 1 && !watching && !paused"
+                class="pt-3"
+              >
+                <v-sheet
+                  color="#c0cddd"
+                  style="border-color: #c0cddd; border-width: 1px; border-radius: 9px;"
+                  height="72"
+                  width="250"
+                >
+                  <div class="d-flex align-center ma-3 pt-4">
+                    <v-select
+                      v-model="choice"
+                      :items="choices"
+                      hide-details
+                      dense
+                      solo
+                      single-line
+                      :placeholder="choiceTitle"
+                      class="pa-0 ma-0 mr-2"
+                    />
+                    <v-btn
+                      small
+                      icon
+                      class="ma-0 pa-0"
+                      color="primary"
+                      :disabled="!choice"
+                      @click="choiceMade"
+                    >
+                      <v-icon>mdi-check-bold</v-icon>
+                    </v-btn>
+                  </div>
+                </v-sheet>
+              </div>
+              <StatusNew v-else v-model="me" :name="false" class="ma-3 align-self-center" />
             </div>
 
             <div class="d-flex flex-column align-center justify-space-around">
@@ -202,29 +236,6 @@
                 {{ snack }}
               </h3>
             </v-card>
-            <v-sheet
-              v-else-if="choiceTitle && choices && choices.length > 1 && !watching && !paused"
-              class="d-flex mt-6 align-self-center"
-              max-width="200"
-            >
-              <v-select
-                v-model="choice"
-                :items="choices"
-                :label="choiceTitle"
-                hide-details
-                dense
-                max-width="160"
-              />
-              <v-btn
-                text
-                class="ml-3"
-                color="primary"
-                :disabled="!choice"
-                @click="choiceMade"
-              >
-                ok
-              </v-btn>
-            </v-sheet>
           </v-sheet>
         </div>
         <!-- FAR RIGHT - BORDER -->
