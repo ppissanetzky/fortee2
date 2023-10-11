@@ -1,47 +1,30 @@
 <template>
-  <div>
-    <div class="d-flex flex-column">
-      <!-- VERY TOP - BLUE STATUS BAR -->
-      <v-sheet class="d-flex" color="#0049bd" width="814" min-width="814">
-        <div class="d-flex px-2 py-2">
-          <div class="white--text mr-6">
-            <div class="subtitle-1">
-              {{ teams.US[0] }} & {{ teams.US[1] }}
-            </div>
-            <div class="subtitle-1">
-              {{ teams.THEM[0] }} & {{ teams.THEM[1] }}
-            </div>
-          </div>
-          <div class="white--text mr-6">
-            <h3>{{ US.marks }}</h3>
-            <h3>{{ THEM.marks }}</h3>
-          </div>
-          <div class="white--text mr-6">
-            <div v-if="bidWinner">
-              <div v-if="teamFor(bidWinner) === 'US'">
-                <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-                <span v-if="trump" class="subtitle-1"> on <strong>{{ trump }}</strong></span>
-              </div>
-              <v-sheet v-else width="0" height="28" />
-            </div>
-            <div v-if="bidWinner">
-              <div v-if="teamFor(bidWinner) === 'THEM'">
-                <span class="subtitle-1">{{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong></span>
-                <span v-if="trump" class="subtitle-1"> on <strong>{{ trump }}</strong></span>
-              </div>
-              <v-sheet v-else width="0" height="28" />
-            </div>
-          </div>
-        </div>
+  <div class="d-flex flex-row justify-space-around mt-3">
+    <div><!-- EMPTY LEFT --></div>
+    <v-sheet color="#8fa5b7" width="914" height="737" class="d-flex flex-column">
+      <!-- VERY TOP -->
+      <v-sheet class="d-flex flex-row justify-space-around align-center white--text mx-2" color="#8fa5b7">
+        <v-sheet width="188" />
         <v-spacer />
-        <div v-if="rules" class="d-flex align-end pa-2 pr-3 mb-1">
+        <v-sheet color="#0049bd" class="d-flex flex-row align-center white--text px-6">
+          <div>{{ teams.US[0] }} & {{ teams.US[1] }}</div>
+          <h2 class="mx-3">
+            <strong>{{ US.marks }}</strong>
+          </h2>
+          <v-divider vertical color="white" />
+          <h2 class="mx-3">
+            <strong>{{ THEM.marks }}</strong>
+          </h2>
+          <div>{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</div>
+        </v-sheet>
+        <v-spacer />
+        <div v-if="rules" class="d-flex">
           <v-menu offset-y>
             <template #activator="{ on, attrs }">
-              <v-btn small outlined class="white--text" v-bind="attrs" v-on="on">
-                <v-icon left>
-                  mdi-text-box-check-outline
+              <v-btn small icon v-bind="attrs" v-on="on">
+                <v-icon color="white">
+                  mdi-text-box-outline
                 </v-icon>
-                rules
               </v-btn>
             </template>
             <human-rules v-model="rules" />
@@ -53,8 +36,15 @@
       <div class="d-flex">
         <!-- LEFT - PILE -->
         <div class="d-flex">
-          <v-sheet class="d-flex flex-column fill-height px-2" min-width="150" width="150" color="#c0d4e5">
-            <div v-if="pile.US.length" class="d-flex">
+          <v-sheet color="#8fa5b7" class="d-flex fill-height" width="12" />
+          <v-sheet
+            class="d-flex flex-column fill-height px-2"
+            min-width="150"
+            width="150"
+            min-height="500"
+            color="#c0d4e5"
+          >
+            <div v-if="pile.US.length" class="d-flex mt-1">
               <div class="d-flex caption ml-1">
                 <strong>{{ US.points }}</strong>
               </div>
@@ -81,7 +71,7 @@
                 :src="`/${bone}v.png`"
               />
             </v-card>
-            <div v-if="pile.THEM.length" class="d-flex mt-1">
+            <div v-if="pile.THEM.length" class="d-flex mt-2">
               <div class="d-flex caption ml-1">
                 <strong>{{ THEM.points }}</strong>
               </div>
@@ -111,14 +101,14 @@
           </v-sheet>
         </div>
         <!-- RIGHT - PLAY AREA -->
-        <div class="d-flex mx-8 flex-column">
+        <div class="d-flex flex-column">
           <div class="d-flex justify-space-around">
-            <div class="d-flex flex-column align-center justify-space-around">
+            <v-sheet class="d-flex flex-column justify-space-around align-end" width="240">
               <!-- LEFT PLAYER STATUS -->
               <StatusNew v-model="left" class="ma-3" />
-            </div>
+            </v-sheet>
 
-            <div class="d-flex flex-column align-center justify-space-around">
+            <v-sheet class="d-flex flex-column align-center justify-space-around" width="260">
               <!-- TOP PLAYER STATUS -->
               <StatusNew v-model="top" class="ma-3 align-self-center" />
 
@@ -212,15 +202,15 @@
                 </v-sheet>
               </div>
               <StatusNew v-else v-model="me" :name="false" class="ma-3 align-self-center" />
-            </div>
+            </v-sheet>
 
-            <div class="d-flex flex-column align-center justify-space-around">
+            <v-sheet class="d-flex flex-column align-start justify-space-around" width="240">
               <!-- RIGHT PLAYER STATUS -->
               <StatusNew v-model="right" class="ma-3" />
-            </div>
+            </v-sheet>
           </div>
           <!-- BELOW PLAYING AREA - YOUR NAME AND SNACK -->
-          <v-sheet class="d-flex flex-column" height="132">
+          <v-sheet class="d-flex flex-column px-16" height="125">
             <span class="text-center text-h6" :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'">
               <strong>{{ youAre }}</strong>
             </span>
@@ -230,29 +220,35 @@
               outlined
               class="mt-3 pa-3"
               color="#c0d4e5"
-              style="border-color: #525252; border-width: 2px; border-radius: 9px;"
+              style="border-color: #c0d4e5; border-width: 1px; border-radius: 9px;"
             >
-              <h3 class="text-center" style="color: #525252;">
+              <h4 class="text-center" style="color: #525252;">
                 {{ snack }}
-              </h3>
+              </h4>
             </v-card>
+            <div v-else class="d-flex flex-row align-center justify-space-around mt-12">
+              <div>
+                <span v-if="bidWinner">
+                  {{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong>
+                </span>
+                <span v-if="trump">
+                  on <strong>{{ trump }}</strong>
+                </span>
+              </div>
+            </div>
           </v-sheet>
-        </div>
-        <!-- FAR RIGHT - BORDER -->
-        <div class="d-flex">
-          <v-sheet class="d-flex fill-height" color="#8fa5b7" width="12" />
         </div>
       </div>
       <!-- BOTTOM - CHAT AND MY BONES -->
       <div class="d-flex">
-        <v-sheet class="d-flex pl-1 flex-column" color="#8fa5b7" width="150" min-width="150">
+        <v-sheet class="d-flex pl-3 pb-3 flex-column" color="#8fa5b7" width="162" min-width="162">
           <v-card
             id="chat-box"
             height="133"
             flat
             tile
             outlined
-            class="d-flex overflow-y-auto flex-column mt-2"
+            class="d-flex overflow-y-auto flex-column mt-3"
             style="border-color: #0000006b;"
           >
             <div v-for="m in messages" :key="m.id" class="mb-1 mx-1" style="line-height: 50%;">
@@ -276,7 +272,7 @@
           </v-form>
         </v-sheet>
         <div>
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around px-3 py-2">
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around px-0 pr-4 py-2" width="752">
             <v-img
               v-for="n in 4"
               :key="`t${n}`"
@@ -285,7 +281,7 @@
               width="144"
               height="72"
               class="ma-2"
-              draggable="true"
+              :draggable="validBone(bones[n - 1])"
               @dragstart="(event) => dragStart(event, n - 1)"
               @drop="(event) => drop(event, n - 1)"
               @dragover="(event) => dragOver(event, n - 1)"
@@ -308,7 +304,7 @@
               </template>
             </v-img>
           </v-sheet>
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-3 pl-12 pr-12">
+          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-3 pl-9 pr-12">
             <v-img
               v-for="n in 3"
               :key="`b${n}`"
@@ -316,7 +312,7 @@
               contain
               width="144"
               height="72"
-              draggable="true"
+              :draggable="validBone(bones[n + 3])"
               @dragstart="(event) => dragStart(event, n + 3)"
               @drop="(event) => drop(event, n + 3)"
               @dragover="(event) => dragOver(event, n + 3)"
@@ -349,7 +345,8 @@
           </a>
         </div>
       </v-sheet> -->
-    </div>
+    </v-sheet>
+    <div><!-- EMPTY RIGHT --></div>
   </div>
 </template>
 <script>
@@ -559,6 +556,9 @@ export default {
         this.choose(this.choice)
       }
     },
+    validBone (value) {
+      return typeof value === 'string' && value.includes('.')
+    },
     send (type, message, ack) {
       if (this.ws) {
         this.ws.send(JSON.stringify({
@@ -763,6 +763,10 @@ export default {
             this.US = message.status.US
             this.THEM = message.status.THEM
             this.pointTo = players
+            this.bidWinner = undefined
+            this.trump = undefined
+            this.waitingForBid = undefined
+            this.bids = {}
             this.showSnack(title)
             this.send('readyToContinue', null, ack)
           }
@@ -899,15 +903,23 @@ export default {
       }
     },
     dragStart (event, n) {
-      event.dataTransfer.setData('text/plain', n)
+      const bone = this.bones[n]
+      if (!this.validBone(bone)) {
+        return false
+      }
+      event.dataTransfer.setData('text/plain', `${n}`)
       event.dataTransfer.dropEffect = 'move'
       const image = new Image()
-      image.src = `/${this.bones[n]}.png`
+      image.src = `/${bone}.png`
       event.dataTransfer.setDragImage(image, 90, 45)
     },
     drop (event, n) {
+      const data = event.dataTransfer.getData('text/plain')
+      const other = parseInt(data, 10)
+      if (isNaN(other)) {
+        return false
+      }
       event.preventDefault()
-      const other = parseInt(event.dataTransfer.getData('text/plain'), 10)
       const swap = this.bones[n]
       this.bones.splice(n, 1, this.bones[other])
       this.bones.splice(other, 1, swap)
