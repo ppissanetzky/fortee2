@@ -426,15 +426,30 @@ export default {
       ingress: Promise.resolve()
     }
   },
-  fetch () {
+  async fetch () {
+    let loads = []
+    function load (src) {
+      const image = new Image()
+      document.head.appendChild(image)
+      loads.push(new Promise((resolve) => {
+        image.onload = () => resolve(image.decode())
+      }))
+      image.fetchPriority = 'high'
+      image.loading = 'eager'
+      image.decoding = 'sync'
+      image.src = src
+    }
     /** Preload all the bone images */
     for (let i = 0; i < 7; i++) {
       for (let j = i; j < 7; j++) {
         const [a, b] = [i, j].sort().reverse()
-        new Image().src = `${a}.${b}.png`
-        new Image().src = `${a}.${b}v.png`
+        load(`${a}.${b}.png`)
+        load(`${a}.${b}v.png`)
       }
     }
+    load('cover.png')
+    await Promise.all(loads)
+    loads = undefined
     const { watch, join } = this.$route.query
     if (join) {
       this.join = join
