@@ -1,50 +1,31 @@
 <template>
   <div class="d-flex flex-row justify-space-around mt-3">
-    <div><!-- EMPTY LEFT --></div>
-    <v-sheet color="#8fa5b7" width="914" height="737" class="d-flex flex-column">
-      <!-- VERY TOP -->
-      <v-sheet class="d-flex flex-row justify-space-around align-center white--text mx-2" color="#8fa5b7">
-        <v-sheet width="188" />
-        <v-spacer />
-        <v-sheet color="#0049bd" class="d-flex flex-row align-center white--text px-6">
-          <div>{{ teams.US[0] }} & {{ teams.US[1] }}</div>
-          <h2 class="mx-3">
-            <strong>{{ US.marks }}</strong>
-          </h2>
-          <v-divider vertical color="white" />
-          <h2 class="mx-3">
-            <strong>{{ THEM.marks }}</strong>
-          </h2>
-          <div>{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</div>
+    <div><!-- EMPTY LEFT SPACE TO CENTER --></div>
+    <!-- ENTIRE PAGE - CENTERED -->
+    <v-sheet class="d-flex flex-row" width="800" height="650">
+      <!-- LEFT PORTION WITH FIXED WIDTH -->
+      <v-sheet width="150" class="d-flex flex-column">
+        <!-- TOP BAR WITH RULES BUTTON -->
+        <v-sheet height="36" min-height="36" color="#8fa5b7" class="d-flex flex-row align-center flex-grow-1">
+          <div v-if="rules" class="d-flex">
+            <v-menu offset-y>
+              <template #activator="{ on, attrs }">
+                <v-btn small text color="white" v-bind="attrs" v-on="on">
+                  <v-icon left color="white">
+                    mdi-text-box-outline
+                  </v-icon>
+                  rules
+                </v-btn>
+              </template>
+              <human-rules v-model="rules" />
+            </v-menu>
+          </div>
         </v-sheet>
-        <v-spacer />
-        <div v-if="rules" class="d-flex">
-          <v-menu offset-y>
-            <template #activator="{ on, attrs }">
-              <v-btn small icon v-bind="attrs" v-on="on">
-                <v-icon color="white">
-                  mdi-text-box-outline
-                </v-icon>
-              </v-btn>
-            </template>
-            <human-rules v-model="rules" />
-          </v-menu>
-        </div>
-      </v-sheet>
-
-      <!-- TOP - BONE PILE AND PLAY AREA -->
-      <div class="d-flex">
-        <!-- LEFT - PILE -->
-        <div class="d-flex">
-          <v-sheet color="#8fa5b7" class="d-flex fill-height" width="12" />
-          <v-sheet
-            class="d-flex flex-column fill-height px-2"
-            min-width="150"
-            width="150"
-            min-height="500"
-            color="#c0d4e5"
-          >
-            <div v-if="pile.US.length" class="d-flex mt-1">
+        <!-- PILE -->
+        <v-sheet class="d-flex flex-column fill-height" color="#c0d4e5">
+          <div v-if="pile.US.length" class="d-flex flex-column px-2">
+            <span class="caption align-self-center mt-2">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
+            <div class="d-flex mt-1">
               <div class="d-flex caption ml-1">
                 <strong>{{ US.points }}</strong>
               </div>
@@ -65,13 +46,17 @@
               <v-img
                 v-for="bone in trick"
                 :key="bone"
-                class="ma-0 mt-1"
+                class="ma-0 mt-2"
                 contain
                 max-width="29"
                 :src="`/${bone}v.png`"
               />
             </v-card>
-            <div v-if="pile.THEM.length" class="d-flex mt-2">
+          </div>
+          <v-sheet v-if="pile.US.length && pile.THEM.length" height="3" color="white" class="mt-3 mb-1" />
+          <div v-if="pile.THEM.length" class="d-flex flex-column px-2">
+            <span class="caption align-self-center mt-2">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
+            <div class="d-flex mt-1">
               <div class="d-flex caption ml-1">
                 <strong>{{ THEM.points }}</strong>
               </div>
@@ -92,23 +77,47 @@
               <v-img
                 v-for="bone in trick"
                 :key="bone"
-                class="ma-0 mt-1"
+                class="ma-0 mt-2"
                 contain
                 max-width="29"
                 :src="`/${bone}v.png`"
               />
             </v-card>
-          </v-sheet>
-        </div>
+          </div>
+        </v-sheet>
+      </v-sheet>
+
+      <!-- RIGHT SIDE -->
+      <v-sheet class="d-flex flex-column flex-grow-1">
+        <!-- TOP BAR FOR THE SCORE -->
+        <v-sheet height="36" min-height="36" class="d-flex flex-row align-center justify-center" color="#0049bd">
+          <div class="d-flex flex-row">
+            <v-sheet color="#0049bd" class="d-flex flex-row white--text align-center justify-end" height="36" min-width="300">
+              <span class="text-no-wrap">{{ teams.US[0] }} & {{ teams.US[1] }}</span>
+              <span class="text-h5 mx-3">
+                <strong>{{ US.marks }}</strong>
+              </span>
+            </v-sheet>
+          </div>
+          <v-sheet width="3" height="36" />
+          <div class="d-flex flex-row">
+            <v-sheet color="#0049bd" class="d-flex flex-row white--text align-center justify-start" height="36" min-width="300">
+              <span class="text-h5 mx-3">
+                <strong>{{ THEM.marks }}</strong>
+              </span>
+              <span class="text-no-wrap">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
+            </v-sheet>
+          </div>
+        </v-sheet>
         <!-- RIGHT - PLAY AREA -->
         <div class="d-flex flex-column">
-          <div class="d-flex justify-space-around">
-            <v-sheet class="d-flex flex-column justify-space-around align-end" width="240">
+          <div class="d-flex">
+            <v-sheet class="d-flex flex-column justify-space-around align-end flex-grow-1">
               <!-- LEFT PLAYER STATUS -->
               <StatusNew v-model="left" class="ma-3" />
             </v-sheet>
 
-            <v-sheet class="d-flex flex-column align-center justify-space-around" width="260">
+            <v-sheet class="d-flex flex-column align-center justify-space-around" min-width="260">
               <!-- TOP PLAYER STATUS -->
               <StatusNew v-model="top" class="ma-3 align-self-center" />
 
@@ -119,7 +128,7 @@
                     mdi-chevron-left
                   </v-icon>
                 </div>
-                <v-sheet height="140" width="180" class="d-flex flex-column align-self-center text-center justify-space-around">
+                <v-sheet height="120" width="180" class="d-flex flex-column align-self-center text-center justify-space-between">
                   <v-icon :color="pointUp">
                     mdi-chevron-up
                   </v-icon>
@@ -129,7 +138,7 @@
                       <h4 style="color: #6f6f6f;">
                         {{ choiceTitle }}
                       </h4>
-                      <div v-if="choices" class="mt-3">
+                      <div v-if="choices" class="mt-1">
                         <v-chip
                           v-for="c in choices"
                           :key="c"
@@ -204,75 +213,93 @@
               <StatusNew v-else v-model="me" :name="false" class="ma-3 align-self-center" />
             </v-sheet>
 
-            <v-sheet class="d-flex flex-column align-start justify-space-around" width="240">
+            <v-sheet class="d-flex flex-column align-start justify-space-around flex-grow-1">
               <!-- RIGHT PLAYER STATUS -->
               <StatusNew v-model="right" class="ma-3" />
             </v-sheet>
           </div>
           <!-- BELOW PLAYING AREA - YOUR NAME AND SNACK -->
-          <v-sheet class="d-flex flex-column px-16" height="125">
-            <span class="text-center text-h6" :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'">
+          <v-sheet class="d-flex flex-column mb-3 mt-1 text-center">
+            <v-card v-if="snack" flat color="#0049bd" class="white--text mx-3 overline">
+              <span class="text-center">{{ snack }}</span>
+            </v-card>
+            <span v-else :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'" class="text-h6">
               <strong>{{ youAre }}</strong>
             </span>
-            <v-card
-              v-if="snack"
-              flat
-              outlined
-              class="mt-3 pa-3"
-              color="#c0d4e5"
-              style="border-color: #c0d4e5; border-width: 1px; border-radius: 9px;"
-            >
-              <h4 class="text-center" style="color: #525252;">
-                {{ snack }}
-              </h4>
-            </v-card>
-            <div v-else class="d-flex flex-row align-center justify-space-around mt-12">
-              <div>
-                <span v-if="bidWinner">
-                  {{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong>
-                </span>
-                <span v-if="trump">
-                  on <strong>{{ trump }}</strong>
-                </span>
-              </div>
-            </div>
           </v-sheet>
         </div>
-      </div>
-      <!-- BOTTOM - CHAT AND MY BONES -->
-      <div class="d-flex">
-        <v-sheet class="d-flex pl-3 pb-3 flex-column" color="#8fa5b7" width="162" min-width="162">
-          <v-card
-            id="chat-box"
-            height="133"
-            flat
-            tile
-            outlined
-            class="d-flex overflow-y-auto flex-column mt-3"
-            style="border-color: #0000006b;"
-          >
-            <div v-for="m in messages" :key="m.id" class="mb-1 mx-1" style="line-height: 50%;">
-              <span class="body-2"><strong>{{ m.name }} </strong>{{ m.text }}</span>
+        <!-- TOOLBAR ABOVE BONES -->
+        <v-sheet color="#c0d4e5" class="d-flex flex-row align-center justify-space-between px-3">
+          <div class="d-flex flex-row align-center py-1">
+            <div v-if="watching">
+              <v-chip small label color="#8fa5b7" class="white--text">
+                <strong>Watching</strong>
+              </v-chip>
             </div>
-          </v-card>
-          <v-form @submit.prevent="() => void 0" @submit="chat">
-            <v-text-field
-              v-model="message"
-              color="#0049bd"
-              dense
-              outlined
-              placeholder="chat..."
-              hide-details
-              append-icon="mdi-send"
-              class="d-flex mt-1 body-2"
-              style="background-color: white;border-radius: 0;"
-              :disabled="!ws"
-              @click:append="chat"
-            />
-          </v-form>
+            <v-btn
+              v-else
+              small
+              text
+              @click="openChat"
+            >
+              <v-icon left>
+                {{ chatOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+              </v-icon>
+              chat
+              <v-chip v-if="chatUnread" small color="#ff3600" class="ml-2 white--text">
+                <strong>{{ chatUnread }}</strong>
+              </v-chip>
+            </v-btn>
+          </div>
+          <div>
+            <span v-if="bidWinner">
+              {{ bidWinner }} bid <strong>{{ bids[bidWinner] }}</strong>
+            </span>
+            <span v-if="trump">
+              on <strong>{{ trump }}</strong>
+            </span>
+          </div>
         </v-sheet>
-        <div>
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around px-0 pr-4 py-2" width="752">
+
+        <!-- CHAT BOX -->
+        <div v-if="chatOpen" class="d-flex flex-column flex-grow-1">
+          <div class="d-flex flex-column flex-grow-1 mx-3">
+            <v-card
+              id="chat-box"
+              color="white"
+              flat
+              tile
+              outlined
+              height="120"
+              min-height="120"
+              max-height="120"
+              class="d-flex overflow-y-auto flex-column flex-grow-1"
+            >
+              <div v-for="m in messages" :key="m.id" class="mb-1" style="line-height: 50%;">
+                <span class="body-2"><strong>{{ m.name }} </strong>{{ m.text }}</span>
+              </div>
+            </v-card>
+            <v-form @submit.prevent="() => void 0" @submit="chat">
+              <v-text-field
+                v-model="message"
+                color="#0049bd"
+                dense
+                clearable
+                placeholder="send a message..."
+                hide-details
+                append-icon="mdi-send"
+                style="background-color: white;border-radius: 0;"
+                :disabled="!ws"
+                @click:append="chat"
+              />
+            </v-form>
+          </div>
+          <v-sheet color="#8fa5b7" class="d-flex flex-grow-1" />
+        </div>
+
+        <!-- BONES  -->
+        <v-sheet v-else color="#8fa5b7" class="d-flex flex-column flex-grow-1 justify-space-between py-3">
+          <div class="d-flex align-center justify-space-between">
             <v-img
               v-for="n in 4"
               :key="`t${n}`"
@@ -280,7 +307,6 @@
               contain
               width="144"
               height="72"
-              class="ma-2"
               :draggable="validBone(bones[n - 1])"
               @dragstart="(event) => dragStart(event, n - 1)"
               @drop="(event) => drop(event, n - 1)"
@@ -303,8 +329,8 @@
                 </v-row>
               </template>
             </v-img>
-          </v-sheet>
-          <v-sheet color="#8fa5b7" class="d-flex align-center justify-space-around pb-3 pl-9 pr-12">
+          </div>
+          <div class="d-flex align-center justify-space-around px-16">
             <v-img
               v-for="n in 3"
               :key="`b${n}`"
@@ -334,19 +360,13 @@
                 </v-row>
               </template>
             </v-img>
-          </v-sheet>
-        </div>
-      </div>
-      <!-- <v-sheet class="text-right" color="#8fa5b7">
-        <div class="caption pr-3 pb-2">
-          designed by
-          <a href="https://www.nitecreative.com/" target="_blank">
-            nite creative
-          </a>
-        </div>
-      </v-sheet> -->
+          </div>
+        </v-sheet>
+      </v-sheet>
+
+      <v-sheet color="#8fa5b7" width="12" class="d-flex" />
     </v-sheet>
-    <div><!-- EMPTY RIGHT --></div>
+    <div><!-- EMPTY RIGHT SPACE TO CENTER --></div>
   </div>
 </template>
 <script>
@@ -421,6 +441,9 @@ export default {
       possible: undefined,
       snack: undefined,
 
+      chatOpen: false,
+      chatUnread: 0,
+
       queue: Promise.resolve(),
       snackTimeout: undefined,
       ingress: Promise.resolve()
@@ -455,6 +478,7 @@ export default {
       this.join = join
     } else if (watch) {
       this.watching = watch
+      this.chatOpen = true
     } else {
       return
     }
@@ -673,7 +697,7 @@ export default {
           {
             this.waitingForBid = this.youAre
             this.pointTo = [this.youAre]
-            const bid = await this.prompt('Your bid', message.possible)
+            const bid = await this.prompt('Your bid', message.possible, undefined, true)
             this.waitingForBid = undefined
             this.bids[this.youAre] = bid
             this.send('submitBid', { bid: `#bid:${bid}` }, ack)
@@ -752,6 +776,8 @@ export default {
           this.trickWinner = message.winner
           this.US = message.status.US
           this.THEM = message.status.THEM
+          this.pile.US = message.status.US.pile
+          this.pile.THEM = message.status.THEM.pile
           if (message.status.renege) {
             this.pointTo = [message.status.renege]
             await this.prompt(`${message.status.renege} didn't follow suit, the hand goes to the other team`, ['Continue'], 3)
@@ -764,8 +790,6 @@ export default {
           this.plays = {}
           this.trickWinner = undefined
           this.send('readyToContinue', null, ack)
-          this.pile.US = message.status.US.pile
-          this.pile.THEM = message.status.THEM.pile
           break
 
         case 'endOfHand':
@@ -778,12 +802,12 @@ export default {
             this.US = message.status.US
             this.THEM = message.status.THEM
             this.pointTo = players
-            this.bidWinner = undefined
-            this.trump = undefined
             this.waitingForBid = undefined
-            this.bids = {}
             this.showSnack(title)
             this.send('readyToContinue', null, ack)
+            this.bids = {}
+            this.bidWinner = undefined
+            this.trump = undefined
           }
           break
 
@@ -835,6 +859,9 @@ export default {
 
         case 'chat':
           this.messages = [...this.messages, ...message]
+          if (!this.watching && !this.chatOpen) {
+            this.chatUnread += message.length
+          }
           this.scrollChat()
           break
       }
@@ -876,8 +903,8 @@ export default {
       this.choices = undefined
       this.choiceTitle = title
     },
-    prompt (title, choices, timed) {
-      this.choice = undefined
+    prompt (title, choices, timed, selectFirst) {
+      this.choice = selectFirst ? choices[0] : undefined
       this.choiceTitle = title
       this.choices = choices
       this.queue = this.queue.then(() => new Promise((resolve, reject) => {
@@ -961,6 +988,13 @@ export default {
     bidColor (team) {
       return team === this.teamFor(this.bidWinner) ? 'green' : '#ff3600'
     },
+    openChat () {
+      this.chatOpen = !this.chatOpen
+      if (this.chatOpen) {
+        this.chatUnread = 0
+        this.scrollChat()
+      }
+    },
     chat () {
       const { message, ws } = this
       if (message && ws) {
@@ -975,7 +1009,9 @@ export default {
     scrollChat () {
       setTimeout(() => {
         const box = document.getElementById('chat-box')
-        box.scrollTop = box.scrollHeight
+        if (box) {
+          box.scrollTop = box.scrollHeight
+        }
       }, 0)
     },
     async delay (s) {
