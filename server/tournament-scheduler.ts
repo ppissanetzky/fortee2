@@ -142,6 +142,10 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     }
 
     public delete(tid: number): boolean {
+        /** If the tournament is not being scheduled, that's fine */
+        if (!this.tourneys.has(tid)) {
+            return true;
+        }
         const row = db.getTournament(tid);
         if (!row) {
             return false;
