@@ -254,22 +254,20 @@
           <!-- LEFT SIDE -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
             <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3 mr-3" height="650">
-              <div v-if="online('td').length" class="mb-2">
-                <h3>TDs</h3><v-divider class="mb-1" />
-                <div v-for="u in online('td')" :key="u.id" class="text-no-wrap">
-                  {{ u.text }}
-                </div>
-              </div>
-              <div v-if="online('standard').length" class="mb-2">
-                <h3>Members</h3><v-divider class="mb-1" />
-                <div v-for="u in online('standard')" :key="u.id" class="text-no-wrap">
-                  {{ u.text }}
-                </div>
-              </div>
-              <div v-if="online('guest').length" class="mb-2">
-                <h3>Guests</h3><v-divider class="mb-1" />
-                <div v-for="u in online('guest')" :key="u.id" class="text-no-wrap">
-                  {{ u.text }}
+              <div
+                v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
+                :key="type"
+              >
+                <div v-if="online(type).length" class="mb-2">
+                  <h3>{{ title }}</h3><v-divider class="mb-1" />
+                  <div
+                    v-for="u in online(type)"
+                    :key="u.value"
+                    class="text-no-wrap"
+                    @click="startChat(u)"
+                  >
+                    {{ u.text }}
+                  </div>
                 </div>
               </div>
             </v-sheet>
@@ -279,41 +277,79 @@
           </v-sheet>
           <v-divider vertical class="mx-3" />
           <!-- MIDDLE  -->
-          <v-sheet color="white" class="d-flex fill-height flex-grow-1 flex-column">
-            <v-sheet color="white" class="d-flex flex-grow-1 flex-column" max-height="636">
-              <v-card
-                id="chat-box"
-                flat
-                tile
-                class="overflow-y-auto"
+          <div class="d-flex fill-height flex-grow-1 flex-column">
+            <v-sheet height="40" class="d-flex flex-row align-center flex-grow-0 overflow-x-auto">
+              <div
+                v-for="(item, index) in chats"
+                :key="index"
+                class="d-flex flex-row align-center overline"
               >
-                <div v-for="m in messages" :key="m.id" class="mb-1">
-                  <div>
-                    <strong>{{ m.name }}</strong>
-                    <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1 pa-1">
-                      <strong style="color: #78909C;">{{ m.title }}</strong>
-                    </v-chip>
-                    <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
-                    <span>{{ m.text }}</span>
+                <v-btn
+                  small
+                  text
+                  class="px-0"
+                  @click="focusChat(index)"
+                >
+                  {{ item.name }}
+                </v-btn>
+                <v-chip
+                  v-if="item.unread"
+                  small
+                  color="#ff3600"
+                  class="white--text mx-2"
+                  @click="focusChat(index)"
+                >
+                  {{ item.unread }}
+                </v-chip>
+                <v-btn
+                  v-if="index > 0"
+                  icon
+                  small
+                  @click="closeChat(index)"
+                >
+                  <v-icon small>
+                    mdi-close
+                  </v-icon>
+                </v-btn>
+                <v-divider vertical class="mx-3" />
+              </div>
+            </v-sheet>
+            <v-sheet color="white" class="d-flex fill-height flex-grow-1 flex-column">
+              <v-sheet color="white" class="d-flex flex-grow-1 flex-column" max-height="596">
+                <v-card
+                  id="chat-box"
+                  flat
+                  tile
+                  class="overflow-y-auto"
+                >
+                  <div v-for="m in chats[focusedChat].messages" :key="m.id" class="mb-1">
+                    <div>
+                      <strong>{{ m.name }}</strong>
+                      <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1 pa-1">
+                        <strong style="color: #78909C;">{{ m.title }}</strong>
+                      </v-chip>
+                      <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
+                      <span>{{ m.text }}</span>
+                    </div>
                   </div>
-                </div>
-              </v-card>
+                </v-card>
+              </v-sheet>
+              <v-sheet color="white" class="d-flex flex-column">
+                <v-form @submit.prevent="() => void 0" @submit="chat">
+                  <v-text-field
+                    v-model="message"
+                    dense
+                    clearable
+                    placeholder="send a message..."
+                    hide-details
+                    append-icon="mdi-send"
+                    style="background-color: white; border-radius: 0; border-color: red;"
+                    @click:append="chat"
+                  />
+                </v-form>
+              </v-sheet>
             </v-sheet>
-            <v-sheet color="white" class="d-flex flex-column">
-              <v-form @submit.prevent="() => void 0" @submit="chat">
-                <v-text-field
-                  v-model="message"
-                  dense
-                  clearable
-                  placeholder="send a message..."
-                  hide-details
-                  append-icon="mdi-send"
-                  style="background-color: white; border-radius: 0; border-color: red;"
-                  @click:append="chat"
-                />
-              </v-form>
-            </v-sheet>
-          </v-sheet>
+          </div>
           <v-divider vertical class="mx-3" />
           <!-- RIGHT -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
@@ -602,7 +638,14 @@ export default {
       limit: Infinity,
       users: [],
       table: {},
-      messages: [],
+      chats: [{
+        name: 'Lobby',
+        unread: 0,
+        messages: []
+      }],
+      focusedChat: 0,
+      // For all the private chats, the key is the user ID
+      conversations: {},
       message: undefined,
       // For the play dialog
       dialog: false,
@@ -732,11 +775,11 @@ export default {
           this.updateGame(message)
           break
         case 'chat':
-          this.messages.push(message)
-          this.scrollChat()
+          this.chatReceived(message)
           break
         case 'chatHistory':
-          this.messages = message
+          console.log(message)
+          this.chats[0].messages = message
           this.scrollChat()
           break
       }
@@ -1015,8 +1058,115 @@ export default {
     chat () {
       const { message, ws } = this
       if (message && ws) {
-        ws.send(JSON.stringify({ type: 'chat', message }))
+        const { to } = this.chats[this.focusedChat]
+        ws.send(JSON.stringify({
+          type: 'chat',
+          message: {
+            to,
+            text: message
+          }
+        }))
         this.message = undefined
+      }
+    },
+    chatReceived (message) {
+      const { to } = message
+      let target = 0
+      // A lobby message
+      if (!to) {
+        this.chats[0].messages.push(message)
+        if (this.focusedChat !== 0) {
+          this.chats[0].unread++
+        } else {
+          this.scrollChat()
+        }
+      }
+      // See if it exists in conversations
+      let conv = this.conversations[to]
+      if (!conv) {
+        conv = {
+          name: this.nameOf(to), // FIX
+          unread: 0,
+          messages: []
+        }
+        this.conversations[to] = conv
+      }
+      conv.messages.push(message)
+      conv.unread++
+      // If there is no private chat open, create one now
+      if (this.chats.length === 1) {
+        this.chats.push(conv)
+      } else if (this.chats[1].to === to && this.focusedChat === 1) {
+          conv.unread = 0
+      }
+
+      // If the user was typing something in the second tab, clear it
+      // This could be a little annoying if you're in the middle of
+      if (this.focusedChat === 1) {
+        this.message = undefined
+      }
+      // The second tab becomes this chat
+      this.chats = [this.chats[0], conv]
+
+
+      if (to) {
+        target = this.chats.findIndex(chat => chat.to === to)
+        if (target < 0) {
+          this.chats.push({
+            name: this.nameOf(to), // FIX
+            unread: 1,
+            messages: [message],
+            to
+          })
+          return
+        }
+      }
+      this.chats[target].messages.push(message)
+      if (target !== this.focusedChat) {
+        this.chats[target].unread++
+      } else {
+        this.scrollChat()
+      }
+    },
+    startChat (user) {
+      const id = user.value
+      if (id === this.you.id) {
+        return
+      }
+      if (this.chats[0]?.to === id) {
+
+      }
+      const index = this.chats.findIndex(({ to }) => to === user.value)
+      if (index >= 0) {
+        return this.focusChat(index)
+      }
+      this.chats.push({
+        name: user.text,
+        unread: 0,
+        messages: [{
+          t: Date.now(),
+          name: `Private chat with ${user.text}`
+        }],
+        to: user.value
+      })
+      this.focusChat(this.chats.length - 1)
+    },
+    focusChat (index) {
+      if (index !== this.focusedChat) {
+        // Clear out any message typed
+        this.message = undefined
+        this.focusedChat = index
+        this.chats[index].unread = 0
+        this.scrollChat()
+      }
+    },
+    closeChat (index) {
+      if (index === 0) {
+        return
+      }
+      this.chats = this.chats.filter((item, i) => i !== index)
+      if (index === this.focusedChat) {
+        this.focusChat(0)
       }
     },
     scrollChat () {

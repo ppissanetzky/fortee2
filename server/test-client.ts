@@ -180,8 +180,8 @@ class Client {
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('3m')));
-    const start = new TexasTime(new Date(now + ms('4m')));
+    const close = new TexasTime(new Date(now + ms('3d')));
+    const start = new TexasTime(new Date(now + ms('5d')));
 
     const t = new Tournament({
         id: 0,

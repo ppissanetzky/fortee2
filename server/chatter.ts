@@ -11,6 +11,7 @@ export interface Message {
     name: string;
     title?: string;
     text: string;
+    to?: string;
 }
 
 export default class Chatter {
@@ -52,9 +53,11 @@ export default class Chatter {
                 try {
                     const { type, message } = JSON.parse(data);
                     switch (type) {
-                        case 'chat':
-                            this.chat(info.name, title, message as string);
-                            break;
+                        case 'chat': {
+                            const { to, text } = message;
+                            this.chat(userId, info.name, title, text as string, to);
+                        }
+                        break;
                     }
                 }
                 catch (error) {
@@ -65,18 +68,29 @@ export default class Chatter {
     }
 
     public systemMessage(text: string) {
-        this.chat(text, undefined, '');
+        this.chat('', text, undefined, '');
     }
 
-    private chat(name: string, title: string | undefined, text: string) {
-        const message = {
+    private chat(from: string, name: string, title: string | undefined, text: string, to?: string) {
+        const message : Message = {
             t: Date.now(),
             name,
             title,
             text
         };
-        this.history.push(message);
-        this.ps.pushToAll('chat', message);
+        if (!to) {
+            this.history.push(message);
+            this.ps.pushToAll('chat', message);
+        } else {
+            this.ps.pushToOne(to, 'chat', {
+                ...message,
+                to: from,
+            });
+            this.ps.pushToOne(from, 'chat', {
+                ...message,
+                to
+            });
+        }
     }
 
     private purgeHistory() {
