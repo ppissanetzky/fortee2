@@ -466,11 +466,12 @@ export default {
     for (let i = 0; i < 7; i++) {
       for (let j = i; j < 7; j++) {
         const [a, b] = [i, j].sort().reverse()
-        load(`${a}.${b}.png`)
-        load(`${a}.${b}v.png`)
+        load(`/${a}.${b}.png`)
+        load(`/${a}.${b}v.png`)
       }
     }
-    load('cover.png')
+    load('/cover.png')
+    load('/null.png')
     await Promise.all(loads)
     loads = undefined
     const { watch, join } = this.$route.query
