@@ -34,6 +34,7 @@ interface Options {
     noReply?: boolean;
     playDelay?: number;
     signUpWith?: string;
+    chatWith?: string;
 }
 
 class Client {
@@ -95,6 +96,18 @@ class Client {
                         break;
                 }
             });
+            if (this.options.chatWith) {
+                let m = 1;
+                setInterval(() => {
+                    ws.send(JSON.stringify({
+                        type: 'chat',
+                        message: {
+                            to: this.options.chatWith,
+                            text: `Message ${m++}`
+                        }
+                    }));
+                }, ms('7s'));
+            }
         });
     }
 
@@ -223,6 +236,7 @@ class Client {
             //noShow: true,
             //noReply: i === 3,
             //signUpWith: i === 2 ? 'pablo' : undefined,
+            chatWith: i === 2 || i === 3 ? 'pablo' : undefined
         };
         new Client(t.id, options).connect();
         await delay(50);
