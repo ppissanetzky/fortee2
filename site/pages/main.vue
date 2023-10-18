@@ -93,10 +93,10 @@
     <!-- TOOLBAR -->
     <!-- ************************************************************* -->
     <v-row>
-      <v-col>
-        <v-toolbar flat color="#0049bd" min-width="768">
-          <v-img contain max-width="375" src="/logo-tight.png" />
-          <span class="caption white--text ml-2 mb-1 align-self-end">
+      <v-col class="py-1">
+        <v-sheet color="#0049bd" min-width="768" class="d-flex flex-row py-1 px-3 align-center">
+          <v-img contain max-height="36" max-width="300" src="/logo-tight.png" />
+          <span class="caption white--text ml-2 align-self-end">
             <strong>{{ $config.version }}</strong>
           </span>
           <!-- <v-btn @click="screenShot">ss</v-btn> -->
@@ -137,12 +137,11 @@
               </v-card-actions>
             </v-card>
           </v-menu>
-        </v-toolbar>
-        <v-divider />
+        </v-sheet>
         <!-- ************************************************************* -->
         <!-- BOTTOM TOOLBAR -->
         <!-- ************************************************************* -->
-        <v-toolbar flat dense color="#0049bd" min-width="768" class="white-text">
+        <v-sheet color="#0049bd" min-width="768" class="d-flex flex-row align-center white-text py-1 px-3">
           <!-- HOSTING A GAME (OR WITH BOTS) -->
           <div v-if="table.status === 'hosting'" class="d-flex flex-row">
             <span class="white--text mr-3">
@@ -245,7 +244,7 @@
           >
             <v-icon>mdi-cog-outline</v-icon>
           </v-btn>
-        </v-toolbar>
+        </v-sheet>
       </v-col>
     </v-row>
     <v-row>
@@ -253,13 +252,14 @@
         <v-sheet height="666" min-width="768" class="d-flex flex-row">
           <!-- LEFT SIDE -->
           <v-sheet color="white" class="d-flex fill-height flex-column">
-            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mb-3 mr-3" height="650">
+            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mr-3 mb-3" height="650">
               <div
                 v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
                 :key="type"
               >
                 <div v-if="online(type).length" class="mb-2">
-                  <h3>{{ title }}</h3><v-divider class="mb-1" />
+                  <strong class="overline">{{ title }}</strong>
+                  <v-divider class="mb-1" />
                   <div
                     v-for="u in online(type)"
                     :key="u.value"
@@ -267,6 +267,13 @@
                     @click="startChat(u)"
                   >
                     {{ u.text }}
+                    <v-chip
+                      x-small
+                      :color="unreadFor(u.value) ? '#ff3600' : 'white'"
+                      class="white--text ml-2"
+                    >
+                      {{ unreadFor(u.value) }}
+                    </v-chip>
                   </div>
                 </div>
               </div>
@@ -277,7 +284,7 @@
           </v-sheet>
           <v-divider vertical class="mx-3" />
           <!-- MIDDLE  -->
-          <div class="d-flex fill-height flex-grow-1 flex-column">
+          <v-sheet class="d-flex fill-height flex-grow-1 flex-column">
             <v-sheet height="40" class="d-flex flex-row align-center flex-grow-0 overflow-x-auto">
               <div
                 v-for="(item, index) in chats"
@@ -329,7 +336,9 @@
                         <strong style="color: #78909C;">{{ m.title }}</strong>
                       </v-chip>
                       <span class="ml-1 caption grey--text">{{ formatTime(m.t) }}</span>
-                      <span>{{ m.text }}</span>
+                      <!-- word-break prevents a long message from pushing the right
+                      side off the screen -->
+                      <span style="word-break: break-all;">{{ m.text }}</span>
                     </div>
                   </div>
                 </v-card>
@@ -340,19 +349,20 @@
                     v-model="message"
                     dense
                     clearable
-                    placeholder="send a message..."
+                    :placeholder="chats[focusedChat].disconnected ? `${chats[focusedChat].name} is not online` : 'send a message...'"
                     hide-details
                     append-icon="mdi-send"
                     style="background-color: white; border-radius: 0; border-color: red;"
+                    :disabled="chats[focusedChat].disconnected"
                     @click:append="chat"
                   />
                 </v-form>
               </v-sheet>
             </v-sheet>
-          </div>
+          </v-sheet>
           <v-divider vertical class="mx-3" />
           <!-- RIGHT -->
-          <v-sheet color="white" class="d-flex fill-height flex-column">
+          <v-sheet color="white" class="d-flex fill-height flex-column" min-width="35%">
             <v-sheet color="white" class="d-flex flex-grow-1 flex-column overflow-y-auto pr-3" max-height="666">
               <v-card v-for="t in today.slice(0, limit)" :key="t.id" tile class="ma-1">
                 <v-sheet :color="tournamentColor(t)" class="d-flex flex-row white--text overline px-2 align-center text-no-wrap">
@@ -758,6 +768,7 @@ export default {
           break
         case 'online':
           this.users = message
+          this.onlineChanged()
           break
         case 'tournaments':
           this.today = message
@@ -1071,7 +1082,6 @@ export default {
     },
     chatReceived (message) {
       const { to } = message
-      let target = 0
       // A lobby message
       if (!to) {
         this.chats[0].messages.push(message)
@@ -1080,51 +1090,29 @@ export default {
         } else {
           this.scrollChat()
         }
+        return
       }
       // See if it exists in conversations
       let conv = this.conversations[to]
       if (!conv) {
         conv = {
-          name: this.nameOf(to), // FIX
+          name: this.nameOf(to),
+          to,
           unread: 0,
-          messages: []
+          messages: [{
+            t: Date.now(),
+            name: `Private chat with ${this.nameOf(to)}`
+          }]
         }
         this.conversations[to] = conv
       }
       conv.messages.push(message)
       conv.unread++
-      // If there is no private chat open, create one now
+      // If there is no private chat, create one now
       if (this.chats.length === 1) {
         this.chats.push(conv)
       } else if (this.chats[1].to === to && this.focusedChat === 1) {
-          conv.unread = 0
-      }
-
-      // If the user was typing something in the second tab, clear it
-      // This could be a little annoying if you're in the middle of
-      if (this.focusedChat === 1) {
-        this.message = undefined
-      }
-      // The second tab becomes this chat
-      this.chats = [this.chats[0], conv]
-
-
-      if (to) {
-        target = this.chats.findIndex(chat => chat.to === to)
-        if (target < 0) {
-          this.chats.push({
-            name: this.nameOf(to), // FIX
-            unread: 1,
-            messages: [message],
-            to
-          })
-          return
-        }
-      }
-      this.chats[target].messages.push(message)
-      if (target !== this.focusedChat) {
-        this.chats[target].unread++
-      } else {
+        conv.unread = 0
         this.scrollChat()
       }
     },
@@ -1133,23 +1121,21 @@ export default {
       if (id === this.you.id) {
         return
       }
-      if (this.chats[0]?.to === id) {
-
+      let conv = this.conversations[id]
+      if (!conv) {
+        conv = {
+          name: user.text,
+          to: id,
+          unread: 0,
+          messages: [{
+            t: Date.now(),
+            name: `Private chat with ${user.text}`
+          }]
+        }
+        this.conversations[id] = conv
       }
-      const index = this.chats.findIndex(({ to }) => to === user.value)
-      if (index >= 0) {
-        return this.focusChat(index)
-      }
-      this.chats.push({
-        name: user.text,
-        unread: 0,
-        messages: [{
-          t: Date.now(),
-          name: `Private chat with ${user.text}`
-        }],
-        to: user.value
-      })
-      this.focusChat(this.chats.length - 1)
+      this.chats = [this.chats[0], conv]
+      this.focusChat(1)
     },
     focusChat (index) {
       if (index !== this.focusedChat) {
@@ -1174,6 +1160,18 @@ export default {
         const box = document.getElementById('chat-box')
         box.scrollTop = box.scrollHeight
       }, 0)
+    },
+    unreadFor (id) {
+      if (id === this.you.id) {
+        return 0
+      }
+      return this.conversations[id]?.unread ?? 0
+    },
+    onlineChanged () {
+      const connected = new Set(Array.from(this.users.map(({ value }) => value)))
+      Object.entries(this.conversations).forEach(([id, conv]) => {
+        conv.disconnected = !connected.has(id)
+      })
     },
     reload () {
       window.location.reload()
