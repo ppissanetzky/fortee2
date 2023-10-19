@@ -257,13 +257,16 @@
                 v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
                 :key="type"
               >
-                <div v-if="online(type).length" class="mb-2">
-                  <strong class="overline">{{ title }}</strong>
-                  <v-divider class="mb-1" />
+                <div v-if="online(type).length">
+                  <v-sheet color="#0049bd" class="overline white--text px-3 py-0 my-1 d-flex flex-row align-center">
+                    <span>{{ title }}</span>
+                    <v-spacer />
+                    <span>{{ online(type).length }}</span>
+                  </v-sheet>
                   <div
                     v-for="u in online(type)"
                     :key="u.value"
-                    class="text-no-wrap"
+                    class="text-no-wrap ml-3"
                     @click="startChat(u)"
                   >
                     {{ u.text }}
@@ -278,13 +281,13 @@
                 </div>
               </div>
             </v-sheet>
-            <span class="caption text-no-wrap">
+            <span class="caption text-no-wrap ml-3">
               {{ users.length }} online
             </span>
           </v-sheet>
-          <v-divider vertical class="mx-3" />
+          <!-- <v-divider vertical class="mx-3" /> -->
           <!-- MIDDLE  -->
-          <v-sheet class="d-flex fill-height flex-grow-1 flex-column">
+          <v-sheet class="d-flex fill-height flex-grow-1 flex-column mr-3">
             <v-sheet height="40" class="d-flex flex-row align-center flex-grow-0 overflow-x-auto">
               <div
                 v-for="(item, index) in chats"
@@ -318,7 +321,7 @@
                     mdi-close
                   </v-icon>
                 </v-btn>
-                <v-divider vertical class="mx-3" />
+                <v-divider v-if="index < chats.length - 1" vertical class="mx-3" />
               </div>
             </v-sheet>
             <v-sheet color="white" class="d-flex fill-height flex-grow-1 flex-column">
@@ -360,7 +363,6 @@
               </v-sheet>
             </v-sheet>
           </v-sheet>
-          <v-divider vertical class="mx-3" />
           <!-- RIGHT -->
           <v-sheet color="white" class="d-flex fill-height flex-column" min-width="35%">
             <v-sheet color="white" class="d-flex flex-grow-1 flex-column overflow-y-auto pr-3" max-height="666">
