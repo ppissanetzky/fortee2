@@ -3,7 +3,7 @@
     <!-- ************************************************************* -->
     <!-- TOOLBAR -->
     <!-- ************************************************************* -->
-    <v-toolbar flat color="#0049bd" max-width="1000">
+    <v-toolbar flat color="#0049bd">
       <v-img contain max-width="375" src="/logo-tight.png" />
       <span class="caption white--text ml-2 mb-1 align-self-end">
         <strong>{{ $config.version }}</strong>
