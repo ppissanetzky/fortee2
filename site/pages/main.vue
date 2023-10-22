@@ -266,9 +266,12 @@
                   <div
                     v-for="u in online(type)"
                     :key="u.value"
-                    class="text-no-wrap ml-3"
+                    class="text-no-wrap"
                     @click="startChat(u)"
                   >
+                    <v-icon color="#0049bd">
+                      {{ statusFor(u.value) }}
+                    </v-icon>
                     {{ u.text }}
                     <v-chip
                       x-small
@@ -659,6 +662,9 @@ export default {
       // For all the private chats, the key is the user ID
       conversations: {},
       message: undefined,
+      // The user status, key is user ID, value is one of
+      // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
+      status: {},
       // For the play dialog
       dialog: false,
       error: undefined,
@@ -791,9 +797,11 @@ export default {
           this.chatReceived(message)
           break
         case 'chatHistory':
-          console.log(message)
           this.chats[0].messages = message
           this.scrollChat()
+          break
+        case 'users':
+          this.status = message
           break
       }
     },
@@ -1177,6 +1185,19 @@ export default {
     },
     reload () {
       window.location.reload()
+    },
+    statusFor (userId) {
+      switch (this.status[userId]) {
+        case 'playing-in-t':
+          return 'mdi-alpha-t-box'
+        case 'playing':
+          return 'mdi-play-box'
+        case 'invited':
+          return 'mdi-account-box'
+        case 'signed-up':
+          return 'mdi-alpha-s-box'
+      }
+      return 'mdi-circle-small'
     }
 
     // async screenShot () {

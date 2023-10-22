@@ -18,6 +18,10 @@ interface Online {
     type: UserType | 'td';
 }
 
+export type UserStatus = 'playing-in-t' | 'playing' | 'invited' | 'signed-up';
+
+export type Users = Record<string, UserStatus>;
+
 interface PushMessages {
     /** The client has a different version than the one we expect */
     mismatch: string;
@@ -48,6 +52,9 @@ interface PushMessages {
 
     /** Chat history */
     chatHistory: Message[];
+
+    /** The status of all connected users */
+    users: Users;
 }
 
 interface Connection {
@@ -208,7 +215,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
 
     public pushToAll<T extends Key>(type: T, message: PushMessages[T]) {
         const payload = JSON.stringify({ type, message });
-        for (const {user: {id, name}, sockets} of this.connections.values()) {
+        for (const {sockets} of this.connections.values()) {
             // this.debug('=>', id, name, type);
             for (const ws of sockets.values()) {
                 ws.send(payload);
@@ -238,7 +245,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
     }
 
     public forEach<T extends Key>(type: T, cb: ForEachCallback<T>) {
-        for (const {user: {id, name}, sockets} of this.connections.values()) {
+        for (const {user: {id}, sockets} of this.connections.values()) {
             const message = cb(id);
             if (message) {
                 // this.debug('=>', id, name, type);

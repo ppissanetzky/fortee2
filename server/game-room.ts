@@ -112,6 +112,8 @@ export interface GameRoomOptions {
 interface GlobalGameRoomEvents {
     created: GameRoom;
     closed: GameRoom;
+    joined: GameRoom;
+    left: GameRoom;
 }
 
 interface Latency {
@@ -557,6 +559,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         this.debug('joined', name);
         this.sockets.set(name, socket);
         this.emit('userJoined', userId);
+        GameRoom.events.emit('joined', this);
         /**
          * When the user sends us a chat message, we save it and then send it
          * to everyone
@@ -577,6 +580,7 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
                         });
                     }
                 });
+                GameRoom.events.emit('left', this);
             }
             if (this.state === State.PLAYING) {
                 this.state = State.PAUSED;

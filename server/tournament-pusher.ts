@@ -2,7 +2,7 @@ import _ from 'lodash';
 
 import { Rules } from './core';
 import Scheduler from './tournament-scheduler';
-import PushServer from './push-server';
+import PushServer, { type Users } from './push-server';
 import { makeDebug } from './utility';
 import Tournament, { State } from './tournament';
 import { GameStatus, Status } from './tournament-driver';
@@ -114,7 +114,9 @@ export default class TournamentPusher {
         /** When something happens in a game room, we update that user */
         GameRoom.events
             .on('created', (room) => this.pushRoom(room))
-            .on('closed', (room) => this.pushRoom(room));
+            .on('closed', (room) => this.pushRoom(room))
+            .on('joined', () => this.pushUserStatus())
+            .on('left', () => this.pushUserStatus())
 
         this.scheduler
             .on('registered', ({t}) => this.updateAll(t))
@@ -143,6 +145,7 @@ export default class TournamentPusher {
     private updateAll(t: Tournament) {
         this.ps.pushToAll('tournament', makeTournamentUpdate(t));
         this.ps.forEach('user', (userId) => makeUserUpdate(t, userId));
+        this.pushUserStatus();
     }
 
     private updateOne(t: Tournament, userId: string) {
@@ -171,12 +174,14 @@ export default class TournamentPusher {
         tourneys.forEach((t) =>
             this.ps.pushToOne(userId, 'user', makeUserUpdate(t, userId)));
         this.pushTable(userId);
+        this.pushUserStatus();
     }
 
     /** A new day, or a tournament dropped off the list */
 
     private refresh() {
         this.ps.userIds.forEach((userId) => this.connected(userId));
+        this.pushUserStatus();
     }
 
     private pushTable(userId: string) {
@@ -215,5 +220,52 @@ export default class TournamentPusher {
 
     private pushRoom(room: GameRoom) {
         room.table.users().forEach(({id}) => this.pushTable(id));
+        this.pushUserStatus();
+    }
+
+    private pushUserStatus() {
+        const result: Users = {};
+        const rooms = Array.from(GameRoom.rooms.values());
+        const tourneys = Array.from(Scheduler.get().tourneys.values()).filter((t) => {
+            switch (t.state) {
+                case State.CANCELED:
+                case State.DONE:
+                case State.LATER:
+                    return false
+            }
+            return true;
+        });
+        this.ps.userIds.forEach((userId) => {
+            /** Check the rooms first */
+            for (const room of rooms) {
+                if (room.connected.includes(userId)) {
+                    result[userId] = room.t ? 'playing-in-t' : 'playing';
+                    return;
+                }
+                const { table } = room;
+                if (table.has(userId)) {
+                    result[userId] = room.t ? 'playing-in-t' : 'invited';
+                    return;
+                }
+            }
+            /** Now, look at tourneys */
+            for (const t of tourneys) {
+                if (t.isSignedUp(userId)) {
+                    switch (t.state) {
+                        case State.PLAYING:
+                            if (t.driver?.stillIn.has(userId)) {
+                                result[userId] = 'playing-in-t';
+                                return;
+                            }
+                            break;
+                        case State.OPEN:
+                        case State.WTS:
+                            result[userId] = 'signed-up';
+                            break;
+                    }
+                }
+            }
+        });
+        this.ps.pushToAll('users', result);
     }
 }

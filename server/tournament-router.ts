@@ -13,6 +13,7 @@ import tdRouter from './td-router';
 import statsRouter from './stats';
 import { fail, fif, fa, validateRules, AppError } from './validate';
 import User from './users';
+import { State } from './tournament';
 
 const debug = makeDebug('t-router');
 
@@ -148,10 +149,56 @@ router.get('/decline/:token', (req, res) => {
     res.sendStatus(200);
 });
 
-// router.post('/ss', express.json(), (req, res) => {
-//     console.log(JSON.stringify(req.body));
-//     res.sendStatus(200);
-// });
+router.get('/users', (req, res) => {
+    type UserStatus =
+        'playing-in-t' |
+        'playing' |
+        'invited' |
+        'signed-up';
+    const result: Record<string, UserStatus> = {};
+    const rooms = Array.from(GameRoom.rooms.values());
+    const tourneys = Array.from(Scheduler.get().tourneys.values()).filter((t) => {
+        switch (t.state) {
+            case State.CANCELED:
+            case State.DONE:
+            case State.LATER:
+                return false
+        }
+        return true;
+    });
+    pusher.ps.userIds.forEach((userId) => {
+        /** Check the rooms first */
+        for (const room of rooms) {
+            if (room.connected.includes(userId)) {
+                result[userId] = room.t ? 'playing-in-t' : 'playing';
+                return;
+            }
+            const { table } = room;
+            if (table.has(userId)) {
+                result[userId] = room.t ? 'playing-in-t' : 'invited';
+                return;
+            }
+        }
+        /** Now, look at tourneys */
+        for (const t of tourneys) {
+            if (t.isSignedUp(userId)) {
+                switch (t.state) {
+                    case State.PLAYING:
+                        if (t.driver?.stillIn.has(userId)) {
+                            result[userId] = 'playing-in-t';
+                            return;
+                        }
+                        break;
+                    case State.OPEN:
+                    case State.WTS:
+                        result[userId] = 'signed-up';
+                        break;
+                }
+            }
+        }
+    });
+    res.json(result);
+});
 
 /** The TD router */
 
