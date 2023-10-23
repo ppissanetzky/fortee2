@@ -251,35 +251,34 @@
       <v-col cols="12" class="pt-0">
         <v-sheet height="666" min-width="768" class="d-flex flex-row">
           <!-- LEFT SIDE -->
-          <v-sheet color="white" class="d-flex fill-height flex-column">
-            <v-sheet color="white" class="d-flex flex-column overflow-y-auto mr-3 mb-3" height="650">
+          <v-sheet class="d-flex fill-height flex-column">
+            <v-sheet class="d-flex flex-column overflow-y-auto mb-3" height="650">
               <div
                 v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
                 :key="type"
               >
-                <div v-if="online(type).length">
+                <div v-if="online(type).length" class="mr-3">
                   <v-sheet color="#0049bd" class="overline white--text px-3 py-0 my-1 d-flex flex-row align-center">
                     <span>{{ title }}</span>
                     <v-spacer />
-                    <span>{{ online(type).length }}</span>
+                    <span class="ml-3">{{ online(type).length }}</span>
                   </v-sheet>
                   <div
                     v-for="u in online(type)"
                     :key="u.value"
-                    class="text-no-wrap"
+                    class="text-no-wrap d-flex flex-row align-center"
                     @click="startChat(u)"
                   >
-                    <v-icon color="#0049bd">
+                    <v-icon color="#0049bd" class="mr-1">
                       {{ statusFor(u.value) }}
                     </v-icon>
                     {{ u.text }}
-                    <v-chip
-                      x-small
-                      :color="unreadFor(u.value) ? '#ff3600' : 'white'"
-                      class="white--text ml-2"
-                    >
-                      {{ unreadFor(u.value) }}
-                    </v-chip>
+                    <v-icon v-if="unreadFor(u.value)" small color="red" class="ml-1">
+                      mdi-circle
+                    </v-icon>
+                    <div v-else class="px-3">
+                      <!-- SPACE -->
+                    </div>
                   </div>
                 </div>
               </div>
@@ -568,21 +567,21 @@
                         </p>
                       </div>
                       <!-- ROW OF TABLE-STATUS SQUARES -->
-                      <div v-if="tablesFor(t).length" class="d-flex flex-column mt-3">
+                      <div v-if="tablesFor(t).length" class="d-flex flex-column">
                         <div class="d-flex flex-row align-center">
-                          <span class="mr-3">Tables</span>
-                          <v-sheet
+                          <v-btn
                             v-for="g in tablesFor(t)"
                             :key="g.id"
-                            width="32"
-                            class="mr-1 fill-height"
+                            x-small
+                            class="mr-1"
+                            elevation="0"
                             :color="gameColor(g)"
                             @click="g.room && !g.finished? openUrl(`/play?watch=${g.room.token}`) : undefined"
                           >
                             <div class="caption white--text text-center">
                               <strong>{{ gameStatusLetter(g) }}</strong>
                             </div>
-                          </v-sheet>
+                          </v-btn>
                         </div>
                       </div>
                     </div>
@@ -591,13 +590,13 @@
                     <!-- FINISHED -->
                     <!-- ************************************************************* -->
                     <div v-else-if="t.done" class="d-flex flex-column body-1">
-                      <p><strong>{{ t.name }}</strong></p>
-                      <p v-if="t.winners">
+                      <span><strong>{{ t.name }}</strong></span>
+                      <span v-if="t.winners">
                         Congratulations to <strong>{{ t.winners[0] }}</strong> and <strong>{{ t.winners[1] }}</strong>!
-                      </p>
-                      <p v-else>
+                      </span>
+                      <span v-else>
                         Unfortunately, something went wrong with the tournament
-                      </p>
+                      </span>
                     </div>
 
                     <!-- ************************************************************* -->
@@ -1191,15 +1190,14 @@ export default {
         case 'playing-in-t':
           return 'mdi-alpha-t-box'
         case 'playing':
-          return 'mdi-play-box'
+          return 'mdi-play'
         case 'invited':
-          return 'mdi-account-box'
+          return 'mdi-account'
         case 'signed-up':
           return 'mdi-alpha-s-box'
       }
-      return 'mdi-circle-small'
+      return 'mdi-square-small'
     }
-
     // async screenShot () {
     //   try {
     //     const canvas = document.createElement('canvas')
