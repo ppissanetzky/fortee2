@@ -267,6 +267,7 @@
                     v-for="u in online(type)"
                     :key="u.value"
                     class="text-no-wrap d-flex flex-row align-center"
+                    style="cursor: pointer;"
                     @click="startChat(u)"
                   >
                     <v-icon color="#0049bd" class="mr-1">
@@ -283,9 +284,36 @@
                 </div>
               </div>
             </v-sheet>
-            <span class="caption text-no-wrap ml-3">
-              {{ users.length }} online
-            </span>
+            <div class="d-flex flex-row mr-3">
+              <v-menu>
+                <template #activator="{ on, attrs }">
+                  <span
+                    class="caption text-no-wrap text-decoration-underline"
+                    style="cursor: pointer;"
+                    v-bind="attrs"
+                    v-on="on"
+                  >
+                    legend
+                  </span>
+                </template>
+                <v-card tile class="pa-3">
+                  <div
+                    v-for="[i, text, color] in legend"
+                    :key="i"
+                    class="d-flex flex-row text-no-wrap align-center mb-3 mr-3"
+                  >
+                    <v-icon :color="color || '#0049bd'" class="mr-1">
+                      {{ i }}
+                    </v-icon>
+                    <span>{{ text }}</span>
+                  </div>
+                </v-card>
+              </v-menu>
+
+              <span class="caption text-no-wrap ml-3">
+                {{ users.length }} online
+              </span>
+            </div>
           </v-sheet>
           <!-- <v-divider vertical class="mx-3" /> -->
           <!-- MIDDLE  -->
@@ -664,6 +692,14 @@ export default {
       // The user status, key is user ID, value is one of
       // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
       status: {},
+      legend: [
+        ['mdi-square-small', 'Idle'],
+        ['mdi-play', 'Playing with bots or other players'],
+        ['mdi-account', 'Invited to play in a game'],
+        ['mdi-alpha-s-box', 'Signed up for a tournament'],
+        ['mdi-alpha-t-box', 'Playing in a tournament'],
+        ['mdi-circle-medium', 'Sent a private message', 'red']
+      ],
       // For the play dialog
       dialog: false,
       error: undefined,
