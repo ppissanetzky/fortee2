@@ -12,7 +12,7 @@ export interface GameState {
     };
     bids: Record<string, Bid>;
     bidWinner?: string;
-    trump: Record<string, Trump>;
+    trump?: Trump;
     plays: Record<string, Bone>;
     trickWinner?: string;
     bones: (string | Bone)[];
@@ -42,7 +42,7 @@ export function gameState(game: Game, target?: string): GameState {
     const hand = game.hands.at(-1);
     const bids: Record<string, Bid> = {};
     let bidWinner: string | undefined = undefined;
-    const trump: Record<string, Trump> = {};
+    let trump: Trump | undefined = undefined;
     const plays: Record<string, Bone> = {};
     let trickWinner: string | undefined = undefined;
     const bones: (string | Bone)[] = ['null', 'null', 'null', 'null',
@@ -58,7 +58,7 @@ export function gameState(game: Game, target?: string): GameState {
         if (hand.high_bidder >= 0) {
             bidWinner = game.players[hand.high_bidder];
             if (hand.trump) {
-                trump[game.players[hand.high_bidder]] = hand.trump;
+                trump = hand.trump;
             }
         }
         if (hand.trick_leader >= 0) {
