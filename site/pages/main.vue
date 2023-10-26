@@ -639,7 +639,7 @@
                         </p>
                       </div>
                       <!-- ROW OF TABLE-STATUS SQUARES -->
-                      <div v-if="tablesFor(t).length" class="d-flex flex-column">
+                      <div v-if="tablesFor(t).length" class="d-flex flex-column mt-2">
                         <div class="d-flex flex-row align-center">
                           <v-btn
                             v-for="g in tablesFor(t)"
