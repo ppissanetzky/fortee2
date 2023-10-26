@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { makeDebug } from './utility';
 import type { TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
-import type { Message } from './chatter';
+import type { Channel, ChatHistory, ChatMessage } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 import type { GameStatus } from './tournament-driver';
@@ -47,11 +47,14 @@ interface PushMessages {
     /** Table status, empty, t, hosting or invited */
     table: TableUpdate;
 
+    /** The list of channels available to the user */
+    channels: Channel[];
+
     /** A chat message */
-    chat: Message;
+    chat: ChatMessage;
 
     /** Chat history */
-    chatHistory: Message[];
+    chatHistory: ChatHistory;
 
     /** The status of all connected users */
     users: Users;
@@ -108,6 +111,10 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
 
     get userIds(): string [] {
         return Array.from(this.connections.keys());
+    }
+
+    get users(): User[] {
+        return Array.from(this.connections.values()).map(({ user }) => user);
     }
 
     private blocked(userId: string) {

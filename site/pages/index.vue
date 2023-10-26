@@ -5,7 +5,13 @@
     </v-sheet>
     <v-sheet class="d-flex justify-space-around">
       <span v-if="blocked">You have been blocked</span>
-      <div v-else id="google-button" />
+      <div v-else class="d-flex flex-column justify-space-around">
+        <div id="google-button" />
+        <span class="caption mt-1 ml-1">Make sure you enable pop-ups</span>
+      </div>
+    </v-sheet>
+    <v-sheet class="d-flex justify-space-around mt-3">
+      <p><a href="https://help.fortee2.com" target="_blank">Learn more</a></p>
     </v-sheet>
   </div>
 </template>

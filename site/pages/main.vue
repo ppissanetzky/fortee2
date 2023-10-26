@@ -189,17 +189,30 @@
 
           <!-- STATS BUTTON -->
           <v-btn small outlined color="white" class="mr-3" @click="openUrl('/stats')">
-            stats
-            <v-icon right>
+            <v-icon left>
               mdi-chart-bar
             </v-icon>
+            stats
           </v-btn>
 
           <!-- GAME REVIEW BUTTON -->
           <v-btn small outlined color="white" class="mr-3" @click="openUrl('/game-review')">
-            games
-            <v-icon right>
+            <v-icon left>
               mdi-table-search
+            </v-icon>
+            games
+          </v-btn>
+
+          <!-- HELP BUTTON -->
+          <v-btn
+            small
+            outlined
+            color="white"
+            class="mr-3"
+            @click="openUrl('https://help.fortee2.com')"
+          >
+            <v-icon small>
+              mdi-help
             </v-icon>
           </v-btn>
 
@@ -251,40 +264,69 @@
       <v-col cols="12" class="pt-0">
         <v-sheet height="666" min-width="768" class="d-flex flex-row">
           <!-- LEFT SIDE -->
-          <v-sheet class="d-flex fill-height flex-column">
-            <v-sheet class="d-flex flex-column overflow-y-auto mb-3" height="650">
-              <div
-                v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
-                :key="type"
-              >
-                <div v-if="online(type).length" class="mr-3">
-                  <v-sheet color="#0049bd" class="overline white--text px-3 py-0 my-1 d-flex flex-row align-center">
+          <v-sheet color="#c0d4e5" class="d-flex fill-height flex-column px-3 pt-2 mt-1">
+            <v-sheet color="#c0d4e5" class="d-flex flex-column overflow-y-auto mb-3 pr-3" height="649">
+              <v-item-group v-model="selectedChat">
+                <v-item
+                  v-for="c in channels"
+                  :key="c.id"
+                  v-slot="{active, toggle}"
+                  :value="c.id"
+                >
+                  <v-sheet :color="active ? '#0049bd' : '#c0d4e5'">
+                    <div
+                      style="cursor: pointer;"
+                      class="text-no-wrap d-flex flex-row align-center"
+                      @click="toggle"
+                    >
+                      <v-icon :color="active ? 'white' : '#0049bd'" class="px-1">
+                        mdi-list-box-outline
+                      </v-icon>
+                      <span :class="active ? 'white--text' : ''">{{ c.name }}</span>
+                      <v-icon v-if="unread[c.id]" small color="red" class="ml-1">
+                        mdi-circle
+                      </v-icon>
+                    </div>
+                  </v-sheet>
+                </v-item>
+                <div
+                  v-for="[type, title] in [['td', 'TDs'], ['standard', 'Members'], ['guest', 'Guests']]"
+                  :key="type"
+                >
+                  <div
+                    v-if="online(type).length"
+                    class="text-no-wrap d-flex flex-row align-center overline"
+                  >
                     <span>{{ title }}</span>
                     <v-spacer />
                     <span class="ml-3">{{ online(type).length }}</span>
-                  </v-sheet>
-                  <div
+                  </div>
+                  <v-item
                     v-for="u in online(type)"
                     :key="u.value"
-                    class="text-no-wrap d-flex flex-row align-center"
-                    style="cursor: pointer;"
-                    @click="startChat(u)"
+                    v-slot="{active, toggle}"
+                    :value="u.value"
                   >
-                    <v-icon color="#0049bd" class="mr-1">
-                      {{ statusFor(u.value) }}
-                    </v-icon>
-                    {{ u.text }}
-                    <v-icon v-if="unreadFor(u.value)" small color="red" class="ml-1">
-                      mdi-circle
-                    </v-icon>
-                    <div v-else class="px-3">
-                      <!-- SPACE -->
-                    </div>
-                  </div>
+                    <v-sheet :color="active ? '#0049bd' : '#c0d4e5'" class="pr-3">
+                      <div
+                        class="text-no-wrap d-flex flex-row align-center mr-3"
+                        style="cursor: pointer;"
+                        @click="toggle"
+                      >
+                        <v-icon :color="active ? 'white' : '#0049bd'" class="px-1">
+                          {{ statusFor(u.value) }}
+                        </v-icon>
+                        <span :class="active ? 'white--text' : ''">{{ u.text }}</span>
+                        <v-icon v-if="unread[u.value]" small color="red" class="ml-1">
+                          mdi-circle
+                        </v-icon>
+                      </div>
+                    </v-sheet>
+                  </v-item>
                 </div>
-              </div>
+              </v-item-group>
             </v-sheet>
-            <div class="d-flex flex-row mr-3">
+            <div class="d-flex flex-row mb-2">
               <v-menu>
                 <template #activator="{ on, attrs }">
                   <span
@@ -309,7 +351,7 @@
                   </div>
                 </v-card>
               </v-menu>
-
+              <v-spacer />
               <span class="caption text-no-wrap ml-3">
                 {{ users.length }} online
               </span>
@@ -317,52 +359,51 @@
           </v-sheet>
           <!-- <v-divider vertical class="mx-3" /> -->
           <!-- MIDDLE  -->
-          <v-sheet class="d-flex fill-height flex-grow-1 flex-column mr-3">
-            <v-sheet height="40" class="d-flex flex-row align-center flex-grow-0 overflow-x-auto">
-              <div
-                v-for="(item, index) in chats"
-                :key="index"
-                class="d-flex flex-row align-center overline"
-              >
-                <v-btn
-                  small
-                  text
-                  class="px-0"
-                  @click="focusChat(index)"
-                >
-                  {{ item.name }}
-                </v-btn>
-                <v-chip
-                  v-if="item.unread"
-                  small
-                  color="#ff3600"
-                  class="white--text mx-2"
-                  @click="focusChat(index)"
-                >
-                  {{ item.unread }}
-                </v-chip>
-                <v-btn
-                  v-if="index > 0"
-                  icon
-                  small
-                  @click="closeChat(index)"
-                >
-                  <v-icon small>
-                    mdi-close
-                  </v-icon>
-                </v-btn>
-                <v-divider v-if="index < chats.length - 1" vertical class="mx-3" />
-              </div>
-            </v-sheet>
+          <v-sheet class="d-flex fill-height flex-grow-1 flex-column mx-3">
             <v-sheet color="white" class="d-flex fill-height flex-grow-1 flex-column">
-              <v-sheet color="white" class="d-flex flex-grow-1 flex-column" max-height="596">
+              <v-sheet class="d-flex flex-row align-center mt-3">
+                <span class="text-no-wrap"> {{ chatDescription() }} </span>
+              </v-sheet>
+              <v-divider class="mb-3 mt-1" />
+              <v-sheet color="white" class="d-flex flex-grow-1 flex-column" max-height="581" min-height="581">
+                <div v-if="selectedChat === you.id">
+                  <p>
+                    You are signed in as <span class="blue--text">{{ you.email }}</span>
+                    <v-btn small outlined class="ml-3" @click="signOut">
+                      sign out
+                    </v-btn>
+                  </p>
+                  <p>
+                    You are a <strong>{{ you.type }}</strong> user
+                  </p>
+                  <p v-if="you.roles?.includes('admin')" small label>
+                    You are an admin
+                  </p>
+                  <p v-if="you.roles?.includes('td')" small label>
+                    You are a TD
+                  </p>
+                  <v-divider class="my-3" />
+                  <p>
+                    If you need help, feel free to ask in the <strong>lobby</strong> or visit our
+                    <a href="https://help.fortee2.com" target="_blank">help site</a>.
+                  </p>
+                  <p>
+                    Although fortee2 is free to play, it costs to keep it running.
+                    Consider
+                    <a href="https://www.paypal.com/donate/?business=HS465FN6SX8XG&no_recurring=0&item_name=fortee2.com+maintenance+costs.+&currency_code=USD" target="_blank">
+                      making a donation
+                    </a>
+                    to help cover these costs.
+                  </p>
+                </div>
                 <v-card
+                  v-else
                   id="chat-box"
                   flat
                   tile
                   class="overflow-y-auto"
                 >
-                  <div v-for="m in chats[focusedChat].messages" :key="m.id" class="mb-1">
+                  <div v-for="(m, index) in messages" :key="index" class="mb-1">
                     <div>
                       <strong>{{ m.name }}</strong>
                       <v-chip v-if="m.title" small label color="blue-grey lighten-5" class="ml-1 pa-1">
@@ -376,17 +417,20 @@
                   </div>
                 </v-card>
               </v-sheet>
-              <v-sheet color="white" class="d-flex flex-column">
+              <v-sheet
+                v-if="selectedChat !== you.id"
+                class="d-flex flex-column"
+              >
                 <v-form @submit.prevent="() => void 0" @submit="chat">
                   <v-text-field
                     v-model="message"
                     dense
                     clearable
-                    :placeholder="chats[focusedChat].disconnected ? `${chats[focusedChat].name} is not online` : 'send a message...'"
+                    :placeholder="'send a message...'"
                     hide-details
                     append-icon="mdi-send"
                     style="background-color: white; border-radius: 0; border-color: red;"
-                    :disabled="chats[focusedChat].disconnected"
+                    :disabled="!selectedChat || selectedChat === you.id"
                     @click:append="chat"
                   />
                 </v-form>
@@ -680,25 +724,27 @@ export default {
       limit: Infinity,
       users: [],
       table: {},
-      chats: [{
-        name: 'Lobby',
-        unread: 0,
-        messages: []
-      }],
-      focusedChat: 0,
-      // For all the private chats, the key is the user ID
-      conversations: {},
+      /** The user or channel ID selected on the left side */
+      selectedChat: undefined,
+      /** The list of channels that we get from the server */
+      channels: [],
+      /** Messages for the currently selected chat */
+      messages: [],
+      /** The message the user is editing */
       message: undefined,
+      /** For a channel or user ID, whether there are unread messages */
+      unread: {},
       // The user status, key is user ID, value is one of
       // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
       status: {},
       legend: [
-        ['mdi-square-small', 'Idle'],
-        ['mdi-play', 'Playing with bots or other players'],
-        ['mdi-account', 'Invited to play in a game'],
-        ['mdi-alpha-s-box', 'Signed up for a tournament'],
-        ['mdi-alpha-t-box', 'Playing in a tournament'],
-        ['mdi-circle-medium', 'Sent a private message', 'red']
+        ['mdi-list-box-outline', 'This is a chat room'],
+        ['mdi-square-small', 'The user is idle'],
+        ['mdi-play', 'The user is playing with bots or other players'],
+        ['mdi-account', 'The user has been invited to play in a game'],
+        ['mdi-alpha-s-box', 'The user has signed up for a tournament'],
+        ['mdi-alpha-t-box', 'The user is playing in a tournament'],
+        ['mdi-circle-medium', 'You have unread messages', 'red']
       ],
       // For the play dialog
       dialog: false,
@@ -745,6 +791,17 @@ export default {
       return this.you?.type === 'guest'
     }
   },
+  watch: {
+    selectedChat (value) {
+      this.message = undefined
+      if (!value) {
+        return
+      }
+      this.messages = []
+      this.unread[value] = false
+      this.getChatHistory()
+    }
+  },
   methods: {
     signOut () {
       window.open('/api/signout', '_top')
@@ -785,6 +842,7 @@ export default {
             innerH: window.innerHeight
           }
         }))
+        this.getChatHistory()
       }
       ws.onclose = (event) => {
         this.ws = undefined
@@ -828,12 +886,21 @@ export default {
         case 'game':
           this.updateGame(message)
           break
+        case 'channels':
+          this.channels = message
+          if (!this.selectedChat) {
+            this.selectedChat = this.channels[0].id
+          }
+          this.getChatHistory()
+          break
         case 'chat':
           this.chatReceived(message)
           break
         case 'chatHistory':
-          this.chats[0].messages = message
-          this.scrollChat()
+          if (message.channel === this.selectedChat) {
+            this.messages = message.messages
+            this.scrollChat()
+          }
           break
         case 'users':
           this.status = message
@@ -1111,10 +1178,18 @@ export default {
     formatTime (t) {
       return dtFormat.format(new Date(t)).toLocaleLowerCase()
     },
+    getChatHistory () {
+      if (this.ws && this.selectedChat) {
+        this.ws.send(JSON.stringify({
+          type: 'history',
+          message: this.selectedChat
+        }))
+      }
+    },
     chat () {
       const { message, ws } = this
-      if (message && ws) {
-        const { to } = this.chats[this.focusedChat]
+      const to = this.selectedChat
+      if (message && ws && to) {
         ws.send(JSON.stringify({
           type: 'chat',
           message: {
@@ -1126,97 +1201,48 @@ export default {
       }
     },
     chatReceived (message) {
-      const { to } = message
-      // A lobby message
-      if (!to) {
-        this.chats[0].messages.push(message)
-        if (this.focusedChat !== 0) {
-          this.chats[0].unread++
-        } else {
-          this.scrollChat()
-        }
-        return
+      const { from, to, dm } = message
+      const me = this.you.id
+      const chat = this.selectedChat
+      let matches
+      if (dm) {
+        matches = chat !== me && [from, to].includes(chat)
+      } else {
+        matches = chat === to
       }
-      // See if it exists in conversations
-      let conv = this.conversations[to]
-      if (!conv) {
-        conv = {
-          name: this.nameOf(to),
-          to,
-          unread: 0,
-          messages: [{
-            t: Date.now(),
-            name: `Private chat with ${this.nameOf(to)}`
-          }]
-        }
-        this.conversations[to] = conv
-      }
-      conv.messages.push(message)
-      conv.unread++
-      // If there is no private chat, create one now
-      if (this.chats.length === 1) {
-        this.chats.push(conv)
-      } else if (this.chats[1].to === to && this.focusedChat === 1) {
-        conv.unread = 0
+      if (matches) {
+        this.messages.push(message)
         this.scrollChat()
-      }
-    },
-    startChat (user) {
-      const id = user.value
-      if (id === this.you.id) {
-        return
-      }
-      let conv = this.conversations[id]
-      if (!conv) {
-        conv = {
-          name: user.text,
-          to: id,
-          unread: 0,
-          messages: [{
-            t: Date.now(),
-            name: `Private chat with ${user.text}`
-          }]
-        }
-        this.conversations[id] = conv
-      }
-      this.chats = [this.chats[0], conv]
-      this.focusChat(1)
-    },
-    focusChat (index) {
-      if (index !== this.focusedChat) {
-        // Clear out any message typed
-        this.message = undefined
-        this.focusedChat = index
-        this.chats[index].unread = 0
-        this.scrollChat()
-      }
-    },
-    closeChat (index) {
-      if (index === 0) {
-        return
-      }
-      this.chats = this.chats.filter((item, i) => i !== index)
-      if (index === this.focusedChat) {
-        this.focusChat(0)
+      } else if (to === me) {
+        this.unread[from] = true
+      } else if (from !== me) {
+        this.unread[to] = true
       }
     },
     scrollChat () {
       setTimeout(() => {
         const box = document.getElementById('chat-box')
-        box.scrollTop = box.scrollHeight
+        if (box) {
+          box.scrollTop = box.scrollHeight
+        }
       }, 0)
     },
-    unreadFor (id) {
-      if (id === this.you.id) {
-        return 0
+    chatDescription () {
+      const to = this.selectedChat
+      if (!to) {
+        return 'Offline'
       }
-      return this.conversations[id]?.unread ?? 0
+      if (to === this.you.id) {
+        return `Hi, ${this.you.name}`
+      }
+      const channel = this.channels.find(({ id }) => id === to)
+      if (channel) {
+        return channel.desc
+      }
+      return `Private chat with ${this.nameOf(to)}`
     },
     onlineChanged () {
-      const connected = new Set(Array.from(this.users.map(({ value }) => value)))
-      Object.entries(this.conversations).forEach(([id, conv]) => {
-        conv.disconnected = !connected.has(id)
-      })
+      // const connected = new Set(Array.from(this.users.map(({ value }) => value)))
     },
     reload () {
       window.location.reload()
