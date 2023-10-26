@@ -266,7 +266,7 @@
           <!-- LEFT SIDE -->
           <v-sheet color="#c0d4e5" class="d-flex fill-height flex-column px-3 pt-2 mt-1">
             <v-sheet color="#c0d4e5" class="d-flex flex-column overflow-y-auto mb-3 pr-3" height="649">
-              <v-item-group v-model="selectedChat">
+              <v-item-group v-model="selectedChat" mandatory>
                 <v-item
                   v-for="c in channels"
                   :key="c.id"
@@ -734,6 +734,8 @@ export default {
       message: undefined,
       /** For a channel or user ID, whether there are unread messages */
       unread: {},
+      /** The message history for each channel */
+      history: {},
       // The user status, key is user ID, value is one of
       // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
       status: {},
@@ -846,6 +848,7 @@ export default {
       }
       ws.onclose = (event) => {
         this.ws = undefined
+        this.history = {}
         if (event.code === 4000) {
           return window.open('/', '_top')
         } else if (event.code === 4001) {
@@ -868,8 +871,8 @@ export default {
           this.you = message
           break
         case 'online':
+          this.checkSelectedChat(message)
           this.users = message
-          this.onlineChanged()
           break
         case 'tournaments':
           this.today = message
@@ -888,19 +891,16 @@ export default {
           break
         case 'channels':
           this.channels = message
-          if (!this.selectedChat) {
-            this.selectedChat = this.channels[0].id
+          for (const channel of this.channels) {
+            this.unread[channel.id] = channel.unread
           }
-          this.getChatHistory()
+          this.selectedChat = this.channels[0].id
           break
         case 'chat':
           this.chatReceived(message)
           break
-        case 'chatHistory':
-          if (message.channel === this.selectedChat) {
-            this.messages = message.messages
-            this.scrollChat()
-          }
+        case 'history':
+          this.gotHistory(message)
           break
         case 'users':
           this.status = message
@@ -1179,11 +1179,46 @@ export default {
       return dtFormat.format(new Date(t)).toLocaleLowerCase()
     },
     getChatHistory () {
-      if (this.ws && this.selectedChat) {
-        this.ws.send(JSON.stringify({
-          type: 'history',
-          message: this.selectedChat
-        }))
+      const to = this.selectedChat
+      if (!this.ws || !to || to === this.you.id) {
+        return
+      }
+      const last = this.history[to]?.at(-1)?.id ?? 0
+      this.ws.send(JSON.stringify({
+        type: 'history',
+        message: {
+          to,
+          last
+        }
+      }))
+    },
+    gotHistory ({ channel, messages }) {
+      const history = this.history[channel]
+      if (!history) {
+        this.history[channel] = messages
+      } else {
+        const last = history.at(-1)?.id ?? 0
+        this.history[channel] = history.concat(messages.filter(({ id }) => id > last))
+      }
+      if (channel === this.selectedChat) {
+        this.messages = this.history[channel]
+        this.scrollChat()
+      }
+    },
+    checkSelectedChat (users) {
+      const to = this.selectedChat
+      if (!to) {
+        return
+      }
+      /**
+       * If the selected chat is not a user in the list and not a channel, we
+       * change the selection to the first channel. This happens when a user
+       * that we're chatting with goes offline
+       */
+      if (!users.find(({ value }) => value === to)) {
+        if (!this.channels.find(({ id }) => id === to)) {
+          this.selectedChat = this.channels[0]?.id
+        }
       }
     },
     chat () {
@@ -1240,9 +1275,6 @@ export default {
         return channel.desc
       }
       return `Private chat with ${this.nameOf(to)}`
-    },
-    onlineChanged () {
-      // const connected = new Set(Array.from(this.users.map(({ value }) => value)))
     },
     reload () {
       window.location.reload()

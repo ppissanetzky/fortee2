@@ -54,7 +54,7 @@ interface PushMessages {
     chat: ChatMessage;
 
     /** Chat history */
-    chatHistory: ChatHistory;
+    history: ChatHistory;
 
     /** The status of all connected users */
     users: Users;

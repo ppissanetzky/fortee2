@@ -8,6 +8,7 @@ import User from './users';
 const debug = makeDebug('chatter');
 
 export interface ChatMessage {
+    id: number;
     t: number;
     name: string;
     from: string;
@@ -21,6 +22,7 @@ export interface Channel {
     id: string;
     name: string;
     desc: string;
+    unread?: boolean;
 }
 
 export interface ChatHistory {
@@ -71,11 +73,15 @@ class Channels {
     private constructor() { void 0 }
 }
 
+let MESSAGE_ID = 1;
+
 export default class Chatter {
 
     private ps: PushServer;
 
     private history: ChatMessage[] = [];
+
+    private lastRead = new Map<string, number>();
 
     constructor (ps: PushServer) {
         this.ps = ps;
@@ -97,7 +103,7 @@ export default class Chatter {
             }
 
             /** Send them the list of channels they're allowed to see*/
-            this.ps.pushToOne(userId, 'channels', Channels.listFor(user));
+            this.sendChannels(user);
 
             const { name, roles } = user;
             const title = roles.includes('td') ? 'TD' : undefined;
@@ -117,6 +123,7 @@ export default class Chatter {
                                 return
                             }
                             const incoming: ChatMessage = {
+                                id: MESSAGE_ID++,
                                 t: Date.now(),
                                 name,
                                 from: userId,
@@ -129,12 +136,11 @@ export default class Chatter {
                         }
                         break;
 
-                        case 'history':
-                            if (_.isString(message)) {
-                                this.ps.pushToOne(userId, 'chatHistory',
-                                    this.historyFor(message, userId));
-                            }
-                            break;
+                        case 'history': {
+                            const { to , last } = message;
+                            this.pushHistory(userId, to, last);
+                        }
+                        break;
                     }
                 }
                 catch (error) {
@@ -146,6 +152,7 @@ export default class Chatter {
 
     public systemMessage(text: string) {
         const message = {
+            id: MESSAGE_ID++,
             t: Date.now(),
             from: LOBBY,
             to: LOBBY,
@@ -202,19 +209,42 @@ export default class Chatter {
         }
     }
 
-    private historyFor(channel: string, userId: string): ChatHistory {
+    private pushHistory(userId: string, channel: string, last: number): void {
         let messages: ChatMessage[] = [];
         if (Channels.isChannel(channel)) {
-            messages = this.history.filter(({to}) => to === channel);
+            messages = this.history.filter(({to, id}) => to === channel && id > last);
+            const unread = messages.at(-1)?.id;
+            if (unread) {
+                this.lastRead.set(`${userId}/${channel}`, unread);
+            }
         }
         else {
-            messages = this.history.filter(({from , to}) =>
-                from === channel && to === userId ||
-                from === userId && to === channel);
+            messages = this.history.filter(({from , to, id}) =>
+                id > last && (from === channel && to === userId ||
+                from === userId && to === channel));
         }
-        return {
+        this.ps.pushToOne(userId, 'history', {
             channel,
             messages
-        };
+        });
+    }
+
+    private sendChannels(user: User) {
+        const channels = Channels.listFor(user);
+        const remaining = new Set(channels.map(({id}) => id));
+        const unread = new Set<string>();
+        for (let i = this.history.length - 1; i > 0 && remaining.size > 0; i--) {
+            const { id, to } = this.history[i];
+            if (remaining.delete(to)) {
+                const last = this.lastRead.get(`${user.id}/${to}`) ?? 0;
+                if (id > last) {
+                    unread.add(to);
+                }
+            }
+        }
+        channels.forEach((channel) => {
+            channel.unread = unread.has(channel.id);
+        });
+        this.ps.pushToOne(user.id, 'channels', channels);
     }
 }

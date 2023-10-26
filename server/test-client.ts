@@ -35,6 +35,7 @@ interface Options {
     playDelay?: number;
     signUpWith?: string;
     chatWith?: string;
+    chatDelay?: number;
 }
 
 class Client {
@@ -106,7 +107,7 @@ class Client {
                             text: `Message ${m++}`
                         }
                     }));
-                }, ms('7s'));
+                }, this.options.chatDelay || ms('7s'));
             }
         });
     }
@@ -193,7 +194,7 @@ class Client {
 
     const open = TexasTime.today();
     const now = open.date.getTime();
-    const close = new TexasTime(new Date(now + ms('3s')));
+    const close = new TexasTime(new Date(now + ms('1s')));
     const start = new TexasTime(new Date(now + ms('6s')));
 
     const t = new Tournament({
@@ -229,14 +230,15 @@ class Client {
         headers: { ['x-ft2-bot']: 'pablo' }
     });
 
-    for (let i = 0; i < 32; ++i) {
+    for (let i = 0; i < 4; ++i) {
         const options: Options = {
             //connectDelay: _.random(1000, 10000),
             playDelay: _.random(500, 600),
             //noShow: true,
             //noReply: i === 3,
             //signUpWith: i === 2 ? 'pablo' : undefined,
-            chatWith: i === 2 || i === 3 ? '#lobby' : (i === 4 ? 'pablo' : undefined)
+            chatWith: i === 2 || i === 3 ? '#lobby' : (i === 4 ? 'pablo' : undefined),
+            chatDelay: ms('15s')
         };
         switch (i) {
             case 1:
