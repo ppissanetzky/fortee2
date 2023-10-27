@@ -2,6 +2,7 @@ import assert from 'node:assert';
 
 import _ from 'lodash';
 import express, { NextFunction, Request, Response } from 'express';
+import fetch from 'node-fetch';
 
 import Scheduler from './tournament-scheduler';
 import { makeDebug } from './utility';
@@ -14,6 +15,7 @@ import statsRouter from './stats';
 import { fail, fif, fa, validateRules, AppError } from './validate';
 import User from './users';
 import { State } from './tournament';
+import config from './config';
 
 const debug = makeDebug('t-router');
 
@@ -198,6 +200,33 @@ router.get('/users', (req, res) => {
         }
     });
     res.json(result);
+});
+
+router.post('/issue', express.json(), async (req, res) => {
+    const { user, body } = req;
+    if (!user) {
+        return res.sendStatus(403);
+    }
+    if (!body?.text) {
+        return res.sendStatus(400);
+    }
+    const url = 'https://api.github.com/repos/ppissanetzky/fortee2/issues';
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Authorization': `Bearer ${config.FT2_GH_TOKEN}`,
+        },
+        body: JSON.stringify({
+            title: `Automatic by ${user.name}`,
+            body: body.text
+        })
+    });
+    if (response.status !== 201) {
+        return res.sendStatus(500);
+    }
+    res.sendStatus(200);
 });
 
 /** The TD router */

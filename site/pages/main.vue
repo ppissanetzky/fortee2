@@ -204,17 +204,37 @@
           </v-btn>
 
           <!-- HELP BUTTON -->
-          <v-btn
-            small
-            outlined
-            color="white"
-            class="mr-3"
-            @click="openUrl('https://help.fortee2.com')"
+          <v-menu
+            v-model="help"
+            :close-on-click="false"
+            :close-on-content-click="false"
           >
-            <v-icon small>
-              mdi-help
-            </v-icon>
-          </v-btn>
+            <template #activator="{ on, attrs }">
+              <v-btn
+                small
+                outlined
+                color="white"
+                class="mr-3"
+                v-bind="attrs"
+                v-on="on"
+              >
+                <v-icon small>
+                  mdi-help
+                </v-icon>
+              </v-btn>
+            </template>
+            <v-card tile max-width="400" class="pa-3">
+              <div class="d-flex flex-row align-center">
+                <strong>Help</strong>
+                <v-spacer />
+                <v-btn small icon @click="help=false">
+                  <v-icon>mdi-close</v-icon>
+                </v-btn>
+              </div>
+              <v-divider class="my-3" />
+              <help />
+            </v-card>
+          </v-menu>
 
           <!-- DONATE BUTTON -->
           <v-menu v-if="!guest" offset-y>
@@ -765,7 +785,8 @@ export default {
       refreshDialog: false,
       showDonation: Math.random() < 0.50,
       testing: true,
-      tab: undefined
+      tab: undefined,
+      help: undefined
     }
   },
   async fetch () {

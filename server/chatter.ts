@@ -150,12 +150,12 @@ export default class Chatter {
         });
     }
 
-    public systemMessage(text: string) {
+    public systemMessage(text: string, channel = LOBBY) {
         const message = {
             id: MESSAGE_ID++,
             t: Date.now(),
-            from: LOBBY,
-            to: LOBBY,
+            from: channel,
+            to: channel,
             dm: false,
             text: '',
             name: text

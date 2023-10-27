@@ -119,6 +119,11 @@ const variables: Record<string, string> = {
     FT2_DD_APP_PK: '',
     FT2_DD_APP_SECRET: '',
     FT2_DD_BOT_TOKEN: '',
+
+    /**
+     * GitHub
+     */
+    FT2_GH_TOKEN: '',
 };
 
 export default variables;
