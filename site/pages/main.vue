@@ -291,7 +291,7 @@
                   v-for="c in channels"
                   :key="c.id"
                   v-slot="{active, toggle}"
-                  :value="c.id"
+                  :value="{channel: c.id, to: c.id}"
                 >
                   <v-sheet :color="active ? '#0049bd' : '#c0d4e5'">
                     <div
@@ -325,7 +325,7 @@
                     v-for="u in online(type)"
                     :key="u.value"
                     v-slot="{active, toggle}"
-                    :value="u.value"
+                    :value="chatFor(u.value)"
                   >
                     <v-sheet :color="active ? '#0049bd' : '#c0d4e5'" class="pr-3">
                       <div
@@ -337,7 +337,7 @@
                           {{ statusFor(u.value) }}
                         </v-icon>
                         <span :class="active ? 'white--text' : ''">{{ u.text }}</span>
-                        <v-icon v-if="unread[u.value]" small color="red" class="ml-1">
+                        <v-icon v-if="isUnread(u.value)" small color="red" class="ml-1">
                           mdi-circle
                         </v-icon>
                       </div>
@@ -386,7 +386,7 @@
               </v-sheet>
               <v-divider class="mb-3 mt-1" />
               <v-sheet color="white" class="d-flex flex-grow-1 flex-column" max-height="581" min-height="581">
-                <div v-if="selectedChat === you.id">
+                <div v-if="selectedChat === 'you'">
                   <p>
                     You are signed in as <span class="blue--text">{{ you.email }}</span>
                     <v-btn small outlined class="ml-3" @click="signOut">
@@ -417,7 +417,7 @@
                   </p>
                 </div>
                 <v-card
-                  v-else
+                  v-else-if="selectedChat"
                   id="chat-box"
                   flat
                   tile
@@ -438,7 +438,7 @@
                 </v-card>
               </v-sheet>
               <v-sheet
-                v-if="selectedChat !== you.id"
+                v-if="selectedChat && selectedChat !== 'you'"
                 class="d-flex flex-column"
               >
                 <v-form @submit.prevent="() => void 0" @submit="chat">
@@ -446,11 +446,11 @@
                     v-model="message"
                     dense
                     clearable
-                    :placeholder="'send a message...'"
+                    :placeholder="ws ? 'send a message...' : 'offline...'"
                     hide-details
                     append-icon="mdi-send"
                     style="background-color: white; border-radius: 0; border-color: red;"
-                    :disabled="!selectedChat || selectedChat === you.id"
+                    :disabled="!selectedChat || !ws"
                     @click:append="chat"
                   />
                 </v-form>
@@ -744,7 +744,7 @@ export default {
       limit: Infinity,
       users: [],
       table: {},
-      /** The user or channel ID selected on the left side */
+      /** Either 'you', undefined, or an object with 'channel' and 'to' */
       selectedChat: undefined,
       /** The list of channels that we get from the server */
       channels: [],
@@ -817,12 +817,11 @@ export default {
   watch: {
     selectedChat (value) {
       this.message = undefined
-      if (!value) {
+      if (!value || value === 'you') {
         return
       }
       this.messages = []
-      this.unread[value] = false
-      this.getChatHistory()
+      this.getChatHistory(value)
     }
   },
   methods: {
@@ -865,7 +864,6 @@ export default {
             innerH: window.innerHeight
           }
         }))
-        this.getChatHistory()
       }
       ws.onclose = (event) => {
         this.ws = undefined
@@ -911,11 +909,22 @@ export default {
           this.updateGame(message)
           break
         case 'channels':
-          this.channels = message
-          for (const channel of this.channels) {
-            this.unread[channel.id] = channel.unread
+          this.channels = message.channels
+          for (const id of message.unread) {
+            if (id !== this.selectedChat?.channel) {
+              this.unread[id] = true
+            }
           }
-          this.selectedChat = this.channels[0].id
+          if (this.channels.length > 0) {
+            const channel = this.channels[0].id
+            this.selectedChat = {
+              channel,
+              to: channel
+            }
+          }
+          break
+        case 'unread':
+          this.unread[message] = true
           break
         case 'chat':
           this.chatReceived(message)
@@ -1199,12 +1208,30 @@ export default {
     formatTime (t) {
       return dtFormat.format(new Date(t)).toLocaleLowerCase()
     },
+
+    // CHAT --------------------------------------------------------------------
+
+    chatFor (userId) {
+      if (userId === this.you.id) {
+        return 'you'
+      }
+      return {
+        channel: [this.you.id, userId].sort().join('/'),
+        to: userId
+      }
+    },
+    isUnread (userId) {
+      const { channel } = this.chatFor(userId)
+      if (channel) {
+        return this.unread[channel]
+      }
+    },
     getChatHistory () {
-      const to = this.selectedChat
-      if (!this.ws || !to || to === this.you.id) {
+      if (!this.ws || !this.selectedChat) {
         return
       }
-      const last = this.history[to]?.at(-1)?.id ?? 0
+      const { channel, to } = this.selectedChat
+      const last = this.history[channel]?.at(-1)?.t ?? 0
       this.ws.send(JSON.stringify({
         type: 'history',
         message: {
@@ -1218,16 +1245,18 @@ export default {
       if (!history) {
         this.history[channel] = messages
       } else {
-        const last = history.at(-1)?.id ?? 0
-        this.history[channel] = history.concat(messages.filter(({ id }) => id > last))
+        const last = history.at(-1)?.t ?? 0
+        this.history[channel] = history
+          .concat(messages.filter(({ t }) => t > last))
       }
-      if (channel === this.selectedChat) {
+      if (channel === this.selectedChat?.channel) {
+        this.unread[channel] = false
         this.messages = this.history[channel]
         this.scrollChat()
       }
     },
     checkSelectedChat (users) {
-      const to = this.selectedChat
+      const to = this.selectedChat?.to
       if (!to) {
         return
       }
@@ -1238,13 +1267,16 @@ export default {
        */
       if (!users.find(({ value }) => value === to)) {
         if (!this.channels.find(({ id }) => id === to)) {
-          this.selectedChat = this.channels[0]?.id
+          this.selectedChat = {
+            channel: this.channels[0]?.id,
+            to: this.channels[0]?.id
+          }
         }
       }
     },
     chat () {
       const { message, ws } = this
-      const to = this.selectedChat
+      const to = this.selectedChat?.to
       if (message && ws && to) {
         ws.send(JSON.stringify({
           type: 'chat',
@@ -1257,22 +1289,11 @@ export default {
       }
     },
     chatReceived (message) {
-      const { from, to, dm } = message
-      const me = this.you.id
-      const chat = this.selectedChat
-      let matches
-      if (dm) {
-        matches = chat !== me && [from, to].includes(chat)
-      } else {
-        matches = chat === to
-      }
-      if (matches) {
-        this.messages.push(message)
+      const { channel } = message
+      this.history[channel] = (this.history[channel] ?? []).concat([message])
+      if (this.selectedChat?.channel === channel) {
+        this.messages = this.history[channel]
         this.scrollChat()
-      } else if (to === me) {
-        this.unread[from] = true
-      } else if (from !== me) {
-        this.unread[to] = true
       }
     },
     scrollChat () {
@@ -1284,21 +1305,22 @@ export default {
       }, 0)
     },
     chatDescription () {
-      const to = this.selectedChat
-      if (!to) {
-        return 'Offline'
+      if (!this.selectedChat) {
+        return 'Select a chat room or user on the left'
       }
-      if (to === this.you.id) {
+      if (this.selectedChat === 'you') {
         return `Hi, ${this.you.name}`
       }
-      const channel = this.channels.find(({ id }) => id === to)
+      const channel = this.channels
+        .find(({ id }) => id === this.selectedChat?.channel)
       if (channel) {
         return channel.desc
       }
+      const to = this.selectedChat.to
       return `Private chat with ${this.nameOf(to)}`
     },
     reload () {
-      window.location.reload()
+      window.location.replace('/')
     },
     statusFor (userId) {
       switch (this.status[userId]) {

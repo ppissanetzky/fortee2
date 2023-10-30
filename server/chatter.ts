@@ -1,38 +1,40 @@
-import _ from 'lodash';
 import ms from 'ms';
+import type { WebSocket } from 'ws';
+
 import PushServer from './push-server';
 import { makeDebug } from './utility';
 import config from './config';
 import User from './users';
+import db from './chat-database';
+import type {
+    IncomigChatMessage,
+    ChatMessage,
+    ChatHistory,
+    OutgoingChatMessage } from './chat-database';
 
 const debug = makeDebug('chatter');
 
-export interface ChatMessage {
-    id: number;
-    t: number;
-    name: string;
-    from: string;
+export type { ChatHistory, OutgoingChatMessage};
+
+interface HistoryMessage {
     to: string;
-    dm: boolean;
-    title?: string;
-    text: string;
+    last?: number;
 }
 
 export interface Channel {
     id: string;
     name: string;
     desc: string;
-    unread?: boolean;
 }
 
-export interface ChatHistory {
-    /** The channel or user ID for private chat */
-    channel: string;
-    messages: ChatMessage[];
+export interface ChannelList {
+    channels: Channel[];
+    /** A set of channel IDs that are unread */
+    unread: string[];
 }
 
 interface ChannelSpec extends Channel {
-    filter?: (user: User) => boolean;
+    filter: (user: User) => boolean;
 }
 
 const LOBBY = '#lobby';
@@ -44,7 +46,7 @@ class Channels {
             id: LOBBY,
             name: 'lobby',
             desc: 'The lobby is a place where everyone can chat',
-            filter: undefined,
+            filter: () => true,
         },
         {
             id: '#td-land',
@@ -57,13 +59,13 @@ class Channels {
     private static map: Map<string, ChannelSpec> =
         new Map(this.specs.map((spec) => [spec.id, spec]));
 
+    public static isChannel(to: string) {
+        return to.startsWith('#');
+    }
+
     public static listFor(user: User): Channel[] {
         return this.specs.filter((spec) => !spec.filter ||
             spec.filter(user)).map(({id, name, desc}) => ({id, name, desc}));
-    }
-
-    public static isChannel(to: string) {
-        return to.startsWith('#');
     }
 
     public static find(id: string): ChannelSpec | undefined {
@@ -73,18 +75,61 @@ class Channels {
     private constructor() { void 0 }
 }
 
-let MESSAGE_ID = 1;
+interface Sub {
+    channel: string;
+    t: number;
+}
+
+class Connection {
+
+    readonly ws: WebSocket;
+    readonly user: User;
+
+    sub?: Sub;
+
+    constructor (ws: WebSocket, user: User) {
+        this.ws = ws;
+        this.user = user;
+    }
+
+    get id(): string {
+        return this.user.id;
+    }
+
+    get name(): string {
+        return this.user.name;
+    }
+
+    get title(): string | undefined {
+        return this.user.roles.includes('td') ? 'TD' : undefined;
+    }
+
+    unsubscribe() {
+        const { sub } = this;
+        this.sub = undefined;
+        if (sub) {
+            db.read(this.id, sub.channel, sub.t );
+        }
+    }
+
+    subscribe(channel: string, t: number) {
+        this.unsubscribe();
+        this.sub = {
+            channel,
+            t
+        };
+    }
+}
 
 export default class Chatter {
 
-    private ps: PushServer;
+    private connections = new Map<WebSocket, Connection>;
 
-    private history: ChatMessage[] = [];
+    /** To introduce a gap in time between writes to the database */
 
-    private lastRead = new Map<string, number>();
+    private queue: Promise<void> = Promise.resolve();
 
     constructor (ps: PushServer) {
-        this.ps = ps;
 
         /** To delete old messages */
 
@@ -92,55 +137,53 @@ export default class Chatter {
             () => this.purgeHistory(), Math.min(ms('1h'), ms(config.FT2_CHAT_HISTORY))),
             ms(config.FT2_CHAT_HISTORY));
 
+        type Task = (c: Connection) => void | Promise<void>;
+
+        const enqueue = (ws: WebSocket, task: Task) => {
+            this.enqueue(() => {
+                const c = this.connections.get(ws);
+                if (c) {
+                    return task(c);
+                }
+            });
+        }
+
         ps.on('connected', ({userId, ws}) => {
 
-           /** Get info about this user */
-
+            /** Get info about this user */
             const user = User.get(userId);
             if (!user) {
                 debug('no info for', userId);
                 return;
             }
 
-            /** Send them the list of channels they're allowed to see*/
-            this.sendChannels(user);
+            /** Add them to the list */
+            this.connections.set(ws, new Connection(ws, user));
 
-            const { name, roles } = user;
-            const title = roles.includes('td') ? 'TD' : undefined;
+            ws.once('close', () => {
+                this.connections.delete(ws);
+                enqueue(ws, (c) => c.unsubscribe());
+            });
+
+            /** Send them the list of channels they're allowed to see*/
+            enqueue(ws, (c) => this.sendChannels(c));
 
             /** Listen to their messages */
-
             ws.on('message', (raw) => {
                 const data = raw.toString();
-                debug('<-', name, data);
+                // debug('<-', user.name, data);
                 try {
                     const { type, message } = JSON.parse(data);
                     switch (type) {
-                        case 'chat': {
-                            const { to, text } = message;
-                            const from = userId;
-                            if (from === to) {
-                                return
-                            }
-                            const incoming: ChatMessage = {
-                                id: MESSAGE_ID++,
-                                t: Date.now(),
-                                name,
-                                from: userId,
-                                to,
-                                dm: !Channels.isChannel(to),
-                                title,
-                                text
-                            }
-                            this.chat(user, incoming);
-                        }
-                        break;
+                        case 'chat':
+                            enqueue(ws, (c) =>
+                                this.chat(c, message as IncomigChatMessage));
+                            break;
 
-                        case 'history': {
-                            const { to , last } = message;
-                            this.pushHistory(userId, to, last);
-                        }
-                        break;
+                        case 'history':
+                            enqueue(ws, (c) =>
+                                this.subscribe(c, message as HistoryMessage));
+                            break;
                     }
                 }
                 catch (error) {
@@ -148,103 +191,153 @@ export default class Chatter {
                 }
             });
         });
+        this.systemMessage('The server restarted');
     }
 
-    public systemMessage(text: string, channel = LOBBY) {
-        const message = {
-            id: MESSAGE_ID++,
-            t: Date.now(),
-            from: channel,
-            to: channel,
-            dm: false,
-            text: '',
-            name: text
-        };
-        this.history.push(message);
-        this.ps.pushToAll('chat', message);
-    }
-
-    private chat(sender: User, message: ChatMessage) {
-        if (Channels.isChannel(message.to)) {
-            const channel = Channels.find(message.to);
-            /** Invalid channel */
-            if (!channel) {
-                return;
-            }
-            const { filter } = channel;
-            /** The channel is unfiltered, so we send it to all */
-            if (!filter) {
-                this.history.push(message);
-                this.ps.pushToAll('chat', message);
-            }
-            /** Or, the channel is filtered and this user is allowed to send */
-            else if (filter(sender)) {
-                /** Add it to history */
-                this.history.push(message);
-                /** Gather all the users that are allowed to receive the message */
-                const userIds = this.ps.users.filter((user) => filter(user)).map(({id}) => id);
-                const recipients = Array.from(new Set(userIds).values());
-                /** Send it to all and add it to history */
-                this.ps.pushToMany(recipients, 'chat', message);
-            }
+    private channelFor(from: string, to: string): ChannelSpec | undefined {
+        if (Channels.isChannel(to)) {
+            return Channels.find(to);
         }
-        /** Otherwise, the message is to a single user */
-        else if (this.ps.has(message.to)) {
-            this.history.push(message);
-            /** Send the same message to both */
-            this.ps.pushToMany([message.to, message.from], 'chat', message);
+        const us = [from, to].sort();
+        return {
+            id: us.join('/'),
+            name: to,
+            desc: '',
+            filter: (user) => us.includes(user.id)
         }
     }
 
-    private purgeHistory() {
-        if (this.history.length === 0) {
+    public systemMessage(text: string, to = LOBBY) {
+        const channel = Channels.find(to);
+        if (!channel) {
             return;
         }
-        /** The first message to keep */
-        const first = Date.now() - ms(config.FT2_CHAT_HISTORY);
-        const index = this.history.findIndex(({t}) => t >= first);
-        if (index > 0) {
-            debug('purging', index, 'old messages, have', this.history.length);
-            this.history.splice(0, index);
-        }
-    }
-
-    private pushHistory(userId: string, channel: string, last: number): void {
-        let messages: ChatMessage[] = [];
-        if (Channels.isChannel(channel)) {
-            messages = this.history.filter(({to, id}) => to === channel && id > last);
-            const unread = messages.at(-1)?.id;
-            if (unread) {
-                this.lastRead.set(`${userId}/${channel}`, unread);
-            }
-        }
-        else {
-            messages = this.history.filter(({from , to, id}) =>
-                id > last && (from === channel && to === userId ||
-                from === userId && to === channel));
-        }
-        this.ps.pushToOne(userId, 'history', {
-            channel,
-            messages
+        this.enqueue(() => {
+            const message: ChatMessage = {
+                from: to,
+                to,
+                text: '',
+                name: text
+            };
+            return this.send(channel, message);
         });
     }
 
-    private sendChannels(user: User) {
-        const channels = Channels.listFor(user);
-        const remaining = new Set(channels.map(({id}) => id));
-        const unread = new Set<string>();
-        for (let i = this.history.length - 1; i > 0 && remaining.size > 0; i--) {
-            const { id, to } = this.history[i];
-            if (remaining.delete(to)) {
-                const last = this.lastRead.get(`${user.id}/${to}`) ?? 0;
-                if (id > last) {
-                    unread.add(to);
+    private enqueue(task: () => void | Promise<void>): void {
+        this.queue = this.queue
+            .then(task)
+            .catch((error) => debug('task failed', error));
+    }
+
+    private chat(c: Connection, message: IncomigChatMessage) {
+        const from = c.id;
+        const { to } = message;
+        /** Cannot message yourself */
+        if (from === to) {
+            return;
+        }
+        const channel = this.channelFor(from, to);
+        if (!channel) {
+            return;
+        }
+        /** This user is not allowed to send to this channel */
+        if (!channel.filter(c.user)) {
+            return;
+        }
+        return this.send(channel, {
+            ...message,
+            from,
+            name: c.name,
+            title: c.title
+        });
+    }
+
+    private async send(channel: ChannelSpec, message: ChatMessage) {
+        await new Promise((resolve) => setTimeout(resolve, 3));
+        const outgoing = db.insert(channel.id, message);
+        const chat = JSON.stringify({
+            type: 'chat',
+            message: outgoing
+        });
+        const unread = JSON.stringify({
+            type: 'unread',
+            message: channel.id
+        });
+        for (const [ws, target] of this.connections.entries()) {
+            /** This user should get the message */
+            if (channel.filter(target.user)) {
+                /**
+                 * This connection is subscribed to this channel, so
+                 * we send them the message and set the last t
+                 */
+                if (target.sub?.channel === channel.id) {
+                    ws.send(chat);
+                    target.sub.t = outgoing.t;
+                }
+                /**
+                 * The connection is not subscribed, so they should
+                 * get an unread
+                 */
+                else {
+                    ws.send(unread);
                 }
             }
         }
-        channels.forEach((channel) => {
-            channel.unread = unread.has(channel.id);
-        });
-        this.ps.pushToOne(user.id, 'channels', channels);
+    }
+
+    private subscribe(c: Connection, message: HistoryMessage) {
+        const channel = this.channelFor(c.id, message.to);
+        /** The channel doesn't exist or the user is not allowed in it */
+        if (!channel?.filter(c.user)) {
+            return
+        }
+        const first = Date.now() - ms(config.FT2_CHAT_HISTORY);
+        const after = Math.max(message.last ?? 0, first);
+        const messages = db.history(channel.id, after);
+        const t = messages.at(-1)?.t ?? after;
+        /** Update the subscription */
+        c.subscribe(channel.id, t);
+        const history: ChatHistory = {
+            channel: channel.id,
+            messages
+        };
+        // debug(c.id, message.to, messages.length, messages.at(0)?.t, messages.at(-1)?.t);
+        c.ws.send(JSON.stringify({
+            type: 'history',
+            message: history
+        }));
+    }
+
+    private purgeHistory() {
+        // if (this.history.length === 0) {
+        //     return;
+        // }
+        // /** The first message to keep */
+        // const first = Date.now() - ms(config.FT2_CHAT_HISTORY);
+        // const index = this.history.findIndex(({t}) => t >= first);
+        // if (index > 0) {
+        //     debug('purging', index, 'old messages, have', this.history.length);
+        //     this.history.splice(0, index);
+        // }
+    }
+
+    private sendChannels(c: Connection) {
+        const { user } = c;
+        const channels = Channels.listFor(user);
+        const allowed = new Set(channels.map(({id}) => id));
+        /** Filter out channels this user doesn't have access to */
+        const unread = db.unread(user.id).filter((channel) =>
+            Channels.isChannel(channel)
+                ? allowed.has(channel)
+                : true);
+        const message: ChannelList = {
+            channels,
+            unread,
+        };
+        //debug(user.id, message);
+        c.ws.send(JSON.stringify({
+            type: 'channels',
+            message
+        }));
     }
 }

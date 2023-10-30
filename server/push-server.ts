@@ -4,7 +4,7 @@ import _ from 'lodash';
 
 import { makeDebug } from './utility';
 import type { TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
-import type { Channel, ChatHistory, ChatMessage } from './chatter';
+import type { ChannelList, ChatHistory, OutgoingChatMessage } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
 import type { GameStatus } from './tournament-driver';
@@ -48,10 +48,10 @@ interface PushMessages {
     table: TableUpdate;
 
     /** The list of channels available to the user */
-    channels: Channel[];
+    channels: ChannelList;
 
     /** A chat message */
-    chat: ChatMessage;
+    chat: OutgoingChatMessage;
 
     /** Chat history */
     history: ChatHistory;

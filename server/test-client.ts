@@ -238,7 +238,7 @@ class Client {
             //noReply: i === 3,
             //signUpWith: i === 2 ? 'pablo' : undefined,
             chatWith: i === 2 || i === 3 ? '#lobby' : (i === 4 ? 'pablo' : undefined),
-            chatDelay: ms('15s')
+            chatDelay: ms('7s')
         };
         switch (i) {
             case 1:
