@@ -1,5 +1,7 @@
+import ms from 'ms';
 
 import { Database } from './db';
+import config from './config';
 
 const db = new Database('chat', 1);
 
@@ -119,6 +121,7 @@ export default class ChatDatabase {
     /** Returns the set of all unread channels for this user */
 
     static unread(userId: string): string[] {
+        const after = Date.now() - ms(config.FT2_CHAT_HISTORY);
         return db.all(
             `
             SELECT
@@ -130,10 +133,11 @@ export default class ChatDatabase {
             ON
                 read.channel = latest.channel AND read.userId = $userId
             WHERE
-                (instr(latest.channel, $userId) > 0 OR instr(latest.channel, '#') = 1)
+                latest.t > $after
+                AND (instr(latest.channel, $userId) > 0 OR instr(latest.channel, '#') = 1)
                 AND (read.t IS NULL OR read.t < latest.t)
             `,
-            {userId}).map(({channel}) => channel);
+            {userId, after}).map(({channel}) => channel);
     }
 
     private constructor() { void 0 }
