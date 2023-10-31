@@ -161,8 +161,10 @@ export default class Chatter {
             this.connections.set(ws, new Connection(ws, user));
 
             ws.once('close', () => {
-                this.connections.delete(ws);
-                enqueue(ws, (c) => c.unsubscribe());
+                enqueue(ws, (c) => {
+                    this.connections.delete(ws);
+                    c.unsubscribe();
+                });
             });
 
             /** Send them the list of channels they're allowed to see*/
