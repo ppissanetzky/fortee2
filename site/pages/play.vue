@@ -1,26 +1,18 @@
 <template>
-  <div class="d-flex flex-row justify-space-around mt-3">
+  <v-sheet
+    color="#c0d4e5"
+    width="100%"
+    min-height="100vh"
+    max-height="100vh"
+    class="d-flex flex-row justify-space-around pa-3"
+  >
     <div><!-- EMPTY LEFT SPACE TO CENTER --></div>
     <!-- ENTIRE PAGE - CENTERED -->
-    <v-sheet class="d-flex flex-row" width="800" height="650">
+    <v-sheet color="#0049bd" class="d-flex flex-row px-3 pb-3 my-3 flex-shrink-1" min-height="700" max-height="700">
       <!-- LEFT PORTION WITH FIXED WIDTH -->
       <v-sheet width="150" class="d-flex flex-column">
         <!-- TOP BAR WITH RULES BUTTON -->
-        <v-sheet height="36" min-height="36" color="#8fa5b7" class="d-flex flex-row align-center flex-grow-1">
-          <div v-if="rules" class="d-flex">
-            <v-menu offset-y>
-              <template #activator="{ on, attrs }">
-                <v-btn small text color="white" v-bind="attrs" v-on="on">
-                  <v-icon left color="white">
-                    mdi-text-box-outline
-                  </v-icon>
-                  rules
-                </v-btn>
-              </template>
-              <human-rules v-model="rules" />
-            </v-menu>
-          </div>
-        </v-sheet>
+        <v-sheet height="36" min-height="36" color="#0049bd" class="d-flex flex-row align-center flex-grow-1" />
         <!-- PILE -->
         <v-sheet class="d-flex flex-column fill-height" color="#c0d4e5">
           <div v-if="pile.US.length" class="d-flex flex-column px-2">
@@ -53,37 +45,6 @@
               />
             </v-card>
           </div>
-          <v-sheet v-if="pile.US.length && pile.THEM.length" height="3" color="white" class="mt-3 mb-1" />
-          <div v-if="pile.THEM.length" class="d-flex flex-column px-2">
-            <span class="caption align-self-center mt-2">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
-            <div class="d-flex mt-1">
-              <div class="d-flex caption ml-1">
-                <strong>{{ THEM.points }}</strong>
-              </div>
-              <v-progress-linear
-                class="d-flex align-self-center ml-2 mr-1"
-                height="10"
-                :value="bidPercentage('THEM')"
-                :color="bidColor('THEM')"
-              />
-            </div>
-            <v-card
-              v-for="(trick, index) in stack ? pile.THEM.slice(-2) : pile.THEM"
-              :key="`THEM-${index}`"
-              flat
-              color="#c0d4e5"
-              class="d-flex justify-space-around align-center pa-0"
-            >
-              <v-img
-                v-for="bone in trick"
-                :key="bone"
-                class="ma-0 mt-2"
-                contain
-                max-width="29"
-                :src="`/${bone}v.png`"
-              />
-            </v-card>
-          </div>
         </v-sheet>
       </v-sheet>
 
@@ -99,7 +60,7 @@
               </span>
             </v-sheet>
           </div>
-          <v-sheet width="3" height="36" />
+          <v-sheet color="#c0d4e5" width="3" height="36" />
           <div class="d-flex flex-row">
             <v-sheet color="#0049bd" class="d-flex flex-row white--text align-center justify-start" height="36" min-width="300">
               <span class="text-h5 mx-3">
@@ -112,7 +73,7 @@
         <!-- RIGHT - PLAY AREA -->
         <div class="d-flex flex-column">
           <div class="d-flex">
-            <v-sheet class="d-flex flex-column justify-space-around align-end flex-grow-1">
+            <v-sheet class="d-flex flex-column justify-space-around align-end flex-grow-1 pa-3">
               <!-- LEFT PLAYER STATUS -->
               <StatusNew v-model="left" class="ma-3" />
             </v-sheet>
@@ -213,28 +174,26 @@
               <StatusNew v-else v-model="me" :name="false" class="ma-3 align-self-center" />
             </v-sheet>
 
-            <v-sheet class="d-flex flex-column align-start justify-space-around flex-grow-1">
+            <v-sheet class="d-flex flex-column align-start justify-space-around flex-grow-1 pa-3">
               <!-- RIGHT PLAYER STATUS -->
               <StatusNew v-model="right" class="ma-3" />
             </v-sheet>
           </div>
           <!-- BELOW PLAYING AREA - YOUR NAME AND SNACK -->
-          <v-sheet class="d-flex flex-column mb-3 mt-1 text-center">
-            <v-card v-if="snack" flat color="#0049bd" class="white--text mx-3 overline">
-              <span class="text-center">{{ snack }}</span>
-            </v-card>
-            <span v-else :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'" class="text-h6">
+          <v-sheet class="d-flex flex-column mt-1 text-center">
+            <v-sheet v-if="snack" flat color="#0049bd" class="d-flex flex-row justify-space-around white--text py-2">
+              <span>{{ snack }}</span>
+            </v-sheet>
+            <span v-else :style="bidWinner === youAre ? 'color: #0049bd;' : 'color: #6f6f6f;'" class="text-h6 mb-2">
               <strong>{{ youAre }}</strong>
             </span>
           </v-sheet>
         </div>
         <!-- TOOLBAR ABOVE BONES -->
-        <v-sheet color="#c0d4e5" class="d-flex flex-row align-center justify-space-between px-3">
+        <v-sheet color="#8fa5b7" class="d-flex flex-row align-center justify-space-between px-3 py-2">
           <div class="d-flex flex-row align-center py-1">
             <div v-if="watching">
-              <v-chip small label color="#8fa5b7" class="white--text">
-                <strong>Watching</strong>
-              </v-chip>
+              <span>Watching</span>
             </div>
             <v-btn
               v-else
@@ -262,17 +221,21 @@
         </v-sheet>
 
         <!-- CHAT BOX -->
-        <div v-if="chatOpen" class="d-flex flex-column flex-grow-1">
-          <div class="d-flex flex-column flex-grow-1 mx-3">
+        <v-sheet
+          v-if="chatOpen"
+          class="d-flex flex-row flex-grow-1"
+          min-height="0px"
+        >
+          <v-sheet
+            class="d-flex flex-column mx-3 flex-grow-1"
+          >
             <v-card
               id="chat-box"
               color="white"
               flat
               tile
               outlined
-              height="120"
-              min-height="120"
-              max-height="120"
+              max-height="100%"
               class="d-flex overflow-y-auto flex-column flex-grow-1"
             >
               <div v-for="m in messages" :key="m.id" class="mb-1" style="line-height: 50%;">
@@ -288,17 +251,17 @@
                 placeholder="send a message..."
                 hide-details
                 append-icon="mdi-send"
+                class="mb-3"
                 style="background-color: white;border-radius: 0;"
                 :disabled="!ws"
                 @click:append="chat"
               />
             </v-form>
-          </div>
-          <v-sheet color="#8fa5b7" class="d-flex flex-grow-1" />
-        </div>
+          </v-sheet>
+        </v-sheet>
 
         <!-- BONES  -->
-        <v-sheet v-else color="#8fa5b7" class="d-flex flex-column flex-grow-1 justify-space-between py-3">
+        <v-sheet v-else color="#8fa5b7" class="d-flex flex-column flex-grow-1 justify-space-around py-3 px-2">
           <div class="d-flex align-center justify-space-between">
             <v-img
               v-for="n in 4"
@@ -330,7 +293,7 @@
               </template>
             </v-img>
           </div>
-          <div class="d-flex align-center justify-space-around px-16">
+          <div class="d-flex align-center justify-space-around px-16 mt-3">
             <v-img
               v-for="n in 3"
               :key="`b${n}`"
@@ -364,10 +327,62 @@
         </v-sheet>
       </v-sheet>
 
-      <v-sheet color="#8fa5b7" width="12" class="d-flex" />
+      <!-- RIGHT PILE WITH FIXED WIDTH -->
+      <v-sheet width="150" class="d-flex flex-column">
+        <!-- TOP BAR WITH RULES BUTTON -->
+        <v-sheet height="36" min-height="36" color="#0049bd" class="d-flex flex-row align-center flex-grow-1">
+          <v-spacer />
+          <div v-if="rules" class="d-flex">
+            <v-menu offset-y>
+              <template #activator="{ on, attrs }">
+                <v-btn icon v-bind="attrs" v-on="on">
+                  <v-icon right color="white">
+                    mdi-text-box-outline
+                  </v-icon>
+                </v-btn>
+              </template>
+              <human-rules v-model="rules" />
+            </v-menu>
+          </div>
+        </v-sheet>
+        <!-- PILE -->
+        <v-sheet class="d-flex flex-column fill-height" color="#c0d4e5">
+          <div v-if="pile.THEM.length" class="d-flex flex-column px-2">
+            <span class="caption align-self-center mt-2">{{ teams.THEM[0] }} & {{ teams.THEM[1] }}</span>
+            <div class="d-flex mt-1">
+              <div class="d-flex caption ml-1">
+                <strong>{{ THEM.points }}</strong>
+              </div>
+              <v-progress-linear
+                class="d-flex align-self-center ml-2 mr-1"
+                height="10"
+                :value="bidPercentage('THEM')"
+                :color="bidColor('THEM')"
+              />
+            </div>
+            <v-card
+              v-for="(trick, index) in stack ? pile.THEM.slice(-2) : pile.THEM"
+              :key="`THEM-${index}`"
+              flat
+              color="#c0d4e5"
+              class="d-flex justify-space-around align-center pa-0"
+            >
+              <v-img
+                v-for="bone in trick"
+                :key="bone"
+                class="ma-0 mt-2"
+                contain
+                max-width="29"
+                :src="`/${bone}v.png`"
+              />
+            </v-card>
+          </div>
+        </v-sheet>
+      </v-sheet>
+
     </v-sheet>
     <div><!-- EMPTY RIGHT SPACE TO CENTER --></div>
-  </div>
+  </v-sheet>
 </template>
 <script>
 import StatusNew from '~/components/status-new.vue'
