@@ -186,7 +186,6 @@
               small
               outlined
               color="white"
-              class="mr-3"
               v-bind="attrs"
               v-on="on"
             >
@@ -205,38 +204,6 @@
             </div>
             <v-divider class="my-3" />
             <help />
-          </v-card>
-        </v-menu>
-
-        <!-- DONATE BUTTON -->
-        <v-menu v-if="!guest" offset-y>
-          <template #activator="{ on, attrs }">
-            <v-btn small outlined color="white" v-bind="attrs" v-on="on">
-              <v-icon small>
-                mdi-hand-heart-outline
-              </v-icon>
-            </v-btn>
-          </template>
-          <!-- ************************************************************* -->
-          <!-- DONATION MESSAGE -->
-          <!-- ************************************************************* -->
-          <v-card tile max-width="240">
-            <v-sheet
-              flat
-              color="#c0d4e5"
-              height="30"
-              class="d-flex flex-row overline pa-0 py-1 pl-3 ma-0 align-center"
-            >
-              <span>thank you</span>
-            </v-sheet>
-            <div class="d-flex flex-column pa-3">
-              <p class="body-1">
-                Although fortee2 is free to play, it costs <strong>$30 a month</strong> to keep it running.
-                Consider <a href="https://www.paypal.com/donate/?business=HS465FN6SX8XG&no_recurring=0&item_name=fortee2.com+maintenance+costs.+&currency_code=USD" target="_blank">
-                  making a donation</a>
-                to help cover the cost.
-              </p>
-            </div>
           </v-card>
         </v-menu>
 
@@ -260,6 +227,23 @@
       <v-sheet color="#c0d4e5" class="d-flex flex-column pa-3">
         <v-sheet color="#c0d4e5" class="d-flex flex-column flex-grow-1 overflow-y-auto pr-3">
           <v-item-group v-model="selectedChat" mandatory>
+            <v-item
+              v-slot="{active, toggle}"
+              value="news"
+            >
+              <v-sheet :color="active ? '#0049bd' : '#c0d4e5'">
+                <div
+                  style="cursor: pointer;"
+                  class="text-no-wrap d-flex flex-row align-center"
+                  @click="toggle"
+                >
+                  <v-icon :color="active ? 'white' : '#0049bd'" class="px-1">
+                    mdi-newspaper-variant
+                  </v-icon>
+                  <span :class="active ? 'white--text' : ''">news</span>
+                </div>
+              </v-sheet>
+            </v-item>
             <v-item
               v-for="c in channels"
               :key="c.id"
@@ -355,8 +339,48 @@
         <v-sheet class="d-flex flex-row align-center">
           <span class="text-no-wrap"> {{ chatDescription() }} </span>
         </v-sheet>
-        <v-divider class="mb-3 mt-1" />
-        <div v-if="selectedChat === 'you'">
+        <v-divider v-if="selectedChat !== 'news'" class="mb-3 mt-1" />
+        <div v-if="selectedChat === 'news'">
+          <v-progress-linear v-if="!news || channels.length === 0" indeterminate />
+          <div v-if="news">
+            <div v-for="(n, i) in news" :key="i">
+              <v-card tile outlined class="mb-3">
+                <v-card-title>
+                  {{ n.title }}
+                  <v-spacer />
+                  <v-btn
+                    v-if="n.link"
+                    small
+                    outlined
+                    color="#0049bd"
+                    @click="openUrl(n.link.url)"
+                  >
+                    {{ n.link.text }}
+                    <v-icon right>
+                      mdi-open-in-new
+                    </v-icon>
+                  </v-btn>
+                </v-card-title>
+                <div v-if="n.body" class="px-4">
+                  <v-divider class="mb-3" />
+                  <p>{{ n.body }}</p>
+                </div>
+              </v-card>
+            </div>
+          </div>
+          <v-btn
+            v-if="channels.length"
+            small
+            outlined
+            @click="selectedChat = {channel: channels[0].id, to: channels[0].id}"
+          >
+            <v-icon left>
+              mdi-chevron-left
+            </v-icon>
+            Go to the lobby
+          </v-btn>
+        </div>
+        <div v-else-if="selectedChat === 'you'">
           <p>
             You are signed in as <span class="blue--text">{{ you.email }}</span>
             <v-btn small outlined class="ml-3" @click="signOut">
@@ -377,14 +401,6 @@
             If you need help, feel free to ask in the <strong>lobby</strong> or visit our
             <a href="https://help.fortee2.com" target="_blank">help site</a>.
           </p>
-          <p>
-            Although fortee2 is free to play, it costs to keep it running.
-            Consider
-            <a href="https://www.paypal.com/donate/?business=HS465FN6SX8XG&no_recurring=0&item_name=fortee2.com+maintenance+costs.+&currency_code=USD" target="_blank">
-              making a donation
-            </a>
-            to help cover these costs.
-          </p>
         </div>
         <v-sheet v-else-if="selectedChat" id="chat-box" class="d-flex flex-column flex-grow-1 overflow-y-auto">
           <span v-for="(m, index) in messages" :key="index" class="mb-1">
@@ -397,7 +413,7 @@
           </span>
         </v-sheet>
         <v-sheet
-          v-if="selectedChat && selectedChat !== 'you'"
+          v-if="selectedChat && !['you', 'news'].includes(selectedChat)"
           class="d-flex flex-column mt-3"
         >
           <v-form @submit.prevent="() => void 0" @submit="chat">
@@ -707,8 +723,8 @@ export default {
       limit: Infinity,
       users: [],
       table: {},
-      /** Either 'you', undefined, or an object with 'channel' and 'to' */
-      selectedChat: undefined,
+      /** Either 'news', 'you', undefined, or an object with 'channel' and 'to' */
+      selectedChat: 'news',
       /** The list of channels that we get from the server */
       channels: [],
       /** Messages for the currently selected chat */
@@ -719,10 +735,13 @@ export default {
       unread: {},
       /** The message history for each channel */
       history: {},
+      /** News from https://help.fortee2.com/news.json */
+      news: undefined,
       // The user status, key is user ID, value is one of
       // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
       status: {},
       legend: [
+        ['mdi-newspaper-variant', 'News about fortee2'],
         ['mdi-list-box-outline', 'This is a chat room'],
         ['mdi-square-small', 'The user is idle'],
         ['mdi-play', 'The user is playing with bots or other players'],
@@ -759,6 +778,7 @@ export default {
       this.connect()
       this.startPings()
       this.tick()
+      this.getNews()
     } catch (error) {
       if (error?.response?.status === 401) {
         return window.open('/', '_top')
@@ -780,7 +800,7 @@ export default {
   watch: {
     selectedChat (value) {
       this.message = undefined
-      if (!value || value === 'you') {
+      if (!value || typeof value === 'string') {
         return
       }
       this.messages = []
@@ -879,13 +899,6 @@ export default {
           for (const id of message.unread) {
             if (id !== this.selectedChat?.channel) {
               this.unread[id] = true
-            }
-          }
-          if (this.channels.length > 0) {
-            const channel = this.channels[0].id
-            this.selectedChat = {
-              channel,
-              to: channel
             }
           }
           break
@@ -1196,6 +1209,14 @@ export default {
     formatTime (t) {
       return dtFormat.format(new Date(t)).toLocaleLowerCase()
     },
+    async getNews () {
+      const url = 'https://help.fortee2.com/news.json'
+      try {
+        this.news = await this.$axios.$get(url)
+      } catch (error) {
+        this.news = []
+      }
+    },
 
     // CHAT --------------------------------------------------------------------
 
@@ -1295,6 +1316,9 @@ export default {
     chatDescription () {
       if (!this.selectedChat) {
         return 'Select a chat room or user on the left'
+      }
+      if (this.selectedChat === 'news') {
+        return ''
       }
       if (this.selectedChat === 'you') {
         return `Hi, ${this.you.name}`
