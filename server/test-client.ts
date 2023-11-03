@@ -240,18 +240,18 @@ class Client {
             // chatWith: i === 2 || i === 3 ? '#lobby' : (i === 4 ? 'pablo' : undefined),
             // chatDelay: ms('7s')
         };
-        switch (i) {
-            case 1:
-            case 2:
-                options.chatWith = '#lobby';
-                break;
-            case 3:
-                options.chatWith = 'pablo';
-                break;
-            case 4:
-                options.chatWith = '#td-land';
-                break;
-        }
+        // switch (i) {
+        //     case 1:
+        //     case 2:
+        //         options.chatWith = '#lobby';
+        //         break;
+        //     case 3:
+        //         options.chatWith = 'pablo';
+        //         break;
+        //     case 4:
+        //         options.chatWith = '#td-land';
+        //         break;
+        // }
         new Client(t.id, options).connect();
         await delay(50);
     }

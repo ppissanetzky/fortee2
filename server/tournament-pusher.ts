@@ -76,6 +76,11 @@ export interface UserUpdate extends Partial<Status> {
     partner: string | null;
 }
 
+export interface SummonTable {
+    name: string;
+    url: string;
+}
+
 function makeUserUpdate(t: Tournament, userId: string): UserUpdate {
     const status = t.driver?.statusFor(userId) || {};
     return {
@@ -138,7 +143,7 @@ export default class TournamentPusher {
             .on('reload', () => this.refresh())
             .on('dropped', () => this.refresh())
 
-            .on('summonTable', ({t, room}) => this.updateSome(t, room.table.ids))
+            .on('summonTable', ({t, room}) => this.summonTable(t, room))
             .on('announceBye', ({t, user}) => this.updateOne(t, user));
     }
 
@@ -148,14 +153,21 @@ export default class TournamentPusher {
         this.pushUserStatus();
     }
 
-    private updateOne(t: Tournament, userId: string) {
+    private updateOne(t: Tournament, userId: string, room?: GameRoom) {
         this.ps.pushToOne(userId, 'tournament', makeTournamentUpdate(t));
         this.ps.pushToOne(userId, 'user', makeUserUpdate(t, userId));
+        if (room) {
+            this.ps.pushToOne(userId, 'summon', {
+                name: t.name,
+                url: room.url
+            });
+        }
     }
 
-    private updateSome(t: Tournament, userIds: string[]) {
+    private summonTable(t: Tournament, room: GameRoom) {
+        const userIds: string[] = room.table.ids;
         for (const userId of userIds) {
-            this.updateOne(t, userId);
+            this.updateOne(t, userId, room);
         }
     }
 

@@ -871,6 +871,9 @@ export default {
         case 'game':
           this.updateGame(message)
           break
+        case 'summon':
+          this.summon(message)
+          break
         case 'channels':
           this.channels = message.channels
           for (const id of message.unread) {
@@ -958,6 +961,8 @@ export default {
       const { error } = await this.$axios.$get(url)
       if (error) {
         //
+      } else if (Notification?.permission === 'default') {
+        Notification.requestPermission()
       }
       this.loading = false
     },
@@ -969,6 +974,23 @@ export default {
         //
       }
       this.loading = false
+    },
+    summon (message) {
+      const { name, url } = message
+      try {
+        if (Notification?.permission === 'granted') {
+          const n = new Notification('Your table is ready', {
+            tag: url,
+            body: `Your table for the "${name}" tournament is ready!`,
+            icon: '/favicon.ico'
+          })
+          if (n.title) {
+            // just to get rid of the warning about unused 'n'
+          }
+        }
+      } catch (error) {
+        // console.log(error)
+      }
     },
     async play () {
       this.loading = true

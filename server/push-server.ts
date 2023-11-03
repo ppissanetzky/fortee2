@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import _ from 'lodash';
 
 import { makeDebug } from './utility';
-import type { TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
+import type { SummonTable, TableUpdate, TournamentUpdate, UserUpdate } from './tournament-pusher';
 import type { ChannelList, ChatHistory, OutgoingChatMessage } from './chatter';
 import WsServer from './ws-server';
 import Dispatcher from './dispatcher';
@@ -40,6 +40,9 @@ interface PushMessages {
 
     /** An update specific to a user for a tournament */
     user: UserUpdate;
+
+    /** Summoning a user to a table */
+    summon: SummonTable;
 
     /** Status update for one game */
     game: GameStatus;
