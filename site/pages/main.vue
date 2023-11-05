@@ -341,7 +341,7 @@
         </v-sheet>
         <v-divider v-if="selectedChat !== 'news'" class="mb-3 mt-1" />
         <div v-if="selectedChat === 'news'">
-          <v-progress-linear v-if="!news || channels.length === 0" indeterminate />
+          <v-progress-linear v-if="!news || channels.length === 0" indeterminate class="mb-3" />
           <div v-if="news">
             <div v-for="(n, i) in news" :key="i">
               <v-card tile outlined class="mb-3">
@@ -735,7 +735,7 @@ export default {
       unread: {},
       /** The message history for each channel */
       history: {},
-      /** News from https://help.fortee2.com/news.json */
+      /** News from <data>/news.json */
       news: undefined,
       // The user status, key is user ID, value is one of
       // 'playing-in-t' | 'playing' | 'invited' | 'signed-up'
@@ -778,7 +778,6 @@ export default {
       this.connect()
       this.startPings()
       this.tick()
-      this.getNews()
     } catch (error) {
       if (error?.response?.status === 401) {
         return window.open('/', '_top')
@@ -901,6 +900,9 @@ export default {
               this.unread[id] = true
             }
           }
+          break
+        case 'news':
+          this.news = message
           break
         case 'unread':
           this.unread[message] = true
@@ -1208,14 +1210,6 @@ export default {
     },
     formatTime (t) {
       return dtFormat.format(new Date(t)).toLocaleLowerCase()
-    },
-    async getNews () {
-      const url = 'https://help.fortee2.com/news.json'
-      try {
-        this.news = await this.$axios.$get(url)
-      } catch (error) {
-        this.news = []
-      }
     },
 
     // CHAT --------------------------------------------------------------------

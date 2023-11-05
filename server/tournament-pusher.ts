@@ -113,8 +113,13 @@ export default class TournamentPusher {
     constructor() {
         this.chatter = new Chatter(this.ps);
 
-        /** When a new socket connects, we send some initial info */
-        this.ps.on('connected', ({userId}) => this.connected(userId));
+        /**
+         * When a new socket connects, we send some initial info. We do it in
+         * the next tick to allow other, more important connected messages to
+         * go out sooner
+         */
+        this.ps.on('connected', ({userId}) =>
+            process.nextTick(() => this.connected(userId)));
 
         /** When something happens in a game room, we update that user */
         GameRoom.events

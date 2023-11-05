@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { WebSocket } from 'ws';
 import { NextFunction, Request, Response } from 'express';
 import _ from 'lodash';
@@ -180,6 +182,7 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
             this.connections.set(id, {user, sockets: new Set([ws])});
             this.pushOnline();
         }
+        this.pushNews(ws);
         this.emit('connected', {
             userId: id,
             ws
@@ -220,6 +223,20 @@ export default class PushServer extends Dispatcher<PushServerEvents> {
         }
         else {
             this.pushToAll('online', message);
+        }
+    }
+
+    private async pushNews(ws: WebSocket) {
+        try {
+            const data = await readFile(path.join(config.FT2_DB_PATH, 'news.json'), 'utf8');
+            const news = JSON.parse(data);
+            ws.send(JSON.stringify({
+                type: 'news',
+                message: news,
+            }));
+        }
+        catch (error) {
+            this.debug('failed to push news', error);
         }
     }
 
