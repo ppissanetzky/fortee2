@@ -288,9 +288,15 @@
       </v-tab-item>
       <!-- SERVER STATUS -->
       <v-tab-item>
-        <v-btn text @click="loadStatus">
-          refresh
-        </v-btn>
+        <div class="px-3">
+          <v-btn small outlined @click="loadStatus">
+            refresh
+          </v-btn>
+          <v-btn small outlined class="ml-3" @click="restart">
+            quick restart
+          </v-btn>
+        </div>
+        <v-divider class="my-3" />
         <div v-for="s in status" :key="s.name">
           <h3 class="ml-3 mt-3">
             {{ s.name }}
@@ -631,6 +637,9 @@ export default {
       } finally {
         this.saving = false
       }
+    },
+    async restart () {
+      await this.$axios.$get('/api/tournaments/td/restart')
     }
   }
 }

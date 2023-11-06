@@ -135,3 +135,11 @@ router.post('/save/user', express.json(), (req, res) => {
 router.get('/status', (req, res) => {
     res.json(ServerStatus.get());
 });
+
+router.get('/restart', (req, res) => {
+    setTimeout(() => {
+        debug('Server restarting from TD page');
+        process.exit(2);
+    }, 1000);
+    res.sendStatus(200);
+});
