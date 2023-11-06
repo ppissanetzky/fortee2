@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
 import ms from 'ms';
+import _ from 'lodash';
 
 import { formatDuration, makeDebug } from './utility';
 import config from './config';
@@ -205,7 +206,7 @@ export default class WsServer {
                 const now = Date.now();
                 const convert = (n: number) =>
                     n ? formatDuration(now - n) : '';
-                const rows = [];
+                let rows = [];
                 for (const s of this.stats.values()) {
                     rows.push([
                         s.url,
@@ -223,6 +224,7 @@ export default class WsServer {
                         convert(s.lastError)
                     ]);
                 }
+                rows = _.sortBy(rows, [([, name]) => name]);
                 return { columns, rows };
             }
         });
