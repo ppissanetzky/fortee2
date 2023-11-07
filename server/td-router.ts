@@ -6,11 +6,12 @@ import express from 'express';
 import * as db from './tournament-db';
 import Tournament, { State } from './tournament';
 import { Rules } from './core';
-import { makeDebug } from './utility';
+import { formatDuration, makeDebug } from './utility';
 import { fa, fif, validateTournament } from './validate';
 import Scheduler from './tournament-scheduler';
 import User, { UserRole, UserType, UserUpdate } from './users';
 import ServerStatus from './server-status';
+import GameRoom from './game-room';
 
 const debug = makeDebug('td-router');
 
@@ -142,4 +143,20 @@ router.get('/restart', (req, res) => {
         process.exit(2);
     }, 1000);
     res.sendStatus(200);
+});
+
+router.get('/rooms', (req, res) => {
+    const result = Array.from(GameRoom.rooms.values()).map((room) => {
+        const status = room.status;
+        return {
+            id: status.id,
+            watch: `/play?watch=${status.token}`,
+            state: status.state,
+            idle: status.idle ? formatDuration(status.idle) : '',
+            score: [status.us.marks, status.them.marks].join(' - '),
+            table: room.table.names.join(', '),
+            t: room.t?.name,
+        }
+    });
+    res.json(result);
 });

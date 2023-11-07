@@ -195,7 +195,7 @@ class Client {
     const open = TexasTime.today();
     const now = open.date.getTime();
     const close = new TexasTime(new Date(now + ms('10s')));
-    const start = new TexasTime(new Date(now + ms('20s')));
+    const start = new TexasTime(new Date(now + ms('14s')));
 
     const t = new Tournament({
         id: 0,
@@ -230,10 +230,10 @@ class Client {
         headers: { ['x-ft2-bot']: 'pablo' }
     });
 
-    for (let i = 0; i < 8; ++i) {
+    for (let i = 0; i < 16; ++i) {
         const options: Options = {
             //connectDelay: _.random(1000, 10000),
-            playDelay: _.random(500, 600),
+            playDelay: _.random(1000, 6000),
             //noShow: true,
             //noReply: i === 3,
             //signUpWith: i === 2 ? 'pablo' : undefined,

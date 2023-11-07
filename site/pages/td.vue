@@ -1,5 +1,10 @@
 <template>
-  <div>
+  <v-sheet
+    color="#c0d4e5"
+    class="d-flex flex-row pa-3"
+    width="100%"
+    min-height="100vh"
+  >
     <!-- DIALOG FOR USERS -->
     <v-dialog
       v-model="userDialog"
@@ -201,17 +206,18 @@
       </v-card>
     </v-dialog>
     <!-- MAIN  -->
-    <v-card flat tile class="mb-3">
-      <v-tabs v-model="tab" background-color="#c0d4e5" grow>
+    <v-sheet class="fill-height">
+      <v-tabs v-model="tab" background-color="#c0d4e5" vertical>
         <v-tab>Users</v-tab>
         <v-tab>Today's Ts</v-tab>
         <v-tab>Recurring Ts</v-tab>
         <v-tab>Server status</v-tab>
         <v-tab>Stats</v-tab>
+        <v-tab>Games</v-tab>
       </v-tabs>
-    </v-card>
+    </v-sheet>
 
-    <v-tabs-items v-model="tab">
+    <v-tabs-items v-model="tab" class="flex-grow-1 py-3">
       <!-- USERS -->
       <v-tab-item>
         <v-toolbar flat>
@@ -374,8 +380,44 @@
           </v-sheet>
         </div>
       </v-tab-item>
+      <!-- GAMES -->
+      <v-tab-item>
+        <div class="px-3">
+          <v-btn small outlined @click="loadRooms">
+            refresh
+          </v-btn>
+          <span class="ml-3">
+            This table doesn't update automatically
+          </span>
+        </div>
+        <v-divider class="my-3" />
+        <v-simple-table dense>
+          <template #default>
+            <thead>
+              <tr>
+                <th>
+                  <!-- empty -->
+                </th>
+                <th v-for="c in roomHeaders" :key="c.value">
+                  {{ c.text }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(r, i) in rooms" :key="i">
+                <td>
+                  <a :href="r.watch" target="_blank">watch</a>
+                </td>
+                <td v-for="(n, j) in roomHeaders" :key="j">
+                  {{ r[n.value] }}
+                </td>
+              </tr>
+            </tbody>
+          </template>
+        </v-simple-table>
+      </v-tab-item>
     </v-tabs-items>
-  </div>
+  </v-sheet>
 </template>
 <script>
 export default {
@@ -417,6 +459,15 @@ export default {
         { text: 'Notes', value: 'hasNotes' }
       ],
       statsHeaders: [],
+      roomHeaders: [
+        { text: 'ID', value: 'id' },
+        { text: 'State', value: 'state' },
+        { text: 'Idle', value: 'idle' },
+        { text: 'Score', value: 'score' },
+        { text: 'Table', value: 'table' },
+        { text: 'Tournament', value: 't' }
+      ],
+      rooms: [],
       // Models
       search: undefined,
       userSearch: undefined,
@@ -471,6 +522,9 @@ export default {
       }
       if (this.tab === 3 && this.status.length === 0) {
         return await this.loadStatus()
+      }
+      if (this.tab === 5 && this.rooms.length === 0) {
+        return await this.loadRooms()
       }
     },
     async userType () {
@@ -546,6 +600,9 @@ export default {
           { ...stats[max], name: `highest: ${stats[max].name}` }
         ]
       }
+    },
+    async loadRooms () {
+      this.rooms = await this.$axios.$get('/api/tournaments/td/rooms')
     },
     statSort (items, [name], [isDesc]) {
       items.sort((a, b) => {
