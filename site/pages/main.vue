@@ -456,7 +456,20 @@
                 <span v-else>opens at {{ t.openTime }}</span>
               </div>
               <v-spacer />
-              <v-btn
+              <v-menu v-if="t.playing || t.done" tile offset-y class="pa-3">
+                <template #activator="{ on, attrs }">
+                  <v-btn icon color="white" v-bind="attrs" v-on="on">
+                    <v-icon>
+                      mdi-open-in-new
+                    </v-icon>
+                  </v-btn>
+                </template>
+                <v-sheet color="#0049bd" class="pa-3">
+                  <bracket :t="t" />
+                </v-sheet>
+              </v-menu>
+
+              <!-- <v-btn
                 v-if="t.playing"
                 icon
                 @click="openUrl(`/track?t=${t.id}`)"
@@ -465,11 +478,11 @@
                   mdi-open-in-new
                 </v-icon>
               </v-btn>
-
+ -->
               <v-menu offset-x>
                 <template #activator="{ on, attrs }">
                   <v-btn icon color="white" v-bind="attrs" v-on="on">
-                    <v-icon right>
+                    <v-icon>
                       mdi-text-box-outline
                     </v-icon>
                   </v-btn>
