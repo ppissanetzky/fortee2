@@ -36,6 +36,12 @@
             <strong>Start a game</strong>
           </v-toolbar-title>
           <v-spacer />
+          <v-btn small outlined color="white" class="mr-3" @click="openUrl('https://help.fortee2.com/start-a-game/')">
+            Help
+            <v-icon right>
+              mdi-open-in-new
+            </v-icon>
+          </v-btn>
           <v-btn small icon color="white" class="mr-1" @click="dialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
