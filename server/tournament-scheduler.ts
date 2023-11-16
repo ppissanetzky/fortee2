@@ -372,7 +372,7 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
             if (other === t) {
                 continue;
             }
-            switch (t.state) {
+            switch (other.state) {
                 case State.CANCELED:
                 case State.DONE:
                 case State.LATER:
