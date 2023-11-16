@@ -527,6 +527,7 @@
                           x-small
                           outlined
                           color="black"
+                          class="ml-2"
                           :loading="loading"
                           @click="signUp(t, partnerMismatch(t))"
                         >
@@ -559,11 +560,10 @@
                         </v-icon>
                         sign up
                       </v-btn>
-                      <v-spacer />
                       <v-btn
                         small
                         outlined
-                        class="red--text"
+                        class="red--text ml-3"
                         :loading="loading"
                         :disabled="!t.signedUp"
                         @click="dropOut(t.id)"
@@ -573,6 +573,9 @@
                         </v-icon>
                         drop out
                       </v-btn>
+                      <span class="ml-3 red--text">
+                        {{ t.signupError }}
+                      </span>
                     </div>
                   </div>
                   <p v-if="t.count === 0" class="mt-3 my-0">
@@ -987,6 +990,7 @@ export default {
     async signUp (t, partnerName) {
       const { id } = t
       this.loading = true
+      t.signupError = undefined
       let { newPartner } = t
       if (partnerName) {
         newPartner = this.idOf(partnerName)
@@ -994,7 +998,10 @@ export default {
       const url = `/api/tournaments/signup/${id}/${newPartner || 'null'}`
       const { error } = await this.$axios.$get(url)
       if (error) {
-        //
+        t.signupError = error
+        setTimeout(() => {
+          t.signupError = undefined
+        }, 3500)
       } else if (Notification?.permission === 'default') {
         Notification.requestPermission()
       }

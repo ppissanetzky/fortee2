@@ -62,26 +62,20 @@ router.get('/me', async (req, res) => {
 router.get('/signup/:id/:partner', (req, res) => {
     const { user } = req;
     assert(user);
-    try {
-        fif(!user.isStandard, 'guest');
-        const { params } = req;
-        const id = parseInt(params.id, 10);
-        const partner = params.partner === 'null' ? null : params.partner;
-        const scheduler = Scheduler.get();
-        const t = scheduler.tourneys.get(id);
-        fif(!t, 'invalid-tournament');
-        assert(t);
-        fif(!t.isOpen, 'not-open');
-        fif(partner && !User.get(partner), 'invalid-partner');
+    fif(!user.isStandard, 'guest');
+    const { params } = req;
+    const id = parseInt(params.id, 10);
+    const partner = params.partner === 'null' ? null : params.partner;
+    const scheduler = Scheduler.get();
+    const t = scheduler.tourneys.get(id);
+    fa(t, 'invalid-tournament');
+    fif(!t.isOpen, 'not-open');
+    fif(partner && !User.get(partner), 'invalid-partner');
 
-        /** This will add it to the database and push an update */
-        scheduler.register(t.id, user.id, partner);
+    /** This will add it to the database and push an update */
+    scheduler.register(t.id, user.id, partner);
 
-        res.json({});
-    }
-    catch (error) {
-        fail('oops');
-    }
+    res.json({});
 });
 
 router.get('/dropout/:id', (req, res) => {

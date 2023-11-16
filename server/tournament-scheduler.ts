@@ -7,10 +7,9 @@ import { expected, makeDebug } from './utility';
 import Dispatcher from './dispatcher';
 import TexasTime from './texas-time';
 import Tournament, { State, TournamentRow } from './tournament';
-import config from './config';
 import * as db from './tournament-db';
 import TournamentDriver, { TournamentDriverEvents } from './tournament-driver';
-import { Rules } from './core';
+import { fail, fif } from './validate';
 
 const debug = makeDebug('scheduler');
 
@@ -361,24 +360,31 @@ export default class Scheduler extends Dispatcher<SchedulerEvents> {
     }
 
     public register(id: number, user: string, partner: string | null): [Tournament, boolean] {
-        assert(user);
         const t = this.tourneys.get(id);
         assert(t, `Invalid tournament ${id}`);
         assert(t.signup_opened && !t.signup_closed, `Signup is not open for ${id}`);
-        assert(user !== partner, 'Yourself as partner?');
-        if (t.invitation && t.invitees && !t.invitees.includes(user)) {
-            assert(false, 'Not invited');
-        }
+        /** Can't be your own partner */
+        fif(user === partner, 'yourself');
+        /** Not invited */
+        fif(t.invitation && t.invitees && !t.invitees.includes(user), 'not-invited');
         for (const other of this.tourneys.values()) {
+            /** Skip this one */
             if (other === t) {
                 continue;
             }
-            if (other.signup_opened && !other.started && !other.finished) {
-                if (other.isSignedUp(user)) {
-                    assert(false, `Already registered for ${other.id}`);
-                }
+            switch (t.state) {
+                case State.CANCELED:
+                case State.DONE:
+                case State.LATER:
+                    break;
+                case State.OPEN:
+                case State.WTS:
+                    fif(other.isSignedUp(user), 'already-registered');
+                    break;
+                case State.PLAYING:
+                    fif(other.driver?.stillIn.has(user), 'still-in-t');
+                    break;
             }
-            // TODO: check if this user is still playing in other
         }
 
         /** Check to see if it already exists */
