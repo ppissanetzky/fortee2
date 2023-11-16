@@ -466,7 +466,7 @@
                 <template #activator="{ on, attrs }">
                   <v-btn icon color="white" v-bind="attrs" v-on="on">
                     <v-icon>
-                      mdi-open-in-new
+                      mdi-tournament
                     </v-icon>
                   </v-btn>
                 </template>
