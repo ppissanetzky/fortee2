@@ -53,12 +53,6 @@ const variables: Record<string, string> = {
     FT2_REPLY_TIMEOUT: '50s',
 
     /**
-     * How long after we expire an invitation from slack - a 'ms' string
-     */
-
-    FT2_SLACK_INVITATION_EXPIRY: '10m',
-
-    /**
      * How long to go without pongs or pings - a string that 'ms' can understand
      */
 
@@ -102,23 +96,29 @@ const variables: Record<string, string> = {
 
     FT2_SLACK_ON: YES,
 
-    /**
-     * Slack tokens
-     */
+    // /**
+    //  * How long after we expire an invitation from slack - a 'ms' string
+    //  */
 
-    FT2_SLACK_BOT_TOKEN: '',
-    FT2_SLACK_APP_TOKEN: '',
-    FT2_SLACK_CLIENT_ID: '',
-    FT2_SLACK_CLIENT_SECRET: '',
+    // FT2_SLACK_INVITATION_EXPIRY: '10m',
 
-    /**
-     * For Discord
-     */
+    // /**
+    //  * Slack tokens
+    //  */
 
-    FT2_DD_APP_ID: '',
-    FT2_DD_APP_PK: '',
-    FT2_DD_APP_SECRET: '',
-    FT2_DD_BOT_TOKEN: '',
+    // FT2_SLACK_BOT_TOKEN: '',
+    // FT2_SLACK_APP_TOKEN: '',
+    // FT2_SLACK_CLIENT_ID: '',
+    // FT2_SLACK_CLIENT_SECRET: '',
+
+    // /**
+    //  * For Discord
+    //  */
+
+    // FT2_DD_APP_ID: '',
+    // FT2_DD_APP_PK: '',
+    // FT2_DD_APP_SECRET: '',
+    // FT2_DD_BOT_TOKEN: '',
 
     /**
      * GitHub
