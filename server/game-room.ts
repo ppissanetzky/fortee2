@@ -189,7 +189,14 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
      * A set of user names that have been invited to this room. Always
      * includes the host
      */
+
     public readonly invited = new Set<string>();
+
+    /**
+     * The set of user IDs that were invited but never joined the room.
+     */
+
+    public readonly noShows = new Set<string>();
 
     /** Latency of alive messages per user name */
 
@@ -245,6 +252,15 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
 
         assert(this.positions.every((name) => name), 'Positions are wrong');
         this.debug('positions %j', this.positions);
+
+        /**
+         * For tournament rooms, populate the initial list of now-shows
+         * with every user ID.
+         */
+
+        if (options.tournament) {
+            this.table.ids.forEach((userId) => this.noShows.add(userId));
+        }
 
         GameRoom.events.emit('created', this);
 
@@ -558,6 +574,8 @@ export default class GameRoom extends Dispatcher <GameRoomEvents> {
         }
         this.debug('joined', name);
         this.sockets.set(name, socket);
+        /** This user has joined the room, so they are not a no-show */
+        this.noShows.delete(userId);
         this.emit('userJoined', userId);
         GameRoom.events.emit('joined', this);
         /**

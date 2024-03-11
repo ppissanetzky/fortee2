@@ -292,6 +292,9 @@ export class Game {
             room.once('expired', (status) => {
                 debug('room expired %j', status);
                 this.update();
+                room.noShows.forEach((userId) => {
+                    writeStat('nsh', userId, 1);
+                });
                 const teams = [
                     {status: status.us, team: this.teams[0]},
                     {status: status.them, team: this.teams[1]}

@@ -27,7 +27,8 @@ export type StatType =
     'call' |
     'play' |
     't-play' |
-    't-win';
+    't-win' |
+    'nsh';
 
 /** The definition of a stat */
 
@@ -88,6 +89,13 @@ const STATS: Record<StatType, Stat> = {
     },
     't-win': {
         name: 'Tournaments won',
+        units: 'count',
+        format: {maximumFractionDigits: 0},
+        group: 'sum',
+        convert: noConvert
+    },
+    'nsh': {
+        name: 'Tournament no-shows',
         units: 'count',
         format: {maximumFractionDigits: 0},
         group: 'sum',
