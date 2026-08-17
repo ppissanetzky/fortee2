@@ -298,11 +298,18 @@ export const Fallback = new Strategy('fallback', {
  */
 
 export const MoneyForPartner = new Strategy('give my partner money', {
-    play({debug, trump, lead, table, possible, remaining}) {
+    play({debug, lead, table, possible, remaining, unbeatable}) {
         /** If my partner lead */
         if (lead && table.isPartner(lead.from)) {
             debug('my partner lead', lead.bone.toString());
-            if (lead.bone.beatsAll(trump, remaining)) {
+            /**
+             * Checking against 'remaining' alone isn't enough: someone
+             * playing between my partner and me may have already beaten
+             * their lead this trick, so we need 'unbeatable' which also
+             * accounts for the bones already played in this trick
+             */
+            const [winning] = unbeatable(remaining, [lead.bone]);
+            if (winning) {
                 debug('my partner will win');
                 /** Get the best money bone and, if we have one, play it */
                 const mostMoney = Bone.mostMoney(possible);
@@ -320,9 +327,20 @@ export const MoneyForPartner = new Strategy('give my partner money', {
  */
 
 export const TakeTheLead = new Strategy('try to take the lead', {
-    play({debug, leading, possible, unbeatable, remaining}) {
+    play({debug, leading, possible, unbeatable, remaining, lead, table}) {
         if (leading) {
             return;
+        }
+        /**
+         * If my partner already has this trick won, don't waste a good
+         * bone overtaking them, just let a later strategy trash it
+         */
+        if (lead && table.isPartner(lead.from)) {
+            const [winning] = unbeatable(remaining, [lead.bone]);
+            if (winning) {
+                debug('my partner already has this trick won');
+                return;
+            }
         }
         const winners = unbeatable(remaining, possible);
         if (winners.length === 0) {
