@@ -61,6 +61,10 @@ export class DatabaseConnection {
     function(name: string, f: (...args: any[]) => any) {
         this.bs3.function(name, f);
     }
+
+    pragma(source: string) {
+        return this.bs3.pragma(source);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -110,6 +114,11 @@ export class Database {
     change(query: string, params: Params = {}) {
         const connection = new DatabaseConnection(this);
         return connection.change(query, params);
+    }
+
+    pragma(source: string) {
+        const connection = new DatabaseConnection(this);
+        return connection.pragma(source);
     }
 
     transaction(func: any) {

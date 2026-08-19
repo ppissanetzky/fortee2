@@ -17,7 +17,7 @@ const router = express.Router();
 
 export default router;
 
-const db = new Database('stats', 1).connect();
+const db = new Database('stats', 2).connect();
 
 db.run('ATTACH DATABASE $file AS t', { file: tdb.file });
 
@@ -111,6 +111,36 @@ export function writeStat(type: StatType, key: string, value: number) {
         INSERT.run({type, key, value});
     });
 }
+
+/**
+ * Keeps the stats table from growing forever by deleting anything older
+ * than a year, then incrementally reclaiming the freed pages so the file
+ * on disk actually shrinks. Runs once shortly after startup and then once
+ * a day. The database is in incremental_vacuum mode (see v2.sql), so
+ * reclaiming space this way doesn't need a full, blocking VACUUM.
+ *
+ * The freed pages only show up as reclaimed disk space once the WAL is
+ * checkpointed, so we force one afterwards instead of waiting for it to
+ * happen on its own.
+ */
+
+const PRUNE = db.statement(`DELETE FROM stats WHERE time < unixepoch('now', '-1 year')`);
+
+function pruneStats() {
+    const debug = makeDebug('stats-prune');
+    const removed = PRUNE.run({}).changes;
+    debug('pruned %d row(s) older than a year', removed);
+    db.pragma('incremental_vacuum');
+    db.pragma('wal_checkpoint(TRUNCATE)');
+}
+
+/**
+ * unref() so this timer alone doesn't keep the process (or a test
+ * runner importing this module) alive
+ */
+
+setTimeout(pruneStats, ms('1m')).unref();
+setInterval(pruneStats, ms('1d')).unref();
 
 function read(type: StatType, stat: Stat, sinceMs = 0) {
     const group = stat.group === 'avg' ? 'AVG' : 'SUM';
