@@ -131,12 +131,6 @@ export default class Chatter {
 
     constructor (ps: PushServer) {
 
-        /** To delete old messages */
-
-        setTimeout(() => setInterval(
-            () => this.purgeHistory(), Math.min(ms('1h'), ms(config.FT2_CHAT_HISTORY))),
-            ms(config.FT2_CHAT_HISTORY));
-
         type Task = (c: Connection) => void | Promise<void>;
 
         const enqueue = (ws: WebSocket, task: Task) => {
@@ -308,19 +302,6 @@ export default class Chatter {
             type: 'history',
             message: history
         }));
-    }
-
-    private purgeHistory() {
-        // if (this.history.length === 0) {
-        //     return;
-        // }
-        // /** The first message to keep */
-        // const first = Date.now() - ms(config.FT2_CHAT_HISTORY);
-        // const index = this.history.findIndex(({t}) => t >= first);
-        // if (index > 0) {
-        //     debug('purging', index, 'old messages, have', this.history.length);
-        //     this.history.splice(0, index);
-        // }
     }
 
     private sendChannels(c: Connection) {

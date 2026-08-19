@@ -2,6 +2,7 @@ import ms from 'ms';
 
 import { Database } from './db';
 import config from './config';
+import { makeDebug } from './utility';
 
 const db = new Database('chat', 1);
 
@@ -142,3 +143,18 @@ export default class ChatDatabase {
 
     private constructor() { void 0 }
 }
+
+/**
+ * Keeps the chat table from growing forever by deleting anything older
+ * than a week. Runs once shortly after startup and then once a day.
+ */
+
+function pruneChatHistory() {
+    const debug = makeDebug('chat-prune');
+    const before = Date.now() - ms('7d');
+    const removed = db.change('DELETE FROM chat WHERE t < $before', { before });
+    debug('pruned %d message(s) older than a week', removed);
+}
+
+setTimeout(pruneChatHistory, ms('1m')).unref();
+setInterval(pruneChatHistory, ms('1d')).unref();
