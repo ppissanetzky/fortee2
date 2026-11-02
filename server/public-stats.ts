@@ -105,6 +105,30 @@ const STATS: PublicStat[] = [
         }
     },
     {
+        id: 'twp',
+        name: 'Tournament win percentage',
+        desc: 'Percentage of tournaments won',
+        headers: [
+            {text: 'Name', value: 'name'},
+            {text: 'Played', value: 'played', align: 'end'},
+            {text: 'Wins', value: 'wins', align: 'end'},
+            {text: 'Percent', value: 'percent', align: 'end'},
+        ],
+        generate(since, m) {
+            const rows = readStat('t-win-pct', m);
+            if (!rows) {
+                return [];
+            }
+            return _.orderBy(rows, ['value', 'wins'], ['desc', 'desc'])
+                .map(({name, played, wins, value}) => ({
+                    name,
+                    played,
+                    wins,
+                    percent: value.toFixed(1)
+                }));
+        }
+    },
+    {
         id: 'tsp',
         name: 'Tournaments made',
         headers: [

@@ -28,6 +28,7 @@ export type StatType =
     'play' |
     't-play' |
     't-win' |
+    't-win-pct' |
     'nsh';
 
 /** The definition of a stat */
@@ -36,16 +37,15 @@ interface Stat {
     name: string;
     units: string;
     format: Intl.NumberFormatOptions;
-    group: 'sum' | 'avg';
-    convert(n: number): number;
+    /** Used by the default reader. Ignored when `read` is set. */
+    group?: 'sum' | 'avg';
+    convert?(n: number): number;
+    /** Replaces the default sum/avg read when present */
+    read?(sinceMs: number): {name: string; value: number}[];
 }
 
 function convertMs(n: number): number {
     return n / 1000;
-}
-
-function noConvert(n: number): number {
-    return n;
 }
 
 const STATS: Record<StatType, Stat> = {
@@ -84,22 +84,48 @@ const STATS: Record<StatType, Stat> = {
         name: 'Tournaments played',
         units: 'count',
         format: {maximumFractionDigits: 0},
-        group: 'sum',
-        convert: noConvert
+        group: 'sum'
     },
     't-win': {
         name: 'Tournaments won',
         units: 'count',
         format: {maximumFractionDigits: 0},
-        group: 'sum',
-        convert: noConvert
+        group: 'sum'
+    },
+    't-win-pct': {
+        name: 'Tournament win percentage',
+        units: '%',
+        format: {minimumFractionDigits: 1, maximumFractionDigits: 1},
+        /**
+         * Wins divided by tournaments played. A player counts as having
+         * played when the tournament ends for them, and as having won only
+         * if their team won it.
+         */
+        read(sinceMs) {
+            return db.all(
+                `
+                SELECT
+                    users.displayName AS name,
+                    SUM(CASE WHEN stats.type = 't-play' THEN value ELSE 0 END) AS played,
+                    SUM(CASE WHEN stats.type = 't-win' THEN value ELSE 0 END) AS wins,
+                    100.0 * SUM(CASE WHEN stats.type = 't-win' THEN value ELSE 0 END)
+                        / SUM(CASE WHEN stats.type = 't-play' THEN value ELSE 0 END) AS value
+                FROM
+                    stats, t.users AS users
+                WHERE
+                    stats.type IN ('t-play', 't-win') AND stats.key = users.id
+                    AND ($since = 0 OR time > unixepoch() - $since)
+                GROUP BY 1
+                HAVING played > 0
+                ORDER BY 1 COLLATE NOCASE ASC
+                `, { since: Math.floor(sinceMs / 1000) });
+        }
     },
     'nsh': {
         name: 'Tournament no-shows',
         units: 'count',
         format: {maximumFractionDigits: 0},
-        group: 'sum',
-        convert: noConvert
+        group: 'sum'
     }
 };
 
@@ -144,7 +170,7 @@ setInterval(pruneStats, ms('1d')).unref();
 
 function read(type: StatType, stat: Stat, sinceMs = 0) {
     const group = stat.group === 'avg' ? 'AVG' : 'SUM';
-    const rows = db.all(
+    const rows = stat.read ? stat.read(sinceMs) : db.all(
         `
         SELECT
             users.displayName AS name,
@@ -157,7 +183,10 @@ function read(type: StatType, stat: Stat, sinceMs = 0) {
         GROUP BY 1
         ORDER BY 1 COLLATE NOCASE ASC
         `, { type, since: Math.floor(sinceMs / 1000) });
-    rows.forEach((row) => row.value = stat.convert(row.value));
+    const { convert } = stat;
+    if (convert) {
+        rows.forEach((row) => row.value = convert(row.value));
+    }
     return rows;
 }
 
